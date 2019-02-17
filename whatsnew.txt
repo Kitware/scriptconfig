@@ -1,0 +1,3 @@
+Version 0.0.1
+=============
+* Add `Config.argparse` and use it internally in load

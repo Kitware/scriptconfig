@@ -30,9 +30,14 @@ class Value(ub.NiceRepr):
     # hack to work around isinstance with IPython %autoreload magic
     __scfg_class__ = 'Value'
 
-    def __init__(self, value=None, type=None):
+    def __init__(self, value=None, type=None, help=None, choices=None):
         self.value = None
         self.type = type
+        self.parsekw = {
+            'help': help,
+            'type': type,
+            'choices': choices,
+        }
         self.update(value)
 
     def __nice__(self):
@@ -52,8 +57,8 @@ class Path(Value):
     Note this is mean to be used only with kwil.Config.
     It does NOT represent a pathlib object.
     """
-    def __init__(self, value=None):
-        super(Path, self).__init__(value, str)
+    def __init__(self, value=None, help=None):
+        super(Path, self).__init__(value, str, help=help)
 
     def update(self, value):
         if isinstance(value, six.string_types):
