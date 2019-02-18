@@ -74,20 +74,27 @@ class Config(ub.NiceRepr, DictLike):
         self.load(data, cmdline=cmdline)
 
     @classmethod
-    def demo(Config):
+    def demo(cls):
         """
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.demo
+
         Example:
             >>> from scriptconfig.config import *
             >>> self = Config.demo()
             >>> print('self = {}'.format(self))
-            self = <MyConfig({'option1': (1, 2, 3), 'option2': 'bar', 'option3': None})>
+            self = <MyConfig({'option1': ...}...)...>...
+            >>> self.argparse().print_help()
         """
-
-        class MyConfig(Config):
+        import scriptconfig as scfg
+        class MyConfig(scfg.Config):
             default = {
-                'option1': Value((1, 2, 3), tuple, help='an option'),
-                'option2': 'bar',
+                'option1': scfg.Value('bar', help='an option'),
+                'option2': scfg.Value((1, 2, 3), tuple, help='another option'),
                 'option3': None,
+                'option4': 'foo',
+                'discrete': scfg.Value(None, choices=['a', 'b', 'c']),
+                'apath': scfg.Path(help='a path'),
             }
         self = MyConfig()
         return self
@@ -254,7 +261,10 @@ class Config(ub.NiceRepr, DictLike):
 
     def argparse(self, parser=None):
         """
-        construct CLI parser
+        construct or update an argparse.ArgumentParser CLI parser
+
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.argparse
 
         Example:
             >>> # You can now make instances of this class
@@ -262,7 +272,6 @@ class Config(ub.NiceRepr, DictLike):
             >>> parser = self.argparse()
             >>> parser.print_help()
         """
-        # TODO: make a bit nicer
         import argparse
         if parser is None:
             parser = argparse.ArgumentParser(
@@ -272,6 +281,7 @@ class Config(ub.NiceRepr, DictLike):
 
         for key, value in self._default.items():
             argkw = {}
+            argkw['help'] = '<todo>'
             if isinstance(self._data[key], Value):
                 # Use the metadata in the Value class to enhance argparse
                 _value = self._data[key]

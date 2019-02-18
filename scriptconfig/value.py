@@ -17,6 +17,7 @@ class Value(ub.NiceRepr):
         type (Type): the "type" of the value. This is usually used if the
             value specified is not the type that `self.value` would usually
             be set to.
+        parsekw (dict): kwargs for to argparse add_argument
 
     Example:
         >>> self = Value(None, type=float)
