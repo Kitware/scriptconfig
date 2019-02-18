@@ -1,3 +1,5 @@
+#!/bin/bash 
+
 # Install dependency packages
 pip install -r requirements.txt
 
@@ -6,5 +8,3 @@ pip install -e .
 
 # Compile C extensions to improve runtime
 #python setup.py build_ext --inplace
-
-cat README.md
