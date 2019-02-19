@@ -2,7 +2,7 @@
 mkinit ~/code/scriptconfig/scriptconfig/__init__.py
 """
 
-__version__ = '0.0.1'
+__version__ = '0.3.0.dev0'
 
 from .config import (Config,)
 from .dict_like import (DictLike,)
