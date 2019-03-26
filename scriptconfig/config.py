@@ -1,9 +1,80 @@
 # -*- coding: utf-8 -*-
 """
+Write simple configs and update from CLI, kwargs, and/or json.
+
+The ``scriptconfig`` provides a simple way to make configurable scripts using a
+combination of config files, command line arguments, and simple Python keyword
+arguments. A script config object is defined by creating a subclass of
+``Config`` with a ``default`` dict class attribute. An instance of a custom
+``Config`` object will behave similar a dictionary, but with a few
+conviniences.
+
+To get started lets consider some example usage:
+
+Example:
+    >>> import scriptconfig as scfg
+    >>> # In its simplest incarnation, the config class specifies default values.
+    >>> # For each configuration parameter.
+    >>> class ExampleConfig(scfg.Config):
+    >>>     default = {
+    >>>         'num': 1,
+    >>>         'mode': 'bar',
+    >>>         'ignore': ['baz', 'biz'],
+    >>>     }
+    >>> # Creating an instance, starts using the defaults
+    >>> config = ExampleConfig()
+    >>> # Typically you will want to update default from a dict or file.  By
+    >>> # specifying cmdline=True you denote that it is ok for the contents of
+    >>> # `sys.argv` to override config values. Here we pass a dict to `load`.
+    >>> kwargs = {'num': 2}
+    >>> config.load(kwargs, cmdline=False)
+    >>> assert config['num'] == 2
+    >>> # The `load` method can also be passed a json/yaml file/path.
+    >>> config_fpath = '/tmp/foo'
+    >>> open(config_fpath, 'w').write('{"num": 3}')
+    >>> config.load(config_fpath, cmdline=False)
+    >>> assert config['num'] == 3
+    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # or by setting it to a custom sys.argv
+    >>> config.load(cmdline=['--num=4'])
+    >>> assert config['num'] == 4
+    >>> # Note that using `config.load(cmdline=True)` will just use the
+    >>> # contents of sys.argv
+
+Ignore:
+    >>> class ExampleConfig(scfg.Config):
+    >>>     default = {
+    >>>         'num': 1,
+    >>>         'mode': 'bar',
+    >>>         'mode2': scfg.Value('bar', str),
+    >>>         'ignore': ['baz', 'biz'],
+    >>>     }
+    >>> config = ExampleConfig()
+    >>> # smartcast can handle lists as long as there are no spaces
+    >>> config.load(cmdline=['--ignore=spam,eggs'])
+    >>> assert config['ignore'] == ['spam', 'eggs']
+    >>> # Note that the Value type can influence how data is parsed
+    >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
+
+    >>> # FIXME: We need make parsing lists a bit more intuitive
+    >>> class ExampleConfig(scfg.Config):
+    >>>     default = {
+    >>>         'item1': [],
+    >>>         'item2': scfg.Value([], list),
+    >>>         'item3': scfg.Value([]),
+    >>>     }
+    >>> config = ExampleConfig()
+    >>> # IDEALLY BOTH CASES SHOULD WORK
+    >>> config.load(cmdline=['--item1', 'spam', 'eggs', '--item2', 'spam', 'eggs', '--item3', 'spam', 'eggs'])
+    >>> print(ub.repr2(config.asdict(), nl=1))
+    >>> config.load(cmdline=['--item1=spam,eggs', '--item2=spam,eggs', '--item3=spam,eggs'])
+    >>> print(ub.repr2(config.asdict(), nl=1))
+
+
 TODO
-    - [ ] Rename
+    - [X] Rename
     - [ ] Handle Nested Configs?
-    - [ ] Write docs?
+    - [X] Write docs?
     - [ ] Public Release?
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
@@ -17,7 +88,7 @@ import numpy as np
 from .dict_like import DictLike
 from .file_like import FileLike
 from .value import Value
-from . import smartcast
+from .smartcast import smartcast
 
 
 def scfg_isinstance(item, cls):
@@ -167,7 +238,7 @@ class Config(ub.NiceRepr, DictLike):
     def update_defaults(self, default):
         self._default.update(default)
 
-    def load(self, data, cmdline=True, mode=None):
+    def load(self, data=None, cmdline=True, mode=None):
         """
         Updates the default configuration from a given data source.
 
@@ -216,8 +287,8 @@ class Config(ub.NiceRepr, DictLike):
         self.update(user_config)
 
         # should command line flags be allowed to overwrite data?
-        if cmdline:
-            argv = cmdline if isinstance(cmdline, list) else None
+        if cmdline is True or ub.iterable(cmdline):
+            argv = cmdline if ub.iterable(cmdline) else None
             self._read_argv(argv=argv)
 
         self.normalize()
@@ -238,7 +309,7 @@ class Config(ub.NiceRepr, DictLike):
             current = self._data[key]
             if not isinstance(current, Value):
                 # smartcast non-valued params from commandline
-                value = smartcast.smartcast(value)
+                value = smartcast(value)
             if value is not None:
                 self[key] = value
 
