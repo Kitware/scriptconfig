@@ -330,6 +330,9 @@ class Config(ub.NiceRepr, DictLike):
 
             return yaml.safe_dump(dict(self.items()), stream)
 
+    def dumps(self, mode=None):
+        return self.dump(mode=mode)
+
     def argparse(self, parser=None):
         """
         construct or update an argparse.ArgumentParser CLI parser
