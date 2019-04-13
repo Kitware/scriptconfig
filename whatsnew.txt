@@ -1,5 +1,6 @@
 Version 0.4.0
 =============
+* Reworked load
 * Add docs
 * fixed cmdline bugs
 

@@ -140,9 +140,7 @@ class Config(ub.NiceRepr, DictLike):
         if hasattr(self, 'default'):
             # allow for class attributes to specify the default
             self._default.update(self.default)
-        if default:
-            self.update_defaults(default)
-        self.load(data, cmdline=cmdline)
+        self.load(data, cmdline=cmdline, default=default)
 
     @classmethod
     def demo(cls):
@@ -238,7 +236,7 @@ class Config(ub.NiceRepr, DictLike):
     def update_defaults(self, default):
         self._default.update(default)
 
-    def load(self, data=None, cmdline=True, mode=None):
+    def load(self, data=None, cmdline=False, mode=None, default=None):
         """
         Updates the default configuration from a given data source.
 
@@ -255,7 +253,10 @@ class Config(ub.NiceRepr, DictLike):
                 `argv` or `cmdline=True` to indicate that we should parse
                 `sys.argv`.
         """
-        default = copy.deepcopy(self._default)
+        if default:
+            self.update_defaults(default)
+
+        _default = copy.deepcopy(self._default)
 
         if mode is None:
             if isinstance(data, six.string_types):
@@ -279,11 +280,11 @@ class Config(ub.NiceRepr, DictLike):
                 'Expected path or dict, but got {}'.format(type(data)))
 
         # check for unknown values
-        unknown_keys = set(user_config) - set(default)
+        unknown_keys = set(user_config) - set(_default)
         if unknown_keys:
             raise KeyError('Unknown data options {}'.format(unknown_keys))
 
-        self._data = default.copy()
+        self._data = _default.copy()
         self.update(user_config)
 
         # should command line flags be allowed to overwrite data?
@@ -294,16 +295,38 @@ class Config(ub.NiceRepr, DictLike):
         self.normalize()
         return self
 
-    def _read_argv(self, argv=None):
+    def _read_argv(self, argv=None, special_options=True):
         # TODO: warn about any unused flags
-        if False:
-            ns = {}
-            for key in self.keys():
-                value = ub.argval('--' + key, default=None, argv=argv)
-                ns[key] = value
-        else:
-            parser = self.argparse()
-            ns = parser.parse_known_args(argv)[0].__dict__
+        parser = self.argparse()
+
+        if special_options:
+            parser.add_argument('--config', default=None, help=ub.codeblock(
+                '''
+                special scriptconfig option that accepts the path to a on-disk
+                configuration file, and loads that into this {!r} object.
+                ''').format(self.__class__.__name__))
+
+            parser.add_argument('--dump', default=None, help=ub.codeblock(
+                '''
+                If specified, dump this config to disk.
+                ''').format(self.__class__.__name__))
+
+            parser.add_argument('--dumps', action='store_true', help=ub.codeblock(
+                '''
+                If specified, dump this config stdout
+                ''').format(self.__class__.__name__))
+
+        ns = parser.parse_known_args(argv)[0].__dict__
+
+        if special_options:
+
+            config_fpath = ns.pop('config', None)
+
+            dump_fpath = ns.pop('dump', None)
+            do_dumps = ns.pop('dumps', None)
+
+            if config_fpath is not None:
+                self.load(config_fpath, cmdline=False)
 
         for key, value in ns.items():
             current = self._data[key]
@@ -313,11 +336,42 @@ class Config(ub.NiceRepr, DictLike):
             if value is not None:
                 self[key] = value
 
+        self.normalize()
+
+        if special_options:
+
+            import sys
+            # mode = 'json'
+            mode = 'yaml'
+            if dump_fpath or do_dumps:
+
+                if dump_fpath:
+                    text = self.dumps(mode=mode)
+                    with open(dump_fpath, 'w') as file:
+                        file.write(text)
+
+                if do_dumps:
+                    text = self.dumps(mode=mode)
+                    print(text)
+
+                sys.exit(1)
+
     def normalize(self):
         """ overloadable function called after each load """
         pass
 
     def dump(self, stream=None, mode=None):
+        """
+        Write configuration file to a file or stream
+        """
+        # import six
+        # if isinstance(stream, six.string_types):
+        #     _stream_path = stream
+        #     print('Writing to _stream_path = {!r}'.format(_stream_path))
+        #     _stream = stream = open(_stream_path, 'w')
+        # else:
+        #     _stream_path = None
+        # try:
         if mode is None:
             mode = 'yaml'
         if mode == 'yaml':
@@ -325,10 +379,18 @@ class Config(ub.NiceRepr, DictLike):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
             yaml.add_representer(ub.odict, order_rep)
             return yaml.safe_dump(dict(self.items()), stream)
-        else:
+        elif mode == 'json':
             json_text = json.dumps(ub.odict(self.items()), indent=4)  # NOQA
-
+            return json_text
+        else:
+            raise KeyError(mode)
             return yaml.safe_dump(dict(self.items()), stream)
+        # except Exception:
+        #     raise
+        # finally:
+        #     if _stream_path is not None:
+        #         _stream_path
+        #         _stream.close()
 
     def dumps(self, mode=None):
         return self.dump(mode=mode)
