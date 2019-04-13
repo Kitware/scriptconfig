@@ -339,19 +339,23 @@ class Config(ub.NiceRepr, DictLike):
         self.normalize()
 
         if special_options:
-
             import sys
-            # mode = 'json'
-            mode = 'yaml'
             if dump_fpath or do_dumps:
-
                 if dump_fpath:
+                    # Infer config format from the extension
+                    if dump_fpath.lower().endswith('.json'):
+                        mode = 'json'
+                    elif dump_fpath.lower().endswith('.yaml'):
+                        mode = 'yaml'
+                    else:
+                        mode = 'yaml'
                     text = self.dumps(mode=mode)
                     with open(dump_fpath, 'w') as file:
                         file.write(text)
 
                 if do_dumps:
-                    text = self.dumps(mode=mode)
+                    # Always use yaml to dump to stdout
+                    text = self.dumps(mode='yaml')
                     print(text)
 
                 sys.exit(1)
