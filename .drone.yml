@@ -1,0 +1,44 @@
+---
+kind: pipeline
+name: "Test in 3.6"
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: "Test python 3.6"
+    image: python:3.6
+    commands:
+      - pip install pip setuptools -U
+      - pip install -r requirements.txt -U
+      - pip install .
+      - ./run_tests.py
+
+trigger:
+  event:
+    - pull_request
+    - tag
+      
+---
+kind: pipeline
+name: "Test in 2.7"
+
+platform:
+  os: linux
+  arch: amd64
+  
+steps:
+  - name: "Test python 2.x"
+    image: python:2.7 
+    commands:
+      - pip install pip setuptools -U
+      - pip install -r requirements.txt -U
+      - pip install .  
+      - ./run_tests.py
+
+trigger:
+  event:
+    - pull_request
+    - push
+    - tag
