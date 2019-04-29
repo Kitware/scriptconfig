@@ -152,7 +152,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> from scriptconfig.config import *
             >>> self = Config.demo()
             >>> print('self = {}'.format(self))
-            self = <MyConfig({'option1': ...}...)...>...
+            self = <MyConfig({...'option1': ...}...)...>...
             >>> self.argparse().print_help()
         """
         import scriptconfig as scfg

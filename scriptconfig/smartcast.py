@@ -185,9 +185,6 @@ def _smartcast_simple_sequence(item, astype=list):
     """
     Casts only the simplest strings to a sequence. Cannot handle any nesting.
 
-    CommandLine:
-        python -m ubelt.util_smartcast _smartcast_simple_sequence
-
     Example:
         >>> assert _smartcast_simple_sequence('1') == [1]
         >>> assert _smartcast_simple_sequence('[1]') == [1]
