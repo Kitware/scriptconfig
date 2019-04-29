@@ -4,7 +4,5 @@
 pip install -r requirements.txt
 
 # Install irharn in developer mode
-pip install -e .
-
-# Compile C extensions to improve runtime
-#python setup.py build_ext --inplace
+python setup.py develop
+#pip install -e .
