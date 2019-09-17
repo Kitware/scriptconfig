@@ -256,6 +256,7 @@ class Config(ub.NiceRepr, DictLike):
         if default:
             self.update_defaults(default)
 
+        # Maybe this shouldn't be a deep copy?
         _default = copy.deepcopy(self._default)
 
         if mode is None:
@@ -319,16 +320,29 @@ class Config(ub.NiceRepr, DictLike):
         ns = parser.parse_known_args(argv)[0].__dict__
 
         if special_options:
-
             config_fpath = ns.pop('config', None)
-
             dump_fpath = ns.pop('dump', None)
             do_dumps = ns.pop('dumps', None)
 
+        # First load argparse defaults in first
+        _not_given = set(ns.keys()) - parser._explicitly_given
+        for key in _not_given:
+            value = ns[key]
+            current = self._data[key]
+            if not isinstance(current, Value):
+                # smartcast non-valued params from commandline
+                value = smartcast(value)
+            if value is not None:
+                self[key] = value
+
+        # Then load config file defaults
+        if special_options:
             if config_fpath is not None:
                 self.load(config_fpath, cmdline=False)
 
-        for key, value in ns.items():
+        # Finally load explicit CLI values
+        for key in parser._explicitly_given:
+            value = ns[key]
             current = self._data[key]
             if not isinstance(current, Value):
                 # smartcast non-valued params from commandline
@@ -419,6 +433,15 @@ class Config(ub.NiceRepr, DictLike):
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             )
 
+        # Use custom action used to mark which values were explicitly set on
+        # the commandline
+        parser._explicitly_given = set()
+
+        class ParseAction(argparse.Action):
+            def __call__(self, parser, namespace, values, option_string=None):
+                setattr(namespace, self.dest, values)
+                parser._explicitly_given.add(self.dest)
+
         for key, value in self._default.items():
             argkw = {}
             argkw['help'] = '<todo>'
@@ -428,6 +451,7 @@ class Config(ub.NiceRepr, DictLike):
                 argkw.update(_value.parsekw)
                 value = _value.value
             argkw['default'] = value
+            argkw['action'] = ParseAction
             parser.add_argument('--' + key, **argkw)
 
         return parser
