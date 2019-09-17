@@ -244,7 +244,7 @@ class Config(ub.NiceRepr, DictLike):
         truthy.
 
         Args:
-            data (str or dict):
+            data (PathLike | dict):
                 Either a path to a yaml / json file or a config dict
 
             cmdline (bool | List[str]): if truthy then the command line
@@ -270,7 +270,7 @@ class Config(ub.NiceRepr, DictLike):
             user_config = {}
         elif isinstance(data, six.string_types) or hasattr(data, 'readable'):
             with FileLike(data, 'r') as file:
-                user_config = yaml.load(file)
+                user_config = yaml.load(file, Loader=yaml.SafeLoader)
         elif isinstance(data, dict):
             user_config = data
         elif scfg_isinstance(data, Config):
