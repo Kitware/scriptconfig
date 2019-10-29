@@ -7,7 +7,7 @@ combination of config files, command line arguments, and simple Python keyword
 arguments. A script config object is defined by creating a subclass of
 ``Config`` with a ``default`` dict class attribute. An instance of a custom
 ``Config`` object will behave similar a dictionary, but with a few
-conviniences.
+conveniences.
 
 To get started lets consider some example usage:
 
