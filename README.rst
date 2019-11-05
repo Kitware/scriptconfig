@@ -1,5 +1,10 @@
 ScriptConfig
-------------
+============
+
+.. #|CircleCI| |Travis| |Appveyor| |Codecov| |Pypi| |Downloads| |ReadTheDocs|
+
+|CircleCI| |Codecov| |Pypi| |Downloads| |ReadTheDocs|
+
 
 Write simple configs and update from CLI, kwargs, and/or json.
 
@@ -43,3 +48,45 @@ To get started lets consider some example usage:
     >>> # Note that using `config.load(cmdline=True)` will just use the
     >>> # contents of sys.argv
 
+
+Features
+--------
+
+- Serializes to json
+
+- Dict-like interface. By default a ``Config`` object operates independent of config files or the command line.
+
+- Can create command line interfaces
+
+  - Can directly create an independent argparse object 
+
+  - Can use special command line loading using ``self.load(cmdline=True)``. This extends the basic argparse interface with:
+   
+      - Can specify options as either ``--option value`` or ``--option=value``
+
+      - Default config options allow for "smartcasting" values like lists and paths
+
+      - Automatically add ``--config``, ``--dumps``, and ``--dump`` CLI options
+        when reading cmdline via ``load``.
+
+
+.. |CircleCI| image:: https://circleci.com/gh/Erotemic/scriptconfig.svg?style=svg
+    :target: https://circleci.com/gh/Erotemic/scriptconfig
+    
+.. |Travis| image:: https://img.shields.io/travis/Erotemic/scriptconfig/master.svg?label=Travis%20CI
+   :target: https://travis-ci.org/Erotemic/scriptconfig?branch=master
+
+.. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/github/Erotemic/scriptconfig?branch=master&svg=True
+   :target: https://ci.appveyor.com/project/Erotemic/scriptconfig/branch/master
+
+.. |Codecov| image:: https://codecov.io/github/Erotemic/scriptconfig/badge.svg?branch=master&service=github
+   :target: https://codecov.io/github/Erotemic/scriptconfig?branch=master
+
+.. |Pypi| image:: https://img.shields.io/pypi/v/scriptconfig.svg
+   :target: https://pypi.python.org/pypi/scriptconfig
+
+.. |Downloads| image:: https://img.shields.io/pypi/dm/scriptconfig.svg
+   :target: https://pypistats.org/packages/scriptconfig
+
+.. |ReadTheDocs| image:: https://readthedocs.org/projects/scriptconfig/badge/?version=latest
+    :target: http://scriptconfig.readthedocs.io/en/latest/

@@ -70,12 +70,8 @@ Ignore:
     >>> config.load(cmdline=['--item1=spam,eggs', '--item2=spam,eggs', '--item3=spam,eggs'])
     >>> print(ub.repr2(config.asdict(), nl=1))
 
-
-TODO
-    - [X] Rename
+TODO:
     - [ ] Handle Nested Configs?
-    - [X] Write docs?
-    - [X] Public Release?
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
@@ -145,8 +141,11 @@ class Config(ub.NiceRepr, DictLike):
     @classmethod
     def demo(cls):
         """
+        Create an example config class for test cases
+
         CommandLine:
             xdoctest -m scriptconfig.config Config.demo
+            xdoctest -m scriptconfig.config Config.demo --cli --option1 fo
 
         Example:
             >>> from scriptconfig.config import *
@@ -154,6 +153,9 @@ class Config(ub.NiceRepr, DictLike):
             >>> print('self = {}'.format(self))
             self = <MyConfig({...'option1': ...}...)...>...
             >>> self.argparse().print_help()
+            >>> # xdoc: +REQUIRES(--cli)
+            >>> self.load(cmdline=True)
+            >>> print(ub.repr2(dict(self), nl=1))
         """
         import scriptconfig as scfg
         class MyConfig(scfg.Config):
@@ -417,8 +419,15 @@ class Config(ub.NiceRepr, DictLike):
         """
         construct or update an argparse.ArgumentParser CLI parser
 
+        Args:
+            parser (None | argparse.ArgumentParser): if specified this
+                parser is updated with options from this config.
+
+        Returns:
+            argparse.ArgumentParser : a new or updated argument parser
+
         CommandLine:
-            xdoctest -m scriptconfig.config Config.argparse
+            xdoctest -m ~/code/scriptconfig/scriptconfig/config.py Config.argparse
 
         Example:
             >>> # You can now make instances of this class
