@@ -1,7 +1,2 @@
-pytest >= 3.3.1
-coverage >= 4.3.4
-xdoctest >= 0.3.0
-pytest-cov
-
-six
-pyyaml
+-r requirements/runtime.txt
+-r requirements/tests.txt

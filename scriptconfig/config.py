@@ -86,6 +86,8 @@ from .file_like import FileLike
 from .value import Value
 from .smartcast import smartcast
 
+__all__ = ['Config']
+
 
 def scfg_isinstance(item, cls):
     """

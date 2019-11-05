@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import six
 import types
 
+__all__ = ['smartcast']
+
 if six.PY2:
     BooleanType = types.BooleanType
 else:
