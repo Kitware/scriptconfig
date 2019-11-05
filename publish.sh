@@ -23,24 +23,27 @@ Usage:
     export TWINE_USERNAME=<pypi-username>
     export TWINE_PASSWORD=<pypi-password>
 
+    OR
+
     source $(secret_loader.sh)
 
     # Interactive/Dry run
-    ./publish.sh 
+    DEPLOY_REMOTE=public ./publish.sh 
 
     # Non-Interactive run
     #./publish.sh yes
 '''
 
 # Options
-TWINE_PASSWORD=${TWINE_PASSWORD:="<unknown>"}
-TWINE_USERNAME=${TWINE_USERNAME:="<unknown>"}
+TWINE_PASSWORD=${TWINE_PASSWORD:=""}
+TWINE_USERNAME=${TWINE_USERNAME:=""}
 TAG_AND_UPLOAD=${TAG_AND_UPLOAD:=$1}
 USE_GPG=${USE_GPG:="True"}
 
 # First tag the source-code
 CURRENT_BRANCH=${CURRENT_BRANCH:=$(git branch | grep \* | cut -d ' ' -f2)}
 DEPLOY_BRANCH=${DEPLOY_BRANCH:=release}
+DEPLOY_REMOTE=${DEPLOY_REMOTE:=origin}
 VERSION=$(python -c "import setup; print(setup.version)")
 echo "VERSION = $VERSION"
 
@@ -137,7 +140,9 @@ if [[ "$TAG_AND_UPLOAD" == "yes" ]]; then
     if [[ "$CURRENT_BRANCH" == "$DEPLOY_BRANCH" ]]; then
         echo "CURRENT_BRANCH = $CURRENT_BRANCH"
         git tag $VERSION -m "tarball tag $VERSION"
+
         git push --tags origin $DEPLOY_BRANCH
+
         if [ "$USE_GPG" == "True" ]; then
             twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $BDIST_WHEEL_PATH.asc $BDIST_WHEEL_PATH
             twine upload --username $TWINE_USERNAME --password $TWINE_PASSWORD --sign $SDIST_PATH.asc $SDIST_PATH
