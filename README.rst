@@ -1,9 +1,8 @@
 ScriptConfig
 ============
 
+.. # TODO Get CI services running on gitlab 
 .. #|CircleCI| |Travis| |Appveyor| |Codecov| |Pypi| |Downloads| |ReadTheDocs|
-
-|CircleCI| |Codecov| |Pypi| |Downloads| |ReadTheDocs|
 
 
 Write simple configs and update from CLI, kwargs, and/or json.
