@@ -30,7 +30,8 @@ Example:
     >>> config.load(kwargs, cmdline=False)
     >>> assert config['num'] == 2
     >>> # The `load` method can also be passed a json/yaml file/path.
-    >>> config_fpath = '/tmp/foo'
+    >>> import tempfile
+    >>> config_fpath = tempfile.mktemp()
     >>> open(config_fpath, 'w').write('{"num": 3}')
     >>> config.load(config_fpath, cmdline=False)
     >>> assert config['num'] == 3
