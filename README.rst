@@ -3,7 +3,8 @@ ScriptConfig
 
 .. # TODO Get CI services running on gitlab 
 .. #|CircleCI| |Travis| |Appveyor| |Codecov| |Pypi| |Downloads| |ReadTheDocs|
-|Pypi| |Downloads| 
+
+|Appveyor| |Pypi| |Downloads| 
 
 
 Write simple configs and update from CLI, kwargs, and/or json.
@@ -76,8 +77,9 @@ Features
 .. |Travis| image:: https://img.shields.io/travis/Erotemic/scriptconfig/master.svg?label=Travis%20CI
    :target: https://travis-ci.org/Erotemic/scriptconfig?branch=master
 
-.. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/github/Erotemic/scriptconfig?branch=master&svg=True
-   :target: https://ci.appveyor.com/project/Erotemic/scriptconfig/branch/master
+.. # See: https://ci.appveyor.com/project/jon.crall/scriptconfig/settings/badges
+.. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/br3p8lkuvol2vas4/branch/master?svg=true
+   :target: https://ci.appveyor.com/project/jon.crall/scriptconfig/branch/master
 
 .. |Codecov| image:: https://codecov.io/github/Erotemic/scriptconfig/badge.svg?branch=master&service=github
    :target: https://codecov.io/github/Erotemic/scriptconfig?branch=master
