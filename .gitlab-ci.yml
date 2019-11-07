@@ -1,52 +1,101 @@
 # Official language image. Look for the different tagged releases at:
 # https://hub.docker.com/r/library/python/tags/
-image: python:latest
 
-# Change pip's cache directory to be inside the project directory since we can
-# only cache local items.
-variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# Note: expand yaml
+# yaml merge-expand .gitlab-ci.yml foo && cat foo
+
+
+### TEMPLATES ###
+# Define common templates using YAML anchors
+
+.python_job_template: &python_job_template
+    # Tags define which runners will accept which jobs
+    
+    tags:
+        - docker
+        - linux
+
+    before_script:
+        - python -V  # Print out python version for debugging
+        - pip install virtualenv
+        - virtualenv venv
+        - source venv/bin/activate
+        - pip install pip -U
+        - pip install pip setuptools -U
+
+    script: 
+        - pip install .  
+        - ./run_tests.py
+
+    variables:
+        # Change pip's cache directory to be inside the project directory since we can
+        # only cache local items.
+        PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+    cache:
+        paths:
+            - .cache/pip
+            - venv/
+
+    artifacts:
+        paths:
+            - dist/*.whl
+
+.build_install_test: &build_install_test
+    - pip install -r requirements.txt -U
+
+
+### JOBS ###
+# Define the actual jobs
+
+build:python2.7:
+    <<: 
+        - *python_job_template
+    image: python:2.7
+
+
+build:python3.5:
+    <<: 
+        - *python_job_template
+    image: python:3.5
+
+
+build:python3.6:
+    <<: 
+        - *python_job_template
+    image: python:3.6
+
+
+build:python3.7:
+    <<: 
+        - *python_job_template
+    image: python:3.7
+
 
 # Pip's cache doesn't store the python packages
 # https://pip.pypa.io/en/stable/reference/pip_install/#caching
 #
 # If you want to also cache the installed packages, you have to install
 # them in a virtualenv and cache it as well.
-cache:
-  paths:
-    - .cache/pip
-    - venv/
 
-before_script:
-  - python -V  # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
+#test:
+#  script:
 
-test:
-  script:
-    - pip install pip setuptools -U
-    - pip install -r requirements.txt -U
-    - pip install .  
-    - ./run_tests.py
+#run:
+#  script:
+#    - pip install -r requirements.txt
+#    - python setup.py bdist_wheel
+#    - pip install dist/*
+#    - ./run_tests.py
 
-run:
-  script:
-    - pip install -r requirements.txt
-    - python setup.py bdist_wheel
-    - pip install dist/*
-    - ./run_tests.py
-  artifacts:
-    paths:
-      - dist/*.whl
-
-pages:
-  script:
-    - pip install sphinx sphinx-rtd-theme
-    - cd docs ; make html
-    - mv build/html/ ../public/
-  artifacts:
-    paths:
-      - public
-  only:
-    - master
+#pages:
+#  script:
+#    - pip install sphinx sphinx-rtd-theme
+#    - cd docs ; make html
+#    - mv build/html/ ../public/
+#  artifacts:
+#    paths:
+#      - public
+#  only:
+#    - master
