@@ -77,11 +77,14 @@ class PathList(Value):
 
     Example:
         >>> from os.path import join
-        >>> path = ub.modname_to_modpath('torch', hide_init=True)
+        >>> path = ub.modname_to_modpath('scriptconfig', hide_init=True)
         >>> globstr = join(path, '*.py')
-        >>> PathList(globstr)
-        >>> PathList('/a,/b')
-        >>> PathList(['/a', '/b'])
+        >>> # Passing in a globstr is accepted
+        >>> assert len(PathList(globstr).value) > 0
+        >>> # Smartcast should separate these
+        >>> assert len(PathList('/a,/b').value) == 2
+        >>> # Passing in a list is accepted
+        >>> assert len(PathList(['/a', '/b']).value) == 2
     """
     def update(self, value=None):
         if isinstance(value, six.string_types):
