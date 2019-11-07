@@ -25,6 +25,7 @@
         - pip install pip setuptools -U
 
     script: 
+        - pip install -r requirements.txt
         - pip install .  
         - ./run_tests.py
 
