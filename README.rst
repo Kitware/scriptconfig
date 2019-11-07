@@ -4,7 +4,7 @@ ScriptConfig
 .. # TODO Get CI services running on gitlab 
 .. #|CircleCI| |Travis| |Codecov| |ReadTheDocs|
 
-|Appveyor| |Pypi| |Downloads| 
+|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| 
 
 
 Write simple configs and update from CLI, kwargs, and/or json.
@@ -71,11 +71,12 @@ Features
         when reading cmdline via ``load``.
 
 
-.. |CircleCI| image:: https://circleci.com/gh/Erotemic/scriptconfig.svg?style=svg
-    :target: https://circleci.com/gh/Erotemic/scriptconfig
-    
-.. |Travis| image:: https://img.shields.io/travis/Erotemic/scriptconfig/master.svg?label=Travis%20CI
-   :target: https://travis-ci.org/Erotemic/scriptconfig?branch=master
+
+.. |GitlabCIPipeline| image:: https://gitlab.kitware.com/utils/scriptconfig/badges/master/pipeline.svg
+   :target: https://gitlab.kitware.com/utils/scriptconfig/-/jobs
+
+.. |GitlabCICoverage| image:: https://gitlab.kitware.com/utils/scriptconfig/badges/master/coverage.svg?job=coverage
+    :target: https://gitlab.kitware.com/utils/scriptconfig/commits/master
 
 .. # See: https://ci.appveyor.com/project/jon.crall/scriptconfig/settings/badges
 .. |Appveyor| image:: https://ci.appveyor.com/api/projects/status/br3p8lkuvol2vas4/branch/master?svg=true
