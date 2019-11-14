@@ -69,8 +69,11 @@ echo "LIVE BUILDING"
 python setup.py bdist_wheel --universal
 python setup.py sdist 
 
-BDIST_WHEEL_PATH=$(ls dist/*-$VERSION-*.whl)
-SDIST_PATH=$(dir dist/*-$VERSION*.tar.gz)
+MB_PYTHON_TAG="py2.py3-none-any"
+PACKAGE_NAME="*"
+
+BDIST_WHEEL_PATH=$(ls dist/$PACKAGE_NAME-$VERSION-$MB_PYTHON_TAG.whl)
+SDIST_PATH=$(dir dist/$PACKAGE_NAME-$VERSION.tar.gz)
 echo "
 echo "VERSION='$VERSION'"
 BDIST_WHEEL_PATH='$BDIST_WHEEL_PATH'
