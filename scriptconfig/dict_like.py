@@ -60,6 +60,10 @@ class DictLike(object):
     def asdict(self):
         return dict(self.items())
 
+    def to_dict(self):
+        # pandas like API
+        return dict(self.items())
+
     def update(self, other):
         for k, v in other.items():
             self[k] = v
