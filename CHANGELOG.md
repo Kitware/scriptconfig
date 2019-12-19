@@ -9,6 +9,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * `Config.to_dict` to have a method consistent with pandas API
 
+### Changed
+
+* Loading from a config yaml file will ignore the special `__heredoc__` key. 
+  This lets the user add multi-line documentation to their config files.
+
 
 ## [Version 0.5.1] - Unreleased
 
