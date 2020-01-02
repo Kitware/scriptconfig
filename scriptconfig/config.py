@@ -277,6 +277,7 @@ class Config(ub.NiceRepr, DictLike):
         elif isinstance(data, six.string_types) or hasattr(data, 'readable'):
             with FileLike(data, 'r') as file:
                 user_config = yaml.load(file, Loader=yaml.SafeLoader)
+            user_config.pop('__heredoc__', None)  # ignore special heredoc key
         elif isinstance(data, dict):
             user_config = data
         elif scfg_isinstance(data, Config):
