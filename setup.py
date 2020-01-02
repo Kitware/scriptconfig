@@ -113,14 +113,15 @@ def parse_requirements(fname='requirements.txt'):
     return packages
 
 
-version = parse_version('scriptconfig/__init__.py')  # needs to be a global var for git tags
+NAME = 'scriptconfig'
+VERSION = version = parse_version('scriptconfig/__init__.py')  # needs to be a global var for git tags
 
 if __name__ == '__main__':
     setup(
-        name='scriptconfig',
+        name=NAME,
         version=version,
-        author='Jon Crall',
-        author_email='jon.crall@kitware.com',
+        author='Kitware, Inc., Jon Crall',
+        author_email='kitware@kitware.com, jon.crall@kitware.com',
         description='Easy dict-based script configuration with CLI support',
         long_description=parse_description(),
         long_description_content_type='text/x-rst',
