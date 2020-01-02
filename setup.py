@@ -120,7 +120,7 @@ if __name__ == '__main__':
     setup(
         name=NAME,
         version=version,
-        author='Kitware, Inc., Jon Crall',
+        author='Kitware Inc., Jon Crall',
         author_email='kitware@kitware.com, jon.crall@kitware.com',
         description='Easy dict-based script configuration with CLI support',
         long_description=parse_description(),
