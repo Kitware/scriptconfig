@@ -3,7 +3,7 @@
 mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative
 """
 
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 
 from .config import (Config,)
 from .value import (Path, PathList, Value,)
