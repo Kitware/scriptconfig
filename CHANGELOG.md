@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * calling `set(config)`
+* `smartcast` now correctly casts things like `"[1,2,3,]"` to `[1, 2, 3]`
 
 
 ## [Version 0.5.2] - Unreleased

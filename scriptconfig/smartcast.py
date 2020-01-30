@@ -191,6 +191,8 @@ def _smartcast_simple_sequence(item, astype=list):
         >>> assert _smartcast_simple_sequence('1') == [1]
         >>> assert _smartcast_simple_sequence('[1]') == [1]
         >>> assert _smartcast_simple_sequence('[[1]]') == ['[1]']
+        >>> item = "[1,2,3,]"
+        >>> _smartcast_simple_sequence(item)
     """
     nesters = {list: '[]', tuple: '()', set: '{}'}
     nester = nesters.pop(astype)
@@ -200,4 +202,6 @@ def _smartcast_simple_sequence(item, astype=list):
     elif any(item.startswith(nester[0]) and item.endswith(nester[1])
              for nester in nesters.values()):
         raise ValueError('wrong nester')
-    return astype(smartcast(part.strip()) for part in item.split(','))
+    parts = [p.strip() for p in item.split(',')]
+    parts = [p for p in parts if p]
+    return astype(smartcast(p) for p in parts)
