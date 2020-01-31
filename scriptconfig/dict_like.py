@@ -30,6 +30,9 @@ class DictLike(object):
     def __len__(self):
         return len(list(self.keys()))
 
+    def __iter__(self):
+        return iter(self.keys())
+
     def __contains__(self, key):
         return key in self.keys()
 
