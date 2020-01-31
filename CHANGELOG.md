@@ -3,7 +3,12 @@
 This changelog follows the specifications detailed in: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
-## [Version 0.5.3] - Unreleased
+
+## [Version 0.5.4] - 
+
+
+
+## [Version 0.5.3] - 2020 - Jan - 30
 
 
 ### Fixed
