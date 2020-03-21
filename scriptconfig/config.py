@@ -434,16 +434,20 @@ class Config(ub.NiceRepr, DictLike):
             >>>     default = {
             >>>         'path1':  scfg.Value(None, position=1),
             >>>         'path2':  scfg.Value(None, position=2),
-            >>>         'dry':  scfg.Value(False, flagok=True),
-            >>>         'approx':  scfg.Value(False, flagok=False),
+            >>>         'dry':  scfg.Value(False, isflag=True),
+            >>>         'approx':  scfg.Value(False, isflag=False),
             >>>     }
             >>> self = MyConfig()
             >>> parser = self.argparse(special_options=True)
             >>> parser.print_help()
+            >>> self._read_argv(argv=['objection', '42', '--path1=overruled!'])
+            >>> print('self = {!r}'.format(self))
 
         Ignore:
+            >>> self._read_argv(argv=['hi','--path1=foobar'])
             >>> self._read_argv(argv=['hi', 'hello', '--path1=foobar'])
             >>> self._read_argv(argv=['hi', 'hello', '--path1=foobar', '--help'])
+            >>> self._read_argv(argv=['--path1=foobar', '--path1=baz'])
             >>> print('self = {!r}'.format(self))
         """
         import argparse
@@ -465,12 +469,12 @@ class Config(ub.NiceRepr, DictLike):
                 setattr(namespace, self.dest, values)
                 parser._explicitly_given.add(self.dest)
 
-        _meta = {}
-        for key, value in self._default.items():
-            if isinstance(self._data[key], Value):
-                _meta[key] = self._data[key]
-
-        _positions = {k: v.position for k, v in _meta.items()
+        _metadata = {
+            key: self._data[key]
+            for key, value in self._default.items()
+            if isinstance(self._data[key], Value)
+        }
+        _positions = {k: v.position for k, v in _metadata.items()
                       if v.position is not None}
         if _positions:
             if ub.find_duplicates(_positions.values()):
@@ -482,15 +486,18 @@ class Config(ub.NiceRepr, DictLike):
 
         for key, value in self._default.items():
             argkw = {}
-            argkw['help'] = '<undocumented>'
+            argkw['help'] = ''
             positional = None
-            if key in _meta:
+            isflag = False
+            if key in _metadata:
                 # Use the metadata in the Value class to enhance argparse
-                _value = _meta[key]
+                _value = _metadata[key]
                 argkw.update(_value.parsekw)
                 value = _value.value
+                isflag = _value.isflag
                 positional = _value.position
-            argkw['help'] = '<no-help>'
+            if not argkw['help']:
+                argkw['help'] = '<undocumented>'
             argkw['default'] = value
             argkw['action'] = ParseAction
 
@@ -498,7 +505,19 @@ class Config(ub.NiceRepr, DictLike):
                 parser.add_argument(key, **argkw)
                 parser.add_argument('--' + key, **argkw)
             else:
-                parser.add_argument('--' + key, **argkw)
+                if isflag:
+                    if not isinstance(argkw['default'], bool):
+                        raise ValueError('can only use isflag with bools')
+                    argkw.pop('type', None)
+                    argkw.pop('choices', None)
+                    argkw.pop('action', None)
+                    argkw['dest'] = key
+                    parser.add_argument(
+                        '--' + key, action='store_true', **argkw)
+                    parser.add_argument(
+                        '--no-' + key, action='store_false', **argkw)
+                else:
+                    parser.add_argument('--' + key, **argkw)
 
         if special_options:
             parser.add_argument('--config', default=None, help=ub.codeblock(

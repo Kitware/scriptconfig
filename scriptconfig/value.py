@@ -22,8 +22,7 @@ class Value(ub.NiceRepr):
             to be a positional argument in the argparse CLI. Note, that
             values with the same position index will cause conflicts.
 
-        flagok (bool, default=True): if True, boolean arguments will be allowed
-            as flags. (unimplemented)
+        isflag (bool, default=False): if True, args will be parsed as booleans
 
     Example:
         >>> self = Value(None, type=float)
@@ -38,11 +37,11 @@ class Value(ub.NiceRepr):
     __scfg_class__ = 'Value'
 
     def __init__(self, value=None, type=None, help=None, choices=None,
-                 position=None, flagok=True):
+                 position=None, isflag=False):
         self.value = None
         self.type = type
         self.position = position
-        self.flagok = flagok
+        self.isflag = isflag
         self.parsekw = {
             'help': help,
             'type': type,
