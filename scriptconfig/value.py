@@ -18,6 +18,12 @@ class Value(ub.NiceRepr):
             value specified is not the type that `self.value` would usually
             be set to.
         parsekw (dict): kwargs for to argparse add_argument
+        position (None | int): if an integer, then we allow this value
+            to be a positional argument in the argparse CLI. Note, that
+            values with the same position index will cause conflicts.
+
+        flagok (bool, default=True): if True, boolean arguments will be allowed
+            as flags. (unimplemented)
 
     Example:
         >>> self = Value(None, type=float)
@@ -31,9 +37,12 @@ class Value(ub.NiceRepr):
     # hack to work around isinstance with IPython %autoreload magic
     __scfg_class__ = 'Value'
 
-    def __init__(self, value=None, type=None, help=None, choices=None):
+    def __init__(self, value=None, type=None, help=None, choices=None,
+                 position=None, flagok=True):
         self.value = None
         self.type = type
+        self.position = position
+        self.flagok = flagok
         self.parsekw = {
             'help': help,
             'type': type,

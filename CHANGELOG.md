@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Version 0.5.4] - 
 
+### Added
+* scfg.Value can now store a position attribute, which specifies it as a positional argument.
+
 
 
 ## [Version 0.5.3] - 2020 - Jan - 30
