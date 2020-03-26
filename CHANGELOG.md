@@ -8,7 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * scfg.Value can now store a position attribute, which specifies it as a positional argument.
-
+* scfg.Value now accepts `nargs` to handle argparse cases.
 
 
 ## [Version 0.5.3] - 2020 - Jan - 30

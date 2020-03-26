@@ -37,7 +37,7 @@ class Value(ub.NiceRepr):
     __scfg_class__ = 'Value'
 
     def __init__(self, value=None, type=None, help=None, choices=None,
-                 position=None, isflag=False):
+                 position=None, isflag=False, nargs=None):
         self.value = None
         self.type = type
         self.position = position
@@ -46,6 +46,7 @@ class Value(ub.NiceRepr):
             'help': help,
             'type': type,
             'choices': choices,
+            'nargs': nargs,
         }
         self.update(value)
 
