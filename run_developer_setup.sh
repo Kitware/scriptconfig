@@ -4,5 +4,5 @@
 pip install -r requirements.txt
 
 # Install in developer mode
-python setup.py develop
-#pip install -e .  # cant do this anymore
+#python setup.py develop
+pip install -e .
