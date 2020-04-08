@@ -4,6 +4,12 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
+## Version 0.5.5 - Unreleased
+
+### Added
+* Config objects can now have an "epilog" attribute. 
+
+
 ## [Version 0.5.4] - 
 
 ### Added
@@ -11,7 +17,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * scfg.Value now accepts `nargs` to handle argparse cases.
 
 
-## [Version 0.5.3] - 2020 - Jan - 30
+## [Version 0.5.3] - 2020-01-30
 
 
 ### Fixed
