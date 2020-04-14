@@ -25,11 +25,15 @@ def smartcast(item, astype=None, strict=False):
     list, tuple.
 
     Args:
-        item (str): represents some data of another type.
-        astype (type): if None, try infer what the best type is, if
-            astype == 'eval' then try to return `eval(item)`, Otherwise, try to
-            cast to this type.
-        strict (bool): if True raises a TypeError if conversion fails
+        item (str | object):
+            represents some data of another type.
+
+        astype (type, default=None):
+            if None, try infer what the best type is, if astype == 'eval' then
+            try to return `eval(item)`, Otherwise, try to cast to this type.
+
+        strict (bool, default=False):
+            if True raises a TypeError if conversion fails
 
     Returns:
         object: some item
@@ -64,17 +68,23 @@ def smartcast(item, astype=None, strict=False):
         >>> check_typed_value('1', 1, int)
         >>> check_typed_value('1', True, bool)
         >>> check_typed_value('1', 1.0, float)
+        >>> check_typed_value(1, 1.0, float)
+        >>> check_typed_value(1.0, 1.0)
+        >>> check_typed_value([1.0], (1.0,), 'tuple')
     """
     if isinstance(item, six.string_types):
         if astype is None:
             type_list = [int, float, complex, bool, NoneType]
             if ',' in item:
                 type_list += [list, tuple, set]
+
+            # Try each candidate in the type list until something works
             for astype in type_list:
                 try:
                     return _as_smart_type(item, astype)
                 except (TypeError, ValueError):
                     pass
+
             if strict:
                 raise TypeError('Could not smartcast item={!r}'.format(item))
             else:
@@ -82,13 +92,37 @@ def smartcast(item, astype=None, strict=False):
         else:
             return _as_smart_type(item, astype)
     else:
+        # Note this is not a common case, the input is typically a string
+        # Might want to rethink behvaior in this case.
         if astype is None:
             return item
         else:
             if astype == eval:
                 return item
             elif isinstance(astype, six.string_types):
-                return eval(astype)(item)
+                if astype == 'eval':
+                    _astype = _identity
+                elif astype == 'int':
+                    _astype = int
+                elif astype == 'bool':
+                    _astype = bool
+                elif astype == 'float':
+                    _astype = float
+                elif astype == 'complex':
+                    _astype = complex
+                elif astype == 'str':
+                    _astype = str
+                elif astype == 'tuple':
+                    _astype = tuple
+                elif astype == 'list':
+                    _astype = list
+                elif astype == 'set':
+                    _astype = set
+                elif astype == 'frozenset':
+                    _astype = frozenset
+                else:
+                    raise KeyError('unknown string astype={!r}'.format(astype))
+                return _astype(item)
             else:
                 return astype(item)
 
@@ -130,8 +164,9 @@ def _as_smart_type(item, astype):
     elif astype is str:
         return item
     elif astype is eval:
-        return eval(item, {}, {})
-    elif astype in [list, tuple, set]:
+        import ast
+        return ast.literal_eval(item)
+    elif astype in [list, tuple, set, frozenset]:
         # TODO:
         # use parse_nestings to smartcast complex lists/tuples/sets
         return _smartcast_simple_sequence(item, astype)
@@ -194,7 +229,7 @@ def _smartcast_simple_sequence(item, astype=list):
         >>> item = "[1,2,3,]"
         >>> _smartcast_simple_sequence(item)
     """
-    nesters = {list: '[]', tuple: '()', set: '{}'}
+    nesters = {list: '[]', tuple: '()', set: '{}', frozenset: '{}'}
     nester = nesters.pop(astype)
     item = item.strip()
     if item.startswith(nester[0]) and item.endswith(nester[1]):
@@ -205,3 +240,17 @@ def _smartcast_simple_sequence(item, astype=list):
     parts = [p.strip() for p in item.split(',')]
     parts = [p for p in parts if p]
     return astype(smartcast(p) for p in parts)
+
+
+def _identity(arg):
+    """ identity function """
+    return arg
+
+
+if __name__ == '__main__':
+    """
+    CommandLine:
+        python ~/code/scriptconfig/scriptconfig/smartcast.py
+    """
+    import xdoctest
+    xdoctest.doctest_module(__file__)

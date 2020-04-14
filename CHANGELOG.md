@@ -4,6 +4,12 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
+## Version 0.5.6 - Unreleased
+
+### Fixes
+* Security fix, smartcast now uses `ast.literal_eval` instead of `eval`.
+
+
 ## Version 0.5.5 - Unreleased
 
 ### Added
