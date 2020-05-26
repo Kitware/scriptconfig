@@ -72,6 +72,14 @@ Features
 
 
 
+FAQ
+---
+
+Q. How do I override the default values for a scriptconfig object using json file?
+
+A.  This depends if you want to pass the path to that json file via the command line or if you have that file in memory already.  There are ways to do either. In the first case you can pass ``--config=<path-to-your-file>`` (assuming you have set the ``cmdline=True`` keyword arg when creating your config object e.g.: ``config = MyConfig(cmdline=True)``. In the second case when you create an instance of the scriptconfig object pass the ``default=<your dict>`` when creating the object: e.g. ``config = MyConfig(default=json.load(open(fpath, 'r')))``.  But the special ``--config`` ``--dump`` and ``--dumps`` CLI arg is baked into script config to make this easier.  
+
+
 .. |GitlabCIPipeline| image:: https://gitlab.kitware.com/utils/scriptconfig/badges/master/pipeline.svg
    :target: https://gitlab.kitware.com/utils/scriptconfig/-/jobs
 
