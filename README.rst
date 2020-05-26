@@ -8,7 +8,9 @@ ScriptConfig
 
 The main webpage for this project is: https://gitlab.kitware.com/utils/scriptconfig
 
-Write simple configs and update from CLI, kwargs, and/or json.
+The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
+**simply defining a dictionary**. Thie enables you to write simple configs and
+update from CLI, kwargs, and/or json.
 
 The ``scriptconfig`` provides a simple way to make configurable scripts using a
 combination of config files, command line arguments, and simple Python keyword
@@ -49,6 +51,30 @@ To get started lets consider some example usage:
     >>> assert config['num'] == 4
     >>> # Note that using `config.load(cmdline=True)` will just use the
     >>> # contents of sys.argv
+
+
+Notice in the above example the keys in your default dictionary are command
+line arguments and values are their defaults.  You can augment default values
+by wrapping them in ``scriptconfig.Value`` objects to encapsulate information
+like help documentation or type information.
+
+
+.. code-block:: python
+
+    >>> import scriptconfig as scfg
+    >>> class ExampleConfig(scfg.Config):
+    >>>     default = {
+    >>>         'num': scfg.Value(1, help='a number'),
+    >>>         'mode': scfg.Value('bar', help='mode1 help'),
+    >>>         'mode2': scfg.Value('bar', type=str, help='mode2 help'),
+    >>>         'ignore': scfg.Value(['baz', 'biz'], help='list of ignore vals'),
+    >>>     }
+    >>> config = ExampleConfig()
+    >>> # smartcast can handle lists as long as there are no spaces
+    >>> config.load(cmdline=['--ignore=spam,eggs'])
+    >>> assert config['ignore'] == ['spam', 'eggs']
+    >>> # Note that the Value type can influence how data is parsed
+    >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
 
 
 Features
