@@ -1,3 +1,25 @@
+"""
+Notes:
+    http://docs.readthedocs.io/en/latest/getting_started.html
+
+    pip install sphinx sphinx-autobuild sphinx_rtd_theme sphinxcontrib-napoleon
+
+    pip install sphinx-autoapi
+
+
+    cd ~/code/scriptconfig
+    mkdir docs
+    cd docs
+
+    sphinx-quickstart
+
+    # need to edit the conf.py
+
+    cd ~/code/scriptconfig/docs
+    make html
+    sphinx-apidoc -f -o ~/code/scriptconfig/docs/source ~/code/scriptconfig/scriptconfig --separate
+    make html
+"""
 # -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
@@ -18,16 +40,45 @@
 
 
 # -- Project information -----------------------------------------------------
+from os.path import exists
+from os.path import dirname
+from os.path import join
 
-project = 'scriptconfig'
-copyright = '2019, Jon Crall'
+
+modname = 'scriptconfig'
+project = modname
+copyright = '2020, Kitware Inc'
 author = 'Jon Crall'
 
+
+def parse_version(fpath):
+    """
+    Statically parse the version number from a python file
+    """
+    import ast
+    if not exists(fpath):
+        raise ValueError('fpath={!r} does not exist'.format(fpath))
+    with open(fpath, 'r') as file_:
+        sourcecode = file_.read()
+    pt = ast.parse(sourcecode)
+    class VersionVisitor(ast.NodeVisitor):
+        def visit_Assign(self, node):
+            for target in node.targets:
+                if getattr(target, 'id', None) == '__version__':
+                    self.version = node.value.s
+    visitor = VersionVisitor()
+    visitor.visit(pt)
+    return visitor.version
+
 # The short X.Y version
-import scriptconfig
-version = '.'.join(scriptconfig.__version__.split('.')[0:2])
+# import ubelt as ub
+# module = ub.import_module_from_path(modpath)
+# release = module.__version__
+
+modpath = join(dirname(dirname(dirname(__file__))), modname, '__init__.py')
 # The full version, including alpha/beta/rc tags
-release = ''
+release = parse_version(modpath)
+version = '.'.join(release.split('.')[0:2])
 
 
 # -- General configuration ---------------------------------------------------

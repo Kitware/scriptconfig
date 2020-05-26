@@ -1,5 +1,11 @@
-six
 sphinx
 sphinx-autobuild 
 sphinx_rtd_theme 
 sphinxcontrib-napoleon
+
+sphinx-autoapi
+
+six
+Pygments
+
+ubelt
