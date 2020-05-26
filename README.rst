@@ -6,6 +6,7 @@ ScriptConfig
 
 |GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| 
 
+The main webpage for this project is: https://gitlab.kitware.com/utils/scriptconfig
 
 Write simple configs and update from CLI, kwargs, and/or json.
 
