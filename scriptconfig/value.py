@@ -54,27 +54,26 @@ class Value(ub.NiceRepr):
         return '{!r}: {!r}'.format(self.type, self.value)
 
     def update(self, value):
-        if value is None:
-            self.value = value
-        elif isinstance(value, six.string_types):
-            self.value = smartcast.smartcast(value, self.type)
-        else:
-            self.value = value
+        self.value = self.cast(value)
+
+    def cast(self, value):
+        if isinstance(value, six.string_types):
+            value = smartcast.smartcast(value, self.type)
+        return value
 
 
 class Path(Value):
     """
-    Note this is mean to be used only with kwil.Config.
+    Note this is mean to be used only with scriptconfig.Config.
     It does NOT represent a pathlib object.
     """
     def __init__(self, value=None, help=None):
         super(Path, self).__init__(value, str, help=help)
 
-    def update(self, value):
+    def cast(self, value):
         if isinstance(value, six.string_types):
-            self.value = ub.expandpath(value)
-        else:
-            self.value = value
+            value = ub.expandpath(value)
+        return value
 
 
 class PathList(Value):
@@ -95,13 +94,13 @@ class PathList(Value):
         >>> # Passing in a list is accepted
         >>> assert len(PathList(['/a', '/b']).value) == 2
     """
-    def update(self, value=None):
+
+    def cast(self, value=None):
         if isinstance(value, six.string_types):
-            paths1 = sorted(glob.glob(ub.truepath(value)))
+            paths1 = sorted(glob.glob(ub.expandpath(value)))
             paths2 = smartcast.smartcast(value)
             if paths1:
-                self.value = paths1
+                value = paths1
             else:
-                self.value = paths2
-        else:
-            self.value = value
+                value = paths2
+        return value

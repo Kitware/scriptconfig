@@ -83,9 +83,9 @@ import io
 import json
 import numpy as np
 from .dict_like import DictLike
+from . import smartcast
 from .file_like import FileLike
 from .value import Value
-from .smartcast import smartcast
 
 __all__ = ['Config']
 
@@ -109,6 +109,13 @@ class Config(ub.NiceRepr, DictLike):
     "default" and assing it to a dict of default values. You can also use
     special `Value` classes to denote types. You can also define a method
     `normalize`, to postprocess the arguments after this class receives them.
+
+    Attributes:
+        _data : this protected variable holds the raw state of the config
+            object and is accessed by the dict-like
+
+        _default : this protected variable maintains the default values for
+            this config.
 
     Example:
         >>> # Inherit from `Config` and assign `default`
@@ -134,6 +141,7 @@ class Config(ub.NiceRepr, DictLike):
                 True, then sys.argv is used otherwise cmdline is parsed.
                 Defaults to False.
         """
+        # The _data attribute holds
         self._data = None
         self._default = ub.odict()
         if hasattr(self, 'default'):
@@ -224,12 +232,17 @@ class Config(ub.NiceRepr, DictLike):
         if key not in self._data:
             raise Exception('Cannot add keys to ScriptConfig objects')
         if scfg_isinstance(value, Value):
+            # If the new item is a Value object simply overwrite the old one
             self._data[key] = value
         else:
-            current = self._data[key]
-            if scfg_isinstance(current, Value):
-                current.update(value)
+            template = self.default[key]
+            if scfg_isinstance(template, Value):
+                # If the new value is raw data, and we have a underlying Value
+                # object update it.
+                self._data[key] = template.cast(value)
             else:
+                # If we don't have an underlying Value object simply set the
+                # raw data.
                 self._data[key] = value
 
     def delitem(self, key):
@@ -317,10 +330,15 @@ class Config(ub.NiceRepr, DictLike):
         _not_given = set(ns.keys()) - parser._explicitly_given
         for key in _not_given:
             value = ns[key]
-            current = self._data[key]
-            if not isinstance(current, Value):
+            # NOTE: this implementatio is messy and needs refactor.
+            # Currently the .default, ._default, and ._data attributes can all
+            # be Value objects, but this gets messy when the "default"
+            # constructor argument is used. We should refactor so _data and
+            # _default only store the raw current values, post-casting.
+            template = self.default[key]
+            if not isinstance(template, Value):
                 # smartcast non-valued params from commandline
-                value = smartcast(value)
+                value = smartcast.smartcast(value)
             if value is not None:
                 self[key] = value
 
@@ -332,10 +350,10 @@ class Config(ub.NiceRepr, DictLike):
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
             value = ns[key]
-            current = self._data[key]
-            if not isinstance(current, Value):
+            template = self.default[key]
+            if not isinstance(template, Value):
                 # smartcast non-valued params from commandline
-                value = smartcast(value)
+                value = smartcast.smartcast(value)
             if value is not None:
                 self[key] = value
 

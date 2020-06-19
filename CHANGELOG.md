@@ -4,19 +4,32 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.6 - Unreleased
+## Version 0.5.7 - Unreleased
+
+### Fixes
+* Fixed issue where `_read_argv` would try to smartcast items where the default
+  class attribute had a `Value`. 
+
+
+### Changed
+* The Value object now has a side effect free `cast` method that is called by
+  `update` when the default value is changed or when handling raw data outside
+   of the Value object itself.
+
+
+## Version 0.5.6 - Released
 
 ### Fixes
 * Security fix, smartcast now uses `ast.literal_eval` instead of `eval`.
 
 
-## Version 0.5.5 - Unreleased
+## Version 0.5.5 - Released
 
 ### Added
 * Config objects can now have an "epilog" attribute. 
 
 
-## [Version 0.5.4] - 
+## [Version 0.5.4] - Released
 
 ### Added
 * scfg.Value can now store a position attribute, which specifies it as a positional argument.
@@ -31,7 +44,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `smartcast` now correctly casts things like `"[1,2,3,]"` to `[1, 2, 3]`
 
 
-## [Version 0.5.2] - Unreleased
+## [Version 0.5.2] - Released
 
 ### Added
 
@@ -43,7 +56,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   This lets the user add multi-line documentation to their config files.
 
 
-## [Version 0.5.1] - Unreleased
+## [Version 0.5.1] - Released
 
 ### Fixed 
 * Tests on windows
@@ -82,7 +95,3 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Add `Config.argparse` and use it internally in load
 * Initial implementation
-
-## Version 0.5.6 - Unreleased
-
-## Version 0.5.7 - Unreleased
