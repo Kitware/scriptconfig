@@ -320,7 +320,6 @@ class Config(ub.NiceRepr, DictLike):
         parser = self.argparse(special_options=special_options)
 
         ns = parser.parse_known_args(argv)[0].__dict__
-        print('ns = {}'.format(ub.repr2(ns, nl=1)))
 
         if special_options:
             config_fpath = ns.pop('config', None)
