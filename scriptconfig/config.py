@@ -436,11 +436,17 @@ class Config(ub.NiceRepr, DictLike):
         if epilog is not None:
             epilog = ub.codeblock(epilog)
 
+        class RawDescriptionDefaultsHelpFormatter(
+                argparse.RawDescriptionHelpFormatter,
+                argparse.ArgumentDefaultsHelpFormatter):
+            pass
+
         parserkw = dict(
             description=description,
             epilog=epilog,
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
+            # formatter_class=argparse.RawDescriptionHelpFormatter,
+            formatter_class=RawDescriptionDefaultsHelpFormatter,
         )
         return parserkw
 
