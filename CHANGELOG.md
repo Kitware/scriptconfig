@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.5.7 - Unreleased
 
+### Added
+* The `cmdline` argument of `Config` can now be the actual argument string used
+  on the command line. This will be parsed with shlex and converted to an argv
+  list.
+
 ### Fixes
 * Fixed issue where `_read_argv` would try to smartcast items where the default
   class attribute had a `Value`. 

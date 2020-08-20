@@ -37,8 +37,13 @@ Example:
     >>> assert config['num'] == 3
     >>> # It is possbile to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
-    >>> config.load(cmdline=['--num=4'])
+    >>> config.load(cmdline=['--num=4', '--mode' ,'fiz'])
     >>> assert config['num'] == 4
+    >>> assert config['mode'] == 'fiz'
+    >>> # You can also just use the command line string itself
+    >>> config.load(cmdline='--num=4 --mode fiz')
+    >>> assert config['num'] == 4
+    >>> assert config['mode'] == 'fiz'
     >>> # Note that using `config.load(cmdline=True)` will just use the
     >>> # contents of sys.argv
 
@@ -135,11 +140,15 @@ class Config(ub.NiceRepr, DictLike):
         """
         Args:
             data (object): filepath, dict, or None
-            default (dict, optional): overrides the class defaults
-            cmdline (bool or List[str]): if True, then command line arguments
-                will overwrite any specified or default values. If cmdline is
-                True, then sys.argv is used otherwise cmdline is parsed.
-                Defaults to False.
+
+            default (dict, default=None): overrides the class defaults
+
+            cmdline (bool | List[str] | str, default=False):
+                If False, then no command line information is used.
+                If True, then sys.argv is parsed and used.
+                If a list of strings that used instead of sys.argv.
+                If a string, then that is parsed using shlex and used instead
+                    of sys.argv.
         """
         # The _data attribute holds
         self._data = None
@@ -265,11 +274,12 @@ class Config(ub.NiceRepr, DictLike):
             data (PathLike | dict):
                 Either a path to a yaml / json file or a config dict
 
-            cmdline (bool | List[str]): if truthy then the command line
-                will be parsed and specified values will be overwritten.  Can
-                either pass `cmdline` as a `List[str]` to specify a custom
-                `argv` or `cmdline=True` to indicate that we should parse
-                `sys.argv`.
+            cmdline (bool | List[str] | str, default=False):
+                If False, then no command line information is used.
+                If True, then sys.argv is parsed and used.
+                If a list of strings that used instead of sys.argv.
+                If a string, then that is parsed using shlex and used instead
+                    of sys.argv.
         """
         if default:
             self.update_defaults(default)
@@ -307,7 +317,11 @@ class Config(ub.NiceRepr, DictLike):
         self._data = _default.copy()
         self.update(user_config)
 
-        # should command line flags be allowed to overwrite data?
+        if isinstance(cmdline, six.string_types):
+            # allow specification using the actual command line arg string
+            import shlex
+            cmdline = shlex.split(cmdline)
+
         if cmdline is True or ub.iterable(cmdline):
             argv = cmdline if ub.iterable(cmdline) else None
             self._read_argv(argv=argv)
