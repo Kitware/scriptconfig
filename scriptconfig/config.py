@@ -320,7 +320,8 @@ class Config(ub.NiceRepr, DictLike):
         if isinstance(cmdline, six.string_types):
             # allow specification using the actual command line arg string
             import shlex
-            cmdline = shlex.split(cmdline)
+            import os
+            cmdline = shlex.split(os.path.expandvars(cmdline))
 
         if cmdline is True or ub.iterable(cmdline):
             argv = cmdline if ub.iterable(cmdline) else None

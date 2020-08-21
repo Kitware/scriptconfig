@@ -7,6 +7,25 @@ class DictLike(object):
     """
     An inherited class must specify the ``getitem``, ``setitem``, and
       ``keys`` methods.
+
+    A class is dictionary like if it has:
+
+    ``__iter__``, ``__len__``, ``__contains__``, ``__getitem__``, ``items``,
+    ``keys``, ``values``, ``get``,
+
+    and if it should be writable it should have:
+    ``__delitem__``, ``__setitem__``, ``update``,
+
+    And perhaps: ``copy``,
+
+
+    ``__iter__``, ``__len__``, ``__contains__``, ``__getitem__``, ``items``,
+    ``keys``, ``values``, ``get``,
+
+    and if it should be writable it should have:
+    ``__delitem__``, ``__setitem__``, ``update``,
+
+    And perhaps: ``copy``,
     """
 
     def getitem(self, key):
