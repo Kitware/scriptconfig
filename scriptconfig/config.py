@@ -37,8 +37,13 @@ Example:
     >>> assert config['num'] == 3
     >>> # It is possbile to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
-    >>> config.load(cmdline=['--num=4'])
+    >>> config.load(cmdline=['--num=4', '--mode' ,'fiz'])
     >>> assert config['num'] == 4
+    >>> assert config['mode'] == 'fiz'
+    >>> # You can also just use the command line string itself
+    >>> config.load(cmdline='--num=4 --mode fiz')
+    >>> assert config['num'] == 4
+    >>> assert config['mode'] == 'fiz'
     >>> # Note that using `config.load(cmdline=True)` will just use the
     >>> # contents of sys.argv
 
@@ -83,9 +88,9 @@ import io
 import json
 import numpy as np
 from .dict_like import DictLike
+from . import smartcast
 from .file_like import FileLike
 from .value import Value
-from .smartcast import smartcast
 
 __all__ = ['Config']
 
@@ -110,6 +115,13 @@ class Config(ub.NiceRepr, DictLike):
     special `Value` classes to denote types. You can also define a method
     `normalize`, to postprocess the arguments after this class receives them.
 
+    Attributes:
+        _data : this protected variable holds the raw state of the config
+            object and is accessed by the dict-like
+
+        _default : this protected variable maintains the default values for
+            this config.
+
     Example:
         >>> # Inherit from `Config` and assign `default`
         >>> class MyConfig(Config):
@@ -128,12 +140,17 @@ class Config(ub.NiceRepr, DictLike):
         """
         Args:
             data (object): filepath, dict, or None
-            default (dict, optional): overrides the class defaults
-            cmdline (bool or List[str]): if True, then command line arguments
-                will overwrite any specified or default values. If cmdline is
-                True, then sys.argv is used otherwise cmdline is parsed.
-                Defaults to False.
+
+            default (dict, default=None): overrides the class defaults
+
+            cmdline (bool | List[str] | str, default=False):
+                If False, then no command line information is used.
+                If True, then sys.argv is parsed and used.
+                If a list of strings that used instead of sys.argv.
+                If a string, then that is parsed using shlex and used instead
+                    of sys.argv.
         """
+        # The _data attribute holds
         self._data = None
         self._default = ub.odict()
         if hasattr(self, 'default'):
@@ -224,12 +241,17 @@ class Config(ub.NiceRepr, DictLike):
         if key not in self._data:
             raise Exception('Cannot add keys to ScriptConfig objects')
         if scfg_isinstance(value, Value):
+            # If the new item is a Value object simply overwrite the old one
             self._data[key] = value
         else:
-            current = self._data[key]
-            if scfg_isinstance(current, Value):
-                current.update(value)
+            template = self.default[key]
+            if scfg_isinstance(template, Value):
+                # If the new value is raw data, and we have a underlying Value
+                # object update it.
+                self._data[key] = template.cast(value)
             else:
+                # If we don't have an underlying Value object simply set the
+                # raw data.
                 self._data[key] = value
 
     def delitem(self, key):
@@ -252,11 +274,12 @@ class Config(ub.NiceRepr, DictLike):
             data (PathLike | dict):
                 Either a path to a yaml / json file or a config dict
 
-            cmdline (bool | List[str]): if truthy then the command line
-                will be parsed and specified values will be overwritten.  Can
-                either pass `cmdline` as a `List[str]` to specify a custom
-                `argv` or `cmdline=True` to indicate that we should parse
-                `sys.argv`.
+            cmdline (bool | List[str] | str, default=False):
+                If False, then no command line information is used.
+                If True, then sys.argv is parsed and used.
+                If a list of strings that used instead of sys.argv.
+                If a string, then that is parsed using shlex and used instead
+                    of sys.argv.
         """
         if default:
             self.update_defaults(default)
@@ -294,7 +317,12 @@ class Config(ub.NiceRepr, DictLike):
         self._data = _default.copy()
         self.update(user_config)
 
-        # should command line flags be allowed to overwrite data?
+        if isinstance(cmdline, six.string_types):
+            # allow specification using the actual command line arg string
+            import shlex
+            import os
+            cmdline = shlex.split(os.path.expandvars(cmdline))
+
         if cmdline is True or ub.iterable(cmdline):
             argv = cmdline if ub.iterable(cmdline) else None
             self._read_argv(argv=argv)
@@ -317,10 +345,15 @@ class Config(ub.NiceRepr, DictLike):
         _not_given = set(ns.keys()) - parser._explicitly_given
         for key in _not_given:
             value = ns[key]
-            current = self._data[key]
-            if not isinstance(current, Value):
+            # NOTE: this implementatio is messy and needs refactor.
+            # Currently the .default, ._default, and ._data attributes can all
+            # be Value objects, but this gets messy when the "default"
+            # constructor argument is used. We should refactor so _data and
+            # _default only store the raw current values, post-casting.
+            template = self.default[key]
+            if not isinstance(template, Value):
                 # smartcast non-valued params from commandline
-                value = smartcast(value)
+                value = smartcast.smartcast(value)
             if value is not None:
                 self[key] = value
 
@@ -332,10 +365,10 @@ class Config(ub.NiceRepr, DictLike):
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
             value = ns[key]
-            current = self._data[key]
-            if not isinstance(current, Value):
+            template = self.default[key]
+            if not isinstance(template, Value):
                 # smartcast non-valued params from commandline
-                value = smartcast(value)
+                value = smartcast.smartcast(value)
             if value is not None:
                 self[key] = value
 
@@ -418,11 +451,17 @@ class Config(ub.NiceRepr, DictLike):
         if epilog is not None:
             epilog = ub.codeblock(epilog)
 
+        class RawDescriptionDefaultsHelpFormatter(
+                argparse.RawDescriptionHelpFormatter,
+                argparse.ArgumentDefaultsHelpFormatter):
+            pass
+
         parserkw = dict(
             description=description,
             epilog=epilog,
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            formatter_class=argparse.RawDescriptionHelpFormatter,
+            # formatter_class=argparse.RawDescriptionHelpFormatter,
+            formatter_class=RawDescriptionDefaultsHelpFormatter,
         )
         return parserkw
 
