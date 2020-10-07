@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.5.8 - Unreleased
 
+### Added
+* Can now specify alias for a Value as a str or List[str].
+
 
 ## Version 0.5.7 - 2020-08-26
 

@@ -37,9 +37,10 @@ class Value(ub.NiceRepr):
     __scfg_class__ = 'Value'
 
     def __init__(self, value=None, type=None, help=None, choices=None,
-                 position=None, isflag=False, nargs=None):
+                 position=None, isflag=False, nargs=None, alias=None):
         self.value = None
         self.type = type
+        self.alias = alias
         self.position = position
         self.isflag = isflag
         self.parsekw = {
@@ -67,8 +68,8 @@ class Path(Value):
     Note this is mean to be used only with scriptconfig.Config.
     It does NOT represent a pathlib object.
     """
-    def __init__(self, value=None, help=None):
-        super(Path, self).__init__(value, str, help=help)
+    def __init__(self, value=None, help=None, alias=None):
+        super(Path, self).__init__(value, str, help=help, alias=alias)
 
     def cast(self, value):
         if isinstance(value, six.string_types):
