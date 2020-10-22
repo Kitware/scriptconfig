@@ -551,6 +551,21 @@ class Config(ub.NiceRepr, DictLike):
             xdoctest -m scriptconfig.config Config.argparse:0
             xdoctest -m scriptconfig.config Config.argparse:1
 
+        TODO:
+            A good CLI spec for lists might be
+
+            # In the case where ``key`` ends with and ``=``, assume the list is
+            # given as a comma separated string with optional square brakets at
+            # each end.
+
+            --key=[f]
+
+            # In the case where ``key`` does not end with equals and we know
+            # the value is supposd to be a list, then we consume arguments
+            # until we hit the next one that starts with '--' (which means
+            # that list items cannot start with -- but they can contains
+            # commas)
+
         Example:
             >>> # You can now make instances of this class
             >>> import scriptconfig
