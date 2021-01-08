@@ -344,6 +344,24 @@ class Config(ub.NiceRepr, DictLike):
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
                     of sys.argv.
+
+        Example:
+            >>> # Test load works correctly in cmdline True and False mode
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     default = {
+            >>>         'src': scfg.Value(None, help=('some help msg')),
+            >>>     }
+            >>> data = {'src': 'hi'}
+            >>> self = MyConfig(data=data, cmdline=False)
+            >>> assert self['src'] == 'hi'
+            >>> self = MyConfig(default=data, cmdline=True)
+            >>> assert self['src'] == 'hi'
+            >>> # In 0.5.8 and previous src fails to populate!
+            >>> # This is because cmdline=True overwrites data with defaults
+            >>> self = MyConfig(data=data, cmdline=True)
+            >>> assert self['src'] == 'hi'
+
         """
         if default:
             self.update_defaults(default)
@@ -387,7 +405,11 @@ class Config(ub.NiceRepr, DictLike):
             import os
             cmdline = shlex.split(os.path.expandvars(cmdline))
 
-        if cmdline is True or ub.iterable(cmdline):
+        if cmdline or ub.iterable(cmdline):
+            # TODO: if user_config is specified, then we should probably not
+            # override any values in user_config with the defaults? The CLI
+            # should override them IF they exist on in sys.argv, but not if
+            # they don't?
             argv = cmdline if ub.iterable(cmdline) else None
             self._read_argv(argv=argv)
 
@@ -409,7 +431,7 @@ class Config(ub.NiceRepr, DictLike):
         _not_given = set(ns.keys()) - parser._explicitly_given
         for key in _not_given:
             value = ns[key]
-            # NOTE: this implementatio is messy and needs refactor.
+            # NOTE: this implementation is messy and needs refactor.
             # Currently the .default, ._default, and ._data attributes can all
             # be Value objects, but this gets messy when the "default"
             # constructor argument is used. We should refactor so _data and
