@@ -417,6 +417,84 @@ class Config(ub.NiceRepr, DictLike):
         return self
 
     def _read_argv(self, argv=None, special_options=True):
+        """
+        Example:
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     description = 'my CLI description'
+            >>>     default = {
+            >>>         'src':  scfg.Value(['foo'], position=1, nargs='+'),
+            >>>         'dry':  scfg.Value(False),
+            >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
+            >>>     }
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src [,]')
+            >>> print('self = {}'.format(self))
+            self = <MyConfig({'src': ['foo'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': [], 'dry': False, 'approx': False})>
+
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 p2 p3')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4,p5,p6!')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 p2 p3 --src=p4,p5,p6!')
+            >>> print('self = {}'.format(self))
+            self = <MyConfig({'src': ['p1', 'p2', 'p3'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4', 'p5', 'p6!'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4', 'p5', 'p6!'], 'dry': False, 'approx': False})>
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 --src=p4')
+            >>> print('self = {}'.format(self))
+            self = <MyConfig({'src': ['p1'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4'], 'dry': False, 'approx': False})>
+
+            >>> special_options = False
+            >>> parser = self.argparse(special_options=special_options)
+            >>> parser.print_help()
+            >>> parser.parse_known_args()
+
+        Ignore:
+            >>> # Weird cases
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=[p4,p5,p6!] f of')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4,')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='a b --src p4 p5 p6!')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4 p5 p6!')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 p2 p3!')
+            >>> print('self = {}'.format(self))
+        """
+        # print('---')
+        if isinstance(argv, six.string_types):
+            import shlex
+            argv = shlex.split(argv)
+
         # TODO: warn about any unused flags
         parser = self.argparse(special_options=special_options)
 
@@ -427,8 +505,14 @@ class Config(ub.NiceRepr, DictLike):
             dump_fpath = ns.pop('dump', None)
             do_dumps = ns.pop('dumps', None)
 
+        # We might remove code under this if using action casting prooves to be
+        # stable.
+        RELY_ON_ACTION_SMARTCAST = True
+
         # First load argparse defaults in first
         _not_given = set(ns.keys()) - parser._explicitly_given
+        # print('_not_given = {!r}'.format(_not_given))
+        # print('parser._explicitly_given = {!r}'.format(parser._explicitly_given))
         for key in _not_given:
             value = ns[key]
             # NOTE: this implementation is messy and needs refactor.
@@ -439,10 +523,18 @@ class Config(ub.NiceRepr, DictLike):
             if key not in self.default:
                 # probably an alias
                 continue
-            template = self.default[key]
-            if not isinstance(template, Value):
-                # smartcast non-valued params from commandline
-                value = smartcast.smartcast(value)
+
+            if not RELY_ON_ACTION_SMARTCAST:
+                # Old way that we did smartcast. Hopefully the action class
+                # takes care of this.
+                template = self.default[key]
+                # print('template = {!r}'.format(template))
+                if not isinstance(template, Value):
+                    # smartcast non-valued params from commandline
+                    value = smartcast.smartcast(value)
+                else:
+                    value = template.cast(value)
+
             if value is not None:
                 self[key] = value
 
@@ -454,10 +546,19 @@ class Config(ub.NiceRepr, DictLike):
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
             value = ns[key]
-            template = self.default[key]
-            if not isinstance(template, Value):
-                # smartcast non-valued params from commandline
-                value = smartcast.smartcast(value)
+
+            if not RELY_ON_ACTION_SMARTCAST:
+                # Old way that we did smartcast. Hopefully the action class
+                # takes care of this.
+
+                template = self.default[key]
+
+                # print('value = {!r}'.format(value))
+                # print('template = {!r}'.format(template))
+                if not isinstance(template, Value):
+                    # smartcast non-valued params from commandline
+                    value = smartcast.smartcast(value)
+
             if value is not None:
                 self[key] = value
 
@@ -484,6 +585,7 @@ class Config(ub.NiceRepr, DictLike):
                     print(text)
 
                 sys.exit(1)
+        return self
 
     def normalize(self):
         """ overloadable function called after each load """
@@ -588,6 +690,17 @@ class Config(ub.NiceRepr, DictLike):
             # that list items cannot start with -- but they can contains
             # commas)
 
+        FIXME:
+
+            * In the case where we have an nargs='+' action, and we specify
+              the option with an `=`, and then we give position args after it
+              there is no way to modify behavior of the action to just look at
+              the data in the string without modifying the ArgumentParser
+              itself. The action object has no control over it. For example
+              `--foo=bar baz biz` will parse as `[baz, biz]` which is really
+              not what we want. We may be able to overload ArgumentParser to
+              fix this.
+
         Example:
             >>> # You can now make instances of this class
             >>> import scriptconfig
@@ -631,8 +744,46 @@ class Config(ub.NiceRepr, DictLike):
         # the commandline
         parser._explicitly_given = set()
 
+        parent = self
+
         class ParseAction(argparse.Action):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                # with script config nothing should be required by default all
+                # positional arguments should have keyword arg variants Setting
+                # required=False here will prevent positional args from
+                # erroring if they are not specified. I dont think there are
+                # other side effects, but we should make sure that is actually
+                # the case.
+                self.required = False
+
+                if self.type is None:
+                    # Is this the right place to put this?
+                    def _mytype(value):
+                        key = self.dest
+                        template = parent.default[key]
+                        if not isinstance(template, Value):
+                            # smartcast non-valued params from commandline
+                            value = smartcast.smartcast(value)
+                        else:
+                            value = template.cast(value)
+                        return value
+
+                    self.type = _mytype
+
+                # print('self.type = {!r}'.format(self.type))
+
             def __call__(action, parser, namespace, values, option_string=None):
+                # print('CALL action = {!r}'.format(action))
+                # print('option_string = {!r}'.format(option_string))
+                # print('values = {!r}'.format(values))
+
+                if isinstance(values, list) and len(values):
+                    # We got a list of lists, which we hack into a flat list
+                    if isinstance(values[0], list):
+                        import itertools as it
+                        values = list(it.chain(*values))
+
                 setattr(namespace, action.dest, values)
                 parser._explicitly_given.add(action.dest)
 
@@ -684,8 +835,10 @@ class Config(ub.NiceRepr, DictLike):
             else:
                 parser.add_argument('--' + name, **_argkw)
 
+        mode = 1
+
         alias_registry = []
-        for key, value in self._default.items():
+        for key, value in self._data.items():
             # key: str
             # value: Any | Value
             argkw = {}
@@ -710,8 +863,6 @@ class Config(ub.NiceRepr, DictLike):
 
             name = key
             _add_arg(parser, name, key, argkw, positional, isflag, isalias=False)
-
-            mode = 1
 
             if _value is not None:
                 if _value.alias:

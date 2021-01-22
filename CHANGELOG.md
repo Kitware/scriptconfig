@@ -9,6 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 * Can now specify alias for a Value as a `str | List[str]`.
 
+### Changed
+* Arguments can now be specified as both positional and keyword. The keyword
+  variant will always take priority.
+
+* Changed the way arguments are smart-casted when specified on the commandline
+
 
 ## Version 0.5.7 - 2020-08-26
 
