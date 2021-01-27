@@ -430,6 +430,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> self = MyConfig()
             >>> # xdoctest: +REQUIRES(PY3)
             >>> # Python2 argparse does a hard sys.exit instead of raise
+            >>> import sys
             >>> if sys.version_info[0:2] < (3, 6):
             >>>     # also skip on 3.5 because of dict ordering
             >>>     import pytest
