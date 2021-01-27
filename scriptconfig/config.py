@@ -428,6 +428,8 @@ class Config(ub.NiceRepr, DictLike):
             >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
             >>>     }
             >>> self = MyConfig()
+            >>> # xdoctest: +REQUIRES(PY3)
+            >>> # Python2 argparse does a hard sys.exit instead of raise
             >>> self._read_argv(argv='')
             >>> print('self = {}'.format(self))
             >>> self = MyConfig()
@@ -466,7 +468,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> special_options = False
             >>> parser = self.argparse(special_options=special_options)
             >>> parser.print_help()
-            >>> parser.parse_known_args()
+            >>> x = parser.parse_known_args()
 
         Ignore:
             >>> # Weird cases
@@ -633,6 +635,7 @@ class Config(ub.NiceRepr, DictLike):
         import argparse
         description = getattr(self, 'description', None)
         epilog = getattr(self, 'epilog', None)
+        prog = getattr(self, 'prog', None)
         if description is None:
             description = self.__class__.__doc__
         if description is None:
@@ -641,6 +644,8 @@ class Config(ub.NiceRepr, DictLike):
             description = ub.codeblock(description)
         if epilog is not None:
             epilog = ub.codeblock(epilog)
+        if prog is None:
+            prog = self.__class__.__name__
 
         class RawDescriptionDefaultsHelpFormatter(
                 argparse.RawDescriptionHelpFormatter,
@@ -648,6 +653,7 @@ class Config(ub.NiceRepr, DictLike):
             pass
 
         parserkw = dict(
+            prog=prog,
             description=description,
             epilog=epilog,
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -707,6 +713,9 @@ class Config(ub.NiceRepr, DictLike):
             >>> self = scriptconfig.Config.demo()
             >>> parser = self.argparse()
             >>> parser.print_help()
+            >>> # xdoctest: +REQUIRES(PY3)
+            >>> # Python2 argparse does a hard sys.exit instead of raise
+            >>> ns, extra = parser.parse_known_args()
 
         Example:
             >>> # You can now make instances of this class
@@ -748,7 +757,7 @@ class Config(ub.NiceRepr, DictLike):
 
         class ParseAction(argparse.Action):
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+                super(ParseAction, self).__init__(*args, **kwargs)
                 # with script config nothing should be required by default all
                 # positional arguments should have keyword arg variants Setting
                 # required=False here will prevent positional args from
