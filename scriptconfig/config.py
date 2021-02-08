@@ -823,13 +823,16 @@ class Config(ub.NiceRepr, DictLike):
             if isalias:
                 _argkw['help'] = 'alias of {}'.format(key)
                 _argkw.pop('default', None)
+                # flags cannot have flag aliases
+                isflag = False
+
             elif positional:
                 parser.add_argument(name, **_argkw)
 
             if isflag:
                 # Can we support both flag and setitem methods of cli
                 # parsing?
-                if not isinstance(_argkw['default'], bool):
+                if not isinstance(_argkw.get('default', None), bool):
                     raise ValueError('can only use isflag with bools')
                 _argkw.pop('type', None)
                 _argkw.pop('choices', None)
