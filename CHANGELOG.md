@@ -15,6 +15,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Changed the way arguments are smart-casted when specified on the commandline
 
+### Fixed
+
+* Bug when setting a value to None via the command line
+
 
 ## Version 0.5.7 - 2020-08-26
 

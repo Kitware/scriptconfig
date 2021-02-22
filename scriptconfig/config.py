@@ -512,7 +512,7 @@ class Config(ub.NiceRepr, DictLike):
             dump_fpath = ns.pop('dump', None)
             do_dumps = ns.pop('dumps', None)
 
-        # We might remove code under this if using action casting prooves to be
+        # We might remove code under this if using action casting proves to be
         # stable.
         RELY_ON_ACTION_SMARTCAST = True
 
@@ -542,8 +542,8 @@ class Config(ub.NiceRepr, DictLike):
                 else:
                     value = template.cast(value)
 
-            if value is not None:
-                self[key] = value
+            # if value is not None:
+            self[key] = value
 
         # Then load config file defaults
         if special_options:
@@ -566,8 +566,8 @@ class Config(ub.NiceRepr, DictLike):
                     # smartcast non-valued params from commandline
                     value = smartcast.smartcast(value)
 
-            if value is not None:
-                self[key] = value
+            # if value is not None:
+            self[key] = value
 
         self.normalize()
 
