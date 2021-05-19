@@ -6,6 +6,17 @@ ScriptConfig
 
 |GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| 
 
+
++------------------+--------------------------------------------------+
+| Read the docs    | https://scriptconfig.readthedocs.io              |
++------------------+--------------------------------------------------+
+| Gitlab (main)    | https://gitlab.kitware.com/utils/scriptconfig    |
++------------------+--------------------------------------------------+
+| Github (mirror)  | https://github.com/Kitware/scriptconfig          |
++------------------+--------------------------------------------------+
+| Pypi             | https://pypi.org/project/scriptconfig            |
++------------------+--------------------------------------------------+
+
 The main webpage for this project is: https://gitlab.kitware.com/utils/scriptconfig
 
 The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
