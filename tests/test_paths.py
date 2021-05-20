@@ -37,3 +37,30 @@ def test_paths_with_commas_in_config():
     config = TestConfig(default=kw, cmdline=True)
     print(config['key'])
     assert isinstance(config['key'], str), 'specifying a type should prevent smartcast'
+
+
+def test_globstr_with_nargs():
+    from os.path import join
+    import ubelt as ub
+    import scriptconfig as scfg
+    dpath = ub.ensure_app_cache_dir('scriptconfig/tests/files')
+    ub.touch(join(dpath, 'file1.txt'))
+    ub.touch(join(dpath, 'file2.txt'))
+    ub.touch(join(dpath, 'file3.txt'))
+
+    class TestConfig(scfg.Config):
+        default = {
+            'paths': scfg.Value(None, nargs='+'),
+        }
+
+    cmdline = '--paths {dpath}/*'.format(dpath=dpath)
+    config = TestConfig(cmdline=cmdline)
+
+    # ub.cmd(f'echo {dpath}/*', shell=True)
+
+    import glob
+    cmdline = '--paths ' + ' '.join(list(glob.glob(join(dpath, '*'))))
+    config = TestConfig(cmdline=cmdline)
+
+    cmdline = '--paths=' + ','.join(list(glob.glob(join(dpath, '*'))))
+    config = TestConfig(cmdline=cmdline)

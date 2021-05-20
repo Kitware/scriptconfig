@@ -6,6 +6,17 @@ ScriptConfig
 
 |GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| 
 
+
++------------------+--------------------------------------------------+
+| Read the docs    | https://scriptconfig.readthedocs.io              |
++------------------+--------------------------------------------------+
+| Gitlab (main)    | https://gitlab.kitware.com/utils/scriptconfig    |
++------------------+--------------------------------------------------+
+| Github (mirror)  | https://github.com/Kitware/scriptconfig          |
++------------------+--------------------------------------------------+
+| Pypi             | https://pypi.org/project/scriptconfig            |
++------------------+--------------------------------------------------+
+
 The main webpage for this project is: https://gitlab.kitware.com/utils/scriptconfig
 
 The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
@@ -19,8 +30,107 @@ arguments. A script config object is defined by creating a subclass of
 ``Config`` object will behave similar a dictionary, but with a few
 conveniences.
 
+Installation
+------------
 
-Project Design Goals:
+The `scriptconfig <https://pypi.org/project/scriptconfig/>`_.  package can be installed via pip:
+
+.. code-block:: bash
+
+    pip install scriptconfig
+
+Example Script
+--------------
+
+Scriptconfig to define a flat configuration dictionary with values that can be
+specified via Python keyword arguments, command line parameters, or a yaml
+config file. Consider the following script that prints its config, opens a
+file, computes its hash, and then prints it to stdout.
+
+
+.. code-block:: python
+
+    import scriptconfig as scfg
+    import hashlib
+    import ubelt as ub
+
+
+    class FileHashConfig(scfg.Config):
+        """
+        The docstring will be the description in the CLI help
+        """
+        default = {
+            'fpath': scfg.Value(None, position=1, help=ub.paragraph(
+                '''
+                a path to a file to hash
+                ''')),
+            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help=ub.paragraph(
+                '''
+                a name of a hashlib hasher'
+                ''')),
+        }
+
+
+    def main(**kwargs):
+        config = FileHashConfig(default=kwargs, cmdline=True)
+        print('config = {!r}'.format(config))
+        fpath = config['fpath']
+        hasher = getattr(hashlib, config['hasher'])()
+
+        with open(fpath, 'rb') as file:
+            hasher.update(file.read())
+
+        hashstr = hasher.hexdigest()
+        print('The {hasher} hash of {fpath} is {hashstr}'.format(
+            hashstr=hashstr, **config))
+
+
+    if __name__ == '__main__':
+        main()
+
+
+
+If this script is in a module ``hash_demo.py``, it can be invoked in these
+following ways.
+
+Purely from the command line:
+
+.. code-block:: bash
+
+    # Get help
+    python hash_demo.py --help
+
+    # Using key-val pairs
+    python hash_demo.py --fpath=$HOME/.bashrc --hasher=sha1
+
+    # Using a positional arguments and other defaults
+    python hash_demo.py $HOME/.bashrc
+
+From the command line using a yaml config:
+
+.. code-block:: bash
+
+    # Write out a config file
+    echo '{"fpath": "hashconfig.json", "hasher": "sha512"}' > hashconfig.json
+
+    # Use the special `--config` cli arg provided by scriptconfig
+    python hash_demo.py --config=hashconfig.json
+
+    # You can also mix and match, this overrides the hasher in the config with sha1
+    python hash_demo.py --config=hashconfig.json --hasher=sha1
+
+
+Lastly you can call it from good ol' Python.
+
+.. code-block:: python
+
+    import hash_demo
+    hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
+    
+
+
+Project Design Goals
+--------------------
 
     * Write Python programs that can be invoked either through the commandline
       or via Python itself.
@@ -138,6 +248,14 @@ FAQ
 Question: How do I override the default values for a scriptconfig object using json file?
 
 Answer:  This depends if you want to pass the path to that json file via the command line or if you have that file in memory already.  There are ways to do either. In the first case you can pass ``--config=<path-to-your-file>`` (assuming you have set the ``cmdline=True`` keyword arg when creating your config object e.g.: ``config = MyConfig(cmdline=True)``. In the second case when you create an instance of the scriptconfig object pass the ``default=<your dict>`` when creating the object: e.g. ``config = MyConfig(default=json.load(open(fpath, 'r')))``.  But the special ``--config`` ``--dump`` and ``--dumps`` CLI arg is baked into script config to make this easier.  
+
+
+Related Software
+----------------
+
+Hydra - https://hydra.cc/docs/intro/#
+
+OmegaConf - https://omegaconf.readthedocs.io/en/latest/index.html
 
 
 TODO

@@ -87,12 +87,12 @@ import copy
 import io
 import json
 import numpy as np
-from .dict_like import DictLike
-from . import smartcast
-from .file_like import FileLike
-from .value import Value
+from scriptconfig.dict_like import DictLike
+from scriptconfig import smartcast
+from scriptconfig.file_like import FileLike
+from scriptconfig.value import Value
 
-__all__ = ['Config']
+__all__ = ['Config', 'define']
 
 
 def scfg_isinstance(item, cls):
@@ -107,13 +107,76 @@ def scfg_isinstance(item, cls):
         return isinstance(item, cls)
 
 
+def define(default={}, name=None):
+    """
+    Alternate method for defining a custom Config type
+    """
+    import uuid
+    if name is None:
+        hashid = str(uuid.uuid4()).replace('-', '_')
+        name = 'Config_{}'.format(hashid)
+    from textwrap import dedent
+    vals = {}
+    code = dedent(
+        '''
+        import scriptconfig as scfg
+        class {name}(scfg.Config):
+            pass
+        '''.strip('\n').format(name=name))
+    exec(code, vals)
+    cls = vals[name]
+    return cls
+
+
 class Config(ub.NiceRepr, DictLike):
     """
+    Base class for custom configuration objects
+
     A configuration that can be specified by commandline args, a yaml config
     file, and / or a in-code dictionary. To use, define a class variable named
     "default" and assing it to a dict of default values. You can also use
     special `Value` classes to denote types. You can also define a method
     `normalize`, to postprocess the arguments after this class receives them.
+
+    Usage:
+        Create a class that herits from this class.
+
+        Assign the "default" class-level variable as a dictionary of options
+
+        The keys of this dictionary must be command line friendly strings.
+
+        The values of the "defaults dictionary" can be literal values or
+        instances of the :class:`scriptconfig.Value` class, which allows
+        for specification of default values, type information, help strings,
+        and aliases.
+
+        You may also implement normalize (function with that takes no args and
+        has no return) to postprocess your results after initialization.
+
+        When creating an instance of the class the defaults variable is used
+        to make a dictionary-like object. You can override defaults by
+        specifying the ``data`` keyword argument to either a file path or
+        another dictionary. You can also specify ``cmdline=True`` to allow
+        the contents of ``sys.argv`` to influence the values of the new
+        object.
+
+        An instance of the config class behaves like a dictinary, except that
+        you cannot set keys that do not already exist (as specified in the
+        defaults dict).
+
+        Key Methods:
+
+            * dump - dump a json representation to a file
+
+            * dumps - dump a json representation to a string
+
+            * argparse - create the argparse object associated with this config
+
+            * argparse - create an :class:`argparse.ArgumentParser` object that
+                is defined by the defaults of this config.
+
+            * load - rewrite the values based on a filepath, dictionary, or
+                command line contents.
 
     Attributes:
         _data : this protected variable holds the raw state of the config
@@ -124,9 +187,10 @@ class Config(ub.NiceRepr, DictLike):
 
     Example:
         >>> # Inherit from `Config` and assign `default`
-        >>> class MyConfig(Config):
+        >>> import scriptconfig as scfg
+        >>> class MyConfig(scfg.Config):
         >>>     default = {
-        >>>         'option1': Value((1, 2, 3), tuple),
+        >>>         'option1': scfg.Value((1, 2, 3), tuple),
         >>>         'option2': 'bar',
         >>>         'option3': None,
         >>>     }
@@ -280,6 +344,24 @@ class Config(ub.NiceRepr, DictLike):
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
                     of sys.argv.
+
+        Example:
+            >>> # Test load works correctly in cmdline True and False mode
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     default = {
+            >>>         'src': scfg.Value(None, help=('some help msg')),
+            >>>     }
+            >>> data = {'src': 'hi'}
+            >>> self = MyConfig(data=data, cmdline=False)
+            >>> assert self['src'] == 'hi'
+            >>> self = MyConfig(default=data, cmdline=True)
+            >>> assert self['src'] == 'hi'
+            >>> # In 0.5.8 and previous src fails to populate!
+            >>> # This is because cmdline=True overwrites data with defaults
+            >>> self = MyConfig(data=data, cmdline=True)
+            >>> assert self['src'] == 'hi'
+
         """
         if default:
             self.update_defaults(default)
@@ -323,7 +405,11 @@ class Config(ub.NiceRepr, DictLike):
             import os
             cmdline = shlex.split(os.path.expandvars(cmdline))
 
-        if cmdline is True or ub.iterable(cmdline):
+        if cmdline or ub.iterable(cmdline):
+            # TODO: if user_config is specified, then we should probably not
+            # override any values in user_config with the defaults? The CLI
+            # should override them IF they exist on in sys.argv, but not if
+            # they don't?
             argv = cmdline if ub.iterable(cmdline) else None
             self._read_argv(argv=argv)
 
@@ -331,6 +417,91 @@ class Config(ub.NiceRepr, DictLike):
         return self
 
     def _read_argv(self, argv=None, special_options=True):
+        """
+        Example:
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     description = 'my CLI description'
+            >>>     default = {
+            >>>         'src':  scfg.Value(['foo'], position=1, nargs='+'),
+            >>>         'dry':  scfg.Value(False),
+            >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
+            >>>     }
+            >>> self = MyConfig()
+            >>> # xdoctest: +REQUIRES(PY3)
+            >>> # Python2 argparse does a hard sys.exit instead of raise
+            >>> import sys
+            >>> if sys.version_info[0:2] < (3, 6):
+            >>>     # also skip on 3.5 because of dict ordering
+            >>>     import pytest
+            >>>     pytest.skip()
+            >>> self._read_argv(argv='')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src [,]')
+            >>> print('self = {}'.format(self))
+            self = <MyConfig({'src': ['foo'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': [], 'dry': False, 'approx': False})>
+
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 p2 p3')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4,p5,p6!')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 p2 p3 --src=p4,p5,p6!')
+            >>> print('self = {}'.format(self))
+            self = <MyConfig({'src': ['p1', 'p2', 'p3'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4', 'p5', 'p6!'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4', 'p5', 'p6!'], 'dry': False, 'approx': False})>
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4')
+            >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 --src=p4')
+            >>> print('self = {}'.format(self))
+            self = <MyConfig({'src': ['p1'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4'], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': ['p4'], 'dry': False, 'approx': False})>
+
+            >>> special_options = False
+            >>> parser = self.argparse(special_options=special_options)
+            >>> parser.print_help()
+            >>> x = parser.parse_known_args()
+
+        Ignore:
+            >>> # Weird cases
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=[p4,p5,p6!] f of')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4,')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='a b --src p4 p5 p6!')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src=p4 p5 p6!')
+            >>> print('self = {}'.format(self))
+
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='p1 p2 p3!')
+            >>> print('self = {}'.format(self))
+        """
+        # print('---')
+        if isinstance(argv, six.string_types):
+            import shlex
+            argv = shlex.split(argv)
+
         # TODO: warn about any unused flags
         parser = self.argparse(special_options=special_options)
 
@@ -341,21 +512,38 @@ class Config(ub.NiceRepr, DictLike):
             dump_fpath = ns.pop('dump', None)
             do_dumps = ns.pop('dumps', None)
 
+        # We might remove code under this if using action casting proves to be
+        # stable.
+        RELY_ON_ACTION_SMARTCAST = True
+
         # First load argparse defaults in first
         _not_given = set(ns.keys()) - parser._explicitly_given
+        # print('_not_given = {!r}'.format(_not_given))
+        # print('parser._explicitly_given = {!r}'.format(parser._explicitly_given))
         for key in _not_given:
             value = ns[key]
-            # NOTE: this implementatio is messy and needs refactor.
+            # NOTE: this implementation is messy and needs refactor.
             # Currently the .default, ._default, and ._data attributes can all
             # be Value objects, but this gets messy when the "default"
             # constructor argument is used. We should refactor so _data and
             # _default only store the raw current values, post-casting.
-            template = self.default[key]
-            if not isinstance(template, Value):
-                # smartcast non-valued params from commandline
-                value = smartcast.smartcast(value)
-            if value is not None:
-                self[key] = value
+            if key not in self.default:
+                # probably an alias
+                continue
+
+            if not RELY_ON_ACTION_SMARTCAST:
+                # Old way that we did smartcast. Hopefully the action class
+                # takes care of this.
+                template = self.default[key]
+                # print('template = {!r}'.format(template))
+                if not isinstance(template, Value):
+                    # smartcast non-valued params from commandline
+                    value = smartcast.smartcast(value)
+                else:
+                    value = template.cast(value)
+
+            # if value is not None:
+            self[key] = value
 
         # Then load config file defaults
         if special_options:
@@ -365,12 +553,21 @@ class Config(ub.NiceRepr, DictLike):
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
             value = ns[key]
-            template = self.default[key]
-            if not isinstance(template, Value):
-                # smartcast non-valued params from commandline
-                value = smartcast.smartcast(value)
-            if value is not None:
-                self[key] = value
+
+            if not RELY_ON_ACTION_SMARTCAST:
+                # Old way that we did smartcast. Hopefully the action class
+                # takes care of this.
+
+                template = self.default[key]
+
+                # print('value = {!r}'.format(value))
+                # print('template = {!r}'.format(template))
+                if not isinstance(template, Value):
+                    # smartcast non-valued params from commandline
+                    value = smartcast.smartcast(value)
+
+            # if value is not None:
+            self[key] = value
 
         self.normalize()
 
@@ -395,6 +592,7 @@ class Config(ub.NiceRepr, DictLike):
                     print(text)
 
                 sys.exit(1)
+        return self
 
     def normalize(self):
         """ overloadable function called after each load """
@@ -442,6 +640,7 @@ class Config(ub.NiceRepr, DictLike):
         import argparse
         description = getattr(self, 'description', None)
         epilog = getattr(self, 'epilog', None)
+        prog = getattr(self, 'prog', None)
         if description is None:
             description = self.__class__.__doc__
         if description is None:
@@ -450,6 +649,8 @@ class Config(ub.NiceRepr, DictLike):
             description = ub.codeblock(description)
         if epilog is not None:
             epilog = ub.codeblock(epilog)
+        if prog is None:
+            prog = self.__class__.__name__
 
         class RawDescriptionDefaultsHelpFormatter(
                 argparse.RawDescriptionHelpFormatter,
@@ -457,6 +658,7 @@ class Config(ub.NiceRepr, DictLike):
             pass
 
         parserkw = dict(
+            prog=prog,
             description=description,
             epilog=epilog,
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -474,13 +676,41 @@ class Config(ub.NiceRepr, DictLike):
                 parser is updated with options from this config.
 
             special_options (bool, default=False):
-                adds special scriptconfig options.
+                adds special scriptconfig options, namely: --config, --dumps,
+                and --dump.
 
         Returns:
             argparse.ArgumentParser : a new or updated argument parser
 
         CommandLine:
-            xdoctest -m scriptconfig.config Config.argparse
+            xdoctest -m scriptconfig.config Config.argparse:0
+            xdoctest -m scriptconfig.config Config.argparse:1
+
+        TODO:
+            A good CLI spec for lists might be
+
+            # In the case where ``key`` ends with and ``=``, assume the list is
+            # given as a comma separated string with optional square brakets at
+            # each end.
+
+            --key=[f]
+
+            # In the case where ``key`` does not end with equals and we know
+            # the value is supposd to be a list, then we consume arguments
+            # until we hit the next one that starts with '--' (which means
+            # that list items cannot start with -- but they can contains
+            # commas)
+
+        FIXME:
+
+            * In the case where we have an nargs='+' action, and we specify
+              the option with an `=`, and then we give position args after it
+              there is no way to modify behavior of the action to just look at
+              the data in the string without modifying the ArgumentParser
+              itself. The action object has no control over it. For example
+              `--foo=bar baz biz` will parse as `[baz, biz]` which is really
+              not what we want. We may be able to overload ArgumentParser to
+              fix this.
 
         Example:
             >>> # You can now make instances of this class
@@ -488,6 +718,9 @@ class Config(ub.NiceRepr, DictLike):
             >>> self = scriptconfig.Config.demo()
             >>> parser = self.argparse()
             >>> parser.print_help()
+            >>> # xdoctest: +REQUIRES(PY3)
+            >>> # Python2 argparse does a hard sys.exit instead of raise
+            >>> ns, extra = parser.parse_known_args()
 
         Example:
             >>> # You can now make instances of this class
@@ -495,13 +728,15 @@ class Config(ub.NiceRepr, DictLike):
             >>> class MyConfig(scfg.Config):
             >>>     description = 'my CLI description'
             >>>     default = {
-            >>>         'path1':  scfg.Value(None, position=1),
-            >>>         'path2':  scfg.Value(None, position=2),
+            >>>         'path1':  scfg.Value(None, position=1, alias='src'),
+            >>>         'path2':  scfg.Value(None, position=2, alias='dst'),
             >>>         'dry':  scfg.Value(False, isflag=True),
-            >>>         'approx':  scfg.Value(False, isflag=False),
+            >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
             >>>     }
             >>> self = MyConfig()
-            >>> parser = self.argparse(special_options=True)
+            >>> special_options = True
+            >>> parser = None
+            >>> parser = self.argparse(special_options=special_options)
             >>> parser.print_help()
             >>> self._read_argv(argv=['objection', '42', '--path1=overruled!'])
             >>> print('self = {!r}'.format(self))
@@ -523,16 +758,55 @@ class Config(ub.NiceRepr, DictLike):
         # the commandline
         parser._explicitly_given = set()
 
+        parent = self
+
         class ParseAction(argparse.Action):
+            def __init__(self, *args, **kwargs):
+                super(ParseAction, self).__init__(*args, **kwargs)
+                # with script config nothing should be required by default all
+                # positional arguments should have keyword arg variants Setting
+                # required=False here will prevent positional args from
+                # erroring if they are not specified. I dont think there are
+                # other side effects, but we should make sure that is actually
+                # the case.
+                self.required = False
+
+                if self.type is None:
+                    # Is this the right place to put this?
+                    def _mytype(value):
+                        key = self.dest
+                        template = parent.default[key]
+                        if not isinstance(template, Value):
+                            # smartcast non-valued params from commandline
+                            value = smartcast.smartcast(value)
+                        else:
+                            value = template.cast(value)
+                        return value
+
+                    self.type = _mytype
+
+                # print('self.type = {!r}'.format(self.type))
+
             def __call__(action, parser, namespace, values, option_string=None):
+                # print('CALL action = {!r}'.format(action))
+                # print('option_string = {!r}'.format(option_string))
+                # print('values = {!r}'.format(values))
+
+                if isinstance(values, list) and len(values):
+                    # We got a list of lists, which we hack into a flat list
+                    if isinstance(values[0], list):
+                        import itertools as it
+                        values = list(it.chain(*values))
+
                 setattr(namespace, action.dest, values)
                 parser._explicitly_given.add(action.dest)
 
+        # IRC: this ensures each key has a real Value class
         _metadata = {
             key: self._data[key]
             for key, value in self._default.items()
             if isinstance(self._data[key], Value)
-        }
+        }  # :type: Dict[str, Value]
         _positions = {k: v.position for k, v in _metadata.items()
                       if v.position is not None}
         if _positions:
@@ -543,7 +817,47 @@ class Config(ub.NiceRepr, DictLike):
         else:
             _keyorder = list(self._default.keys())
 
-        for key, value in self._default.items():
+        def _add_arg(parser, name, key, argkw, positional, isflag, isalias):
+            _argkw = argkw.copy()
+
+            if isalias:
+                _argkw['help'] = 'alias of {}'.format(key)
+                _argkw.pop('default', None)
+                # flags cannot have flag aliases
+                isflag = False
+
+            elif positional:
+                parser.add_argument(name, **_argkw)
+
+            if isflag:
+                # Can we support both flag and setitem methods of cli
+                # parsing?
+                if not isinstance(_argkw.get('default', None), bool):
+                    raise ValueError('can only use isflag with bools')
+                _argkw.pop('type', None)
+                _argkw.pop('choices', None)
+                _argkw.pop('action', None)
+                _argkw.pop('nargs', None)
+                _argkw['dest'] = key
+
+                _argkw_true = _argkw.copy()
+                _argkw_true['action'] = 'store_true'
+
+                _argkw_false = _argkw.copy()
+                _argkw_false['action'] = 'store_false'
+                _argkw_false.pop('help', None)
+
+                parser.add_argument('--' + name, **_argkw_true)
+                parser.add_argument('--no-' + name, **_argkw_false)
+            else:
+                parser.add_argument('--' + name, **_argkw)
+
+        mode = 1
+
+        alias_registry = []
+        for key, value in self._data.items():
+            # key: str
+            # value: Any | Value
             argkw = {}
             argkw['help'] = ''
             positional = None
@@ -555,30 +869,35 @@ class Config(ub.NiceRepr, DictLike):
                 value = _value.value
                 isflag = _value.isflag
                 positional = _value.position
+            else:
+                _value = value if isinstance(value, Value) else None
+
             if not argkw['help']:
                 argkw['help'] = '<undocumented>'
+
             argkw['default'] = value
             argkw['action'] = ParseAction
 
-            if positional:
-                parser.add_argument(key, **argkw)
-                parser.add_argument('--' + key, **argkw)
-            else:
-                if isflag:
-                    if not isinstance(argkw['default'], bool):
-                        raise ValueError('can only use isflag with bools')
-                    argkw.pop('type', None)
-                    argkw.pop('choices', None)
-                    argkw.pop('action', None)
-                    argkw.pop('nargs', None)
-                    argkw['dest'] = key
-                    parser.add_argument(
-                        '--' + key, action='store_true', **argkw)
-                    argkw.pop('help')
-                    parser.add_argument(
-                        '--no-' + key, action='store_false', **argkw)
-                else:
-                    parser.add_argument('--' + key, **argkw)
+            name = key
+            _add_arg(parser, name, key, argkw, positional, isflag, isalias=False)
+
+            if _value is not None:
+                if _value.alias:
+                    alts = _value.alias
+                    alts = alts if ub.iterable(alts) else [alts]
+                    for alias in alts:
+                        tup = (alias, key, argkw)
+                        alias_registry.append(tup)
+                        if mode == 0:
+                            name = alias
+                            _add_arg(parser, name, key, argkw, positional, isflag, isalias=True)
+
+        if mode == 1:
+            for tup in alias_registry:
+                (alias, key, argkw) = tup
+                name = alias
+                dest = key
+                _add_arg(parser, name, dest, argkw, positional, isflag, isalias=True)
 
         if special_options:
             parser.add_argument('--config', default=None, help=ub.codeblock(

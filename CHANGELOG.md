@@ -4,7 +4,23 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.7 - Unreleased
+## Version 0.5.8 - Unreleased
+
+### Added
+* Can now specify alias for a Value as a `str | List[str]`.
+
+### Changed
+* Arguments can now be specified as both positional and keyword. The keyword
+  variant will always take priority.
+
+* Changed the way arguments are smart-casted when specified on the commandline
+
+### Fixed
+
+* Bug when setting a value to None via the command line
+
+
+## Version 0.5.7 - 2020-08-26
 
 ### Added
 * The `cmdline` argument of `Config` can now be the actual argument string used

@@ -72,9 +72,9 @@ class DictLike(object):
 
     def values(self):
         if six.PY2:
-            return [self[key] for key in self.keys()]
+            return list(self.itervalues())
         else:
-            return (self[key] for key in self.keys())
+            return self.itervalues()
 
     def copy(self):
         return dict(self.items())
@@ -91,8 +91,7 @@ class DictLike(object):
             self[k] = v
 
     def iteritems(self):
-        for key, val in zip(self.iterkeys(), self.itervalues()):
-            yield key, val
+        return ((key, self[key]) for key in self.keys())
 
     def itervalues(self):
         return (self[key] for key in self.keys())
