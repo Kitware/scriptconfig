@@ -42,9 +42,9 @@ The `scriptconfig <https://pypi.org/project/scriptconfig/>`_.  package can be in
 Example Script
 --------------
 
-Scriptconfig to define a flat configuration dictionary with values that can be
-specified via Python keyword arguments, command line parameters, or a yaml
-config file. Consider the following script that prints its config, opens a
+Scriptconfig is used to define a flat configuration dictionary with values that
+can be specified via Python keyword arguments, command line parameters, or a
+yaml config file. Consider the following script that prints its config, opens a
 file, computes its hash, and then prints it to stdout.
 
 
