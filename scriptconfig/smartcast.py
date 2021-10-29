@@ -42,6 +42,25 @@ def smartcast(item, astype=None, strict=False):
         TypeError: if we cannot determine the type
 
     Example:
+        >>> # Simple cases
+        >>> print(repr(smartcast('?')))
+        >>> print(repr(smartcast('1')))
+        >>> print(repr(smartcast('1,2,3')))
+        >>> print(repr(smartcast('abc')))
+        >>> print(repr(smartcast('[1,2,3,4]')))
+        >>> print(repr(smartcast('foo.py,/etc/conf.txt,/baz/biz,blah')))
+        '?'
+        1
+        [1, 2, 3]
+        'abc'
+        [1, 2, 3, 4]
+        ['foo.py', '/etc/conf.txt', '/baz/biz', 'blah']
+
+        >>> # Weird cases
+        >>> print(repr(smartcast('[1],2,abc,4')))
+        ['[1]', 2, 'abc', 4]
+
+    Example:
         >>> assert smartcast('?') == '?'
         >>> assert smartcast('1') == 1
         >>> assert smartcast('1.0') == 1.0
