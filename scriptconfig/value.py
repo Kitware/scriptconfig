@@ -13,14 +13,22 @@ class Value(ub.NiceRepr):
     the type that the value should be (Used when parsing sys.argv).
 
     Attributes:
-        value (object): A float, int, etc...
-        type (Type): the "type" of the value. This is usually used if the
-            value specified is not the type that `self.value` would usually
-            be set to.
-        parsekw (dict): kwargs for to argparse add_argument
-        position (None | int): if an integer, then we allow this value
-            to be a positional argument in the argparse CLI. Note, that
-            values with the same position index will cause conflicts.
+        value (object):
+            A float, int, etc...
+
+        type (Type):
+            the "type" of the value. This is usually used if the value
+            specified is not the type that `self.value` would usually be set
+            to.
+
+        parsekw (dict):
+            kwargs for to argparse add_argument
+
+        position (None | int):
+            if an integer, then we allow this value to be a positional argument
+            in the argparse CLI. Note, that values with the same position index
+            will cause conflicts. Also note: positions indexes should start
+            from 1.
 
         isflag (bool, default=False): if True, args will be parsed as booleans
 
