@@ -78,6 +78,7 @@ Ignore:
 
 TODO:
     - [ ] Handle Nested Configs?
+    - [ ] Integrate with Hyrda
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
@@ -671,6 +672,50 @@ class Config(ub.NiceRepr, DictLike):
         )
         return parserkw
 
+    # TODO:
+    @classmethod
+    def from_argparse(cls, parser):
+        """
+        Create an instance from an existing argparse
+
+        Ignore:
+            import argparse
+            parser = argparse.ArgumentParser()
+            parser.add_argument('--true_dataset', '--test_dataset', help='path to the groundtruth dataset')
+            parser.add_argument('--pred_dataset', help='path to the predicted dataset')
+            parser.add_argument('--eval_dpath', help='path to dump results')
+            parser.add_argument('--draw_curves', default='auto', help='flag to draw curves or not')
+            parser.add_argument('--draw_heatmaps', default='auto', help='flag to draw heatmaps or not')
+            parser.add_argument('--score_space', default='video', help='can score in image or video space')
+            parser.add_argument('--workers', default='auto', help='number of parallel scoring workers')
+            parser.add_argument('--draw_workers', default='auto', help='number of parallel drawing workers')
+
+        """
+        raise NotImplementedError
+        # This logic should be able to be used statically or dynamically
+        # to transition argparse to ScriptConfig code.
+        recon_str = [
+            'class MyConfig(scfg.Config)',
+            '    """',
+            ub.indent(parser.description),
+            '    """',
+            '    default = {',
+        ]
+        for action in parser._actions:
+            indent = ' ' * 8
+            value_args = [
+                repr(action.default),
+            ]
+            value_kw = [
+                f'help={action.help!r}' if action.help else None,
+                f'help={action.type!r}' if action.type else None
+            ]
+            value_args.extend([v for v in value_kw if v is not None])
+            val_body = ', '.join(value_args)
+            recon_str.append(f"{indent} '{action.dest}': scfg.Value({val_body}),")
+        recon_str.append('}')
+        print('\n'.join(recon_str))
+
     def argparse(self, parser=None, special_options=False):
         """
         construct or update an argparse.ArgumentParser CLI parser
@@ -745,6 +790,26 @@ class Config(ub.NiceRepr, DictLike):
             >>> self._read_argv(argv=['objection', '42', '--path1=overruled!'])
             >>> print('self = {!r}'.format(self))
 
+        Example:
+            >>> # Test required option
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     description = 'my CLI description'
+            >>>     default = {
+            >>>         'path1':  scfg.Value(None, position=1, alias='src'),
+            >>>         'path2':  scfg.Value(None, position=2, alias='dst'),
+            >>>         'dry':  scfg.Value(False, isflag=True),
+            >>>         'important':  scfg.Value(False, required=True),
+            >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
+            >>>     }
+            >>> self = MyConfig()
+            >>> special_options = True
+            >>> parser = None
+            >>> parser = self.argparse(special_options=special_options)
+            >>> parser.print_help()
+            >>> self._read_argv(argv=['objection', '42', '--path1=overruled!'])
+            >>> print('self = {!r}'.format(self))
+
         Ignore:
             >>> self._read_argv(argv=['hi','--path1=foobar'])
             >>> self._read_argv(argv=['hi', 'hello', '--path1=foobar'])
@@ -766,14 +831,16 @@ class Config(ub.NiceRepr, DictLike):
 
         class ParseAction(argparse.Action):
             def __init__(self, *args, **kwargs):
+                # required = kwargs.pop('required', False)
                 super(ParseAction, self).__init__(*args, **kwargs)
-                # with script config nothing should be required by default all
-                # positional arguments should have keyword arg variants Setting
-                # required=False here will prevent positional args from
-                # erroring if they are not specified. I dont think there are
-                # other side effects, but we should make sure that is actually
-                # the case.
-                self.required = False
+                # with script config nothing should be required by default
+                # (unless specified) all positional arguments should have
+                # keyword arg variants Setting required=False here will prevent
+                # positional args from erroring if they are not specified. I
+                # dont think there are other side effects, but we should make
+                # sure that is actually the case.
+                self.required = required
+                self.required = False  # hack
 
                 if self.type is None:
                     # Is this the right place to put this?
@@ -821,7 +888,7 @@ class Config(ub.NiceRepr, DictLike):
         else:
             _keyorder = list(self._default.keys())
 
-        def _add_arg(parser, name, key, argkw, positional, isflag, isalias):
+        def _add_arg(parser, name, key, argkw, positional, isflag, isalias, required):
             _argkw = argkw.copy()
 
             if isalias:
@@ -854,7 +921,7 @@ class Config(ub.NiceRepr, DictLike):
                 parser.add_argument('--' + name, **_argkw_true)
                 parser.add_argument('--no-' + name, **_argkw_false)
             else:
-                parser.add_argument('--' + name, **_argkw)
+                parser.add_argument('--' + name, required=required, **_argkw)
 
         mode = 1
 
@@ -866,10 +933,12 @@ class Config(ub.NiceRepr, DictLike):
             argkw['help'] = ''
             positional = None
             isflag = False
+            required = False
             if key in _metadata:
                 # Use the metadata in the Value class to enhance argparse
                 _value = _metadata[key]
                 argkw.update(_value.parsekw)
+                required = _value.required
                 value = _value.value
                 isflag = _value.isflag
                 positional = _value.position
@@ -883,7 +952,7 @@ class Config(ub.NiceRepr, DictLike):
             argkw['action'] = ParseAction
 
             name = key
-            _add_arg(parser, name, key, argkw, positional, isflag, isalias=False)
+            _add_arg(parser, name, key, argkw, positional, isflag, isalias=False, required=required)
 
             if _value is not None:
                 if _value.alias:

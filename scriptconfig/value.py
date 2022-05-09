@@ -45,7 +45,8 @@ class Value(ub.NiceRepr):
     __scfg_class__ = 'Value'
 
     def __init__(self, value=None, type=None, help=None, choices=None,
-                 position=None, isflag=False, nargs=None, alias=None):
+                 position=None, isflag=False, nargs=None, alias=None,
+                 required=False):
         self.value = None
         self.type = type
         self.alias = alias
@@ -57,6 +58,7 @@ class Value(ub.NiceRepr):
             'choices': choices,
             'nargs': nargs,
         }
+        self.required = required
         self.update(value)
 
     def __nice__(self):
