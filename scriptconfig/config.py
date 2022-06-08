@@ -96,6 +96,21 @@ from scriptconfig.value import Value
 __all__ = ['Config', 'define']
 
 
+# def _is_autoreload_enabled():
+#     """
+#     Detect if IPython has autoreloaded this module
+#     https://stackoverflow.com/questions/63469147/programmatically-check-for-and-disable-ipython-autoreload-extension
+#     """
+#     try:
+#         __IPYTHON__
+#     except NameError:
+#         return False
+#     else:
+#         from IPython import get_ipython
+#         ipy = get_ipython()
+#         return ipy.magics_manager.magics['line']['autoreload'].__self__._reloader.enabled
+
+
 def scfg_isinstance(item, cls):
     """
     use instead isinstance for scfg types when reloading
@@ -674,47 +689,131 @@ class Config(ub.NiceRepr, DictLike):
 
     # TODO:
     @classmethod
-    def from_argparse(cls, parser):
+    def port_argparse(cls, parser, name='MyConfig'):
         """
-        Create an instance from an existing argparse
+        Create an instance from an existing argparse.
 
-        Ignore:
-            import argparse
-            parser = argparse.ArgumentParser()
-            parser.add_argument('--true_dataset', '--test_dataset', help='path to the groundtruth dataset')
-            parser.add_argument('--pred_dataset', help='path to the predicted dataset')
-            parser.add_argument('--eval_dpath', help='path to dump results')
-            parser.add_argument('--draw_curves', default='auto', help='flag to draw curves or not')
-            parser.add_argument('--draw_heatmaps', default='auto', help='flag to draw heatmaps or not')
-            parser.add_argument('--score_space', default='video', help='can score in image or video space')
-            parser.add_argument('--workers', default='auto', help='number of parallel scoring workers')
-            parser.add_argument('--draw_workers', default='auto', help='number of parallel drawing workers')
+        Args:
+            parser (argparse.Parser): existing argparse parser we want to port
 
+        Returns:
+            str :
+                code to create a scriptconfig object that should work similarly
+                to the existing argparse object.
+
+        Note:
+            The correctness of this function is not guarenteed.  This only
+            works perfectly in simple cases, but in complex cases it may not
+            produce 1-to-1 results, however it will provide a useful starting
+            point.
+
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> import argparse
+            >>> parser = argparse.ArgumentParser()
+            >>> parser.add_argument('-t', '--true_dataset', '--test_dataset', help='path to the groundtruth dataset', required=True)
+            >>> parser.add_argument('-p', '--pred_dataset', help='path to the predicted dataset', required=True)
+            >>> parser.add_argument('--eval_dpath', help='path to dump results')
+            >>> parser.add_argument('--draw_curves', default='auto', help='flag to draw curves or not')
+            >>> parser.add_argument('--draw_heatmaps', default='auto', help='flag to draw heatmaps or not')
+            >>> parser.add_argument('--score_space', default='video', help='can score in image or video space')
+            >>> parser.add_argument('--workers', default='auto', help='number of parallel scoring workers')
+            >>> parser.add_argument('--draw_workers', default='auto', help='number of parallel drawing workers')
+            >>> text = scfg.Config.port_argparse(parser, name='PortedConfig')
+            >>> print(text)
+            >>> # Make an instance of the ported class
+            >>> vals = {}
+            >>> exec(text, vals)
+            >>> cls = vals['PortedConfig']
+            >>> self = cls()
+            >>> recon = self.argparse()
+            >>> print('recon._actions = {}'.format(ub.repr2(recon._actions, nl=1)))
         """
-        raise NotImplementedError
+        # raise NotImplementedError
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
         recon_str = [
-            'class MyConfig(scfg.Config)',
+            'import scriptconfig as scfg',
+            '',
+            'class ' + name + '(scfg.Config):',
             '    """',
-            ub.indent(parser.description),
+            ub.indent(parser.description or ''),
             '    """',
             '    default = {',
         ]
+        def normalize_option_str(s):
+            return s.lstrip('-').replace('-', '_')
+
         for action in parser._actions:
+            import re
+            long_prefix_pat = re.compile('--[^-].*')
+            short_prefix_pat = re.compile('-[^-].*')
+
+            key = action.dest
+            if key == 'help':
+                # scriptconfig takes care of help for us
+                continue
+
+            long_option_strings = [
+                s for s in action.option_strings
+                if long_prefix_pat.match(s)
+            ]
+            short_option_strings = [
+                s for s in action.option_strings
+                if short_prefix_pat.match(s)
+            ]
+
+            alias = ub.oset(normalize_option_str(s)
+                            for s in long_option_strings)
+            alias = list(alias - {key})
+
+            short_alias = ub.oset(normalize_option_str(s)
+                                  for s in short_option_strings)
+            short_alias = list(short_alias - {key})
+
             indent = ' ' * 8
             value_args = [
                 repr(action.default),
             ]
             value_kw = [
-                f'help={action.help!r}' if action.help else None,
-                f'help={action.type!r}' if action.type else None
+                'help={!r}'.format(action.help) if action.help else None,
+                'type={}'.format(action.type.__name__) if action.type else None,
+                'alias={}'.format(alias) if alias else None,
+                'short_alias={}'.format(short_alias) if short_alias else None,
+                'required={}'.format(action.required) if action.required else None,
             ]
             value_args.extend([v for v in value_kw if v is not None])
-            val_body = ', '.join(value_args)
-            recon_str.append(f"{indent} '{action.dest}': scfg.Value({val_body}),")
-        recon_str.append('}')
-        print('\n'.join(recon_str))
+
+            if 0:
+                val_body = ', '.join(value_args)
+            else:
+                arg_indent = '{}    '.format(indent)
+                arg_prefix = '\n{}'.format(arg_indent)
+                arg_sep = ',{}'.format(arg_prefix)
+                arg_tail = '\n{}'.format(indent)
+                val_body = arg_prefix + arg_sep.join(value_args) + arg_tail
+
+            recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
+        recon_str.append('    }')
+        text = '\n'.join(recon_str)
+        if 0:
+            try:
+                import black
+                text = black.format_str(
+                    text, mode=black.Mode(string_normalization=True)
+                )
+            except Exception:
+                pass
+        return text
+
+    @property
+    def namespace(self):
+        """
+        Access a namespace like object for compatibility with argparse
+        """
+        from argparse import Namespace
+        return Namespace(**dict(self))
 
     def argparse(self, parser=None, special_options=False):
         """
@@ -888,17 +987,17 @@ class Config(ub.NiceRepr, DictLike):
         else:
             _keyorder = list(self._default.keys())
 
-        def _add_arg(parser, name, key, argkw, positional, isflag, isalias, required):
+        def _add_arg(parser, name, argkw, positional, isflag, required=False,
+                     aliases=None, short_aliases=None):
             _argkw = argkw.copy()
 
-            if isalias:
-                _argkw['help'] = 'alias of {}'.format(key)
-                _argkw.pop('default', None)
-                # flags cannot have flag aliases
-                isflag = False
+            long_names = [name] + list((aliases or []))
+            short_names = list(short_aliases or [])
 
-            elif positional:
+            if positional:
                 parser.add_argument(name, **_argkw)
+
+            _argkw['dest'] = name
 
             if isflag:
                 # Can we support both flag and setitem methods of cli
@@ -909,7 +1008,7 @@ class Config(ub.NiceRepr, DictLike):
                 _argkw.pop('choices', None)
                 _argkw.pop('action', None)
                 _argkw.pop('nargs', None)
-                _argkw['dest'] = key
+                _argkw['dest'] = name
 
                 _argkw_true = _argkw.copy()
                 _argkw_true['action'] = 'store_true'
@@ -918,32 +1017,38 @@ class Config(ub.NiceRepr, DictLike):
                 _argkw_false['action'] = 'store_false'
                 _argkw_false.pop('help', None)
 
-                parser.add_argument('--' + name, **_argkw_true)
-                parser.add_argument('--no-' + name, **_argkw_false)
+                short_pos_option_strings = ['-' + n for n in short_names]
+                pos_option_strings = ['--' + n for n in long_names]
+                neg_option_strings = ['--no-' + n for n in long_names]
+                parser.add_argument(*short_pos_option_strings,
+                                    *pos_option_strings, **_argkw_true)
+                parser.add_argument(*neg_option_strings, **_argkw_false)
             else:
-                parser.add_argument('--' + name, required=required, **_argkw)
+                short_option_strings = ['-' + n for n in short_names]
+                long_option_strings = ['--' + n for n in long_names]
+                option_strings = short_option_strings + long_option_strings
+                parser.add_argument(*option_strings, required=required, **_argkw)
 
-        mode = 1
-
-        alias_registry = []
         for key, value in self._data.items():
             # key: str
             # value: Any | Value
+            name = key
             argkw = {}
             argkw['help'] = ''
             positional = None
             isflag = False
             required = False
-            if key in _metadata:
+            if name in _metadata:
                 # Use the metadata in the Value class to enhance argparse
-                _value = _metadata[key]
+                _value = _metadata[name]
                 argkw.update(_value.parsekw)
                 required = _value.required
                 value = _value.value
                 isflag = _value.isflag
                 positional = _value.position
             else:
-                _value = value if isinstance(value, Value) else None
+                _value = value if scfg_isinstance(value, Value) else None
+                # _value = value if isinstance(value, Value) else None
 
             if not argkw['help']:
                 argkw['help'] = '<undocumented>'
@@ -951,26 +1056,19 @@ class Config(ub.NiceRepr, DictLike):
             argkw['default'] = value
             argkw['action'] = ParseAction
 
-            name = key
-            _add_arg(parser, name, key, argkw, positional, isflag, isalias=False, required=required)
-
+            aliases = None
+            short_aliases = None
             if _value is not None:
-                if _value.alias:
-                    alts = _value.alias
-                    alts = alts if ub.iterable(alts) else [alts]
-                    for alias in alts:
-                        tup = (alias, key, argkw)
-                        alias_registry.append(tup)
-                        if mode == 0:
-                            name = alias
-                            _add_arg(parser, name, key, argkw, positional, isflag, isalias=True)
+                aliases = _value.alias
+                short_aliases = _value.short_alias
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            if isinstance(short_aliases, str):
+                short_aliases = [short_aliases]
 
-        if mode == 1:
-            for tup in alias_registry:
-                (alias, key, argkw) = tup
-                name = alias
-                dest = key
-                _add_arg(parser, name, dest, argkw, positional, isflag, isalias=True)
+            _add_arg(parser, name, argkw, positional, isflag,
+                     required=required, aliases=aliases,
+                     short_aliases=short_aliases)
 
         if special_options:
             parser.add_argument('--config', default=None, help=ub.codeblock(

@@ -32,6 +32,14 @@ class Value(ub.NiceRepr):
 
         isflag (bool, default=False): if True, args will be parsed as booleans
 
+        alias (List[str]):
+            other long names (that will be prefixed with '--') that will be
+            accepted by the argparse CLI.
+
+        short_alias (List[str]):
+            other short names (that will be prefixed with '-') that will be
+            accepted by the argparse CLI.
+
     Example:
         >>> self = Value(None, type=float)
         >>> print('self.value = {!r}'.format(self.value))
@@ -46,7 +54,7 @@ class Value(ub.NiceRepr):
 
     def __init__(self, value=None, type=None, help=None, choices=None,
                  position=None, isflag=False, nargs=None, alias=None,
-                 required=False):
+                 required=False, short_alias=None):
         self.value = None
         self.type = type
         self.alias = alias
@@ -59,6 +67,7 @@ class Value(ub.NiceRepr):
             'nargs': nargs,
         }
         self.required = required
+        self.short_alias = short_alias
         self.update(value)
 
     def __nice__(self):
