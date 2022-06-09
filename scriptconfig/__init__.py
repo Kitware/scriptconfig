@@ -1,7 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative --diff
-mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
+ScriptConfig
+============
+
+The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
+**simply defining a dictionary**. Thie enables you to write simple configs and
+update from CLI, kwargs, and/or json.
+"""
+
+__autogen__ = """
+Ignore:
+    mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative --diff
+    mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
 __version__ = '0.6.1'
