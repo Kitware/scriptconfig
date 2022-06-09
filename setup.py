@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from setuptools import setup
 import sys
 from os.path import exists
+
+from setuptools import setup
 
 
 def parse_version(fpath):
@@ -152,7 +153,6 @@ def native_mb_python_tag(plat_impl=None, version_info=None):
         plat_impl = platform.python_implementation()
 
     if version_info is None:
-        import sys
         version_info = sys.version_info
 
     major, minor = version_info[0:2]
