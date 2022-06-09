@@ -208,6 +208,7 @@ if __name__ == '__main__':
         extras_require={
             'all': parse_requirements('requirements.txt'),
             'tests': parse_requirements('requirements/runtime.txt'),
+            'optional': parse_requirements('requirements/optional.txt'),
         },
         license='Apache 2',
         url='https://gitlab.kitware.com/utils/scriptconfig',

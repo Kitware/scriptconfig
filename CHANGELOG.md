@@ -19,6 +19,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 * The `alias` keyword no expands a single argparse argument instead of making
   multiple of them.
+* Make numpy optional
 
 
 ## Version 0.5.8 - Released 2021-05-19

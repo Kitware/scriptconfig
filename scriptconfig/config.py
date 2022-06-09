@@ -87,7 +87,6 @@ import six
 import copy
 import io
 import json
-import numpy as np
 from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
 from scriptconfig.file_like import FileLike
@@ -278,6 +277,10 @@ class Config(ub.NiceRepr, DictLike):
             TypeError: if any non-builtin python objects without a __json__
                 method are encountered.
         """
+        try:
+            import numpy
+        except ImportError:
+            numpy = None
         data = self.asdict()
 
         BUILTIN_SCALAR_TYPES = (str, int, float, complex)
@@ -290,7 +293,7 @@ class Config(ub.NiceRepr, DictLike):
                 return item
             elif isinstance(item, BUILTIN_VECTOR_TYPES):
                 return [_rectify(v) for v in item]
-            elif isinstance(item, np.ndarray):
+            elif numpy is not None and isinstance(item, numpy.ndarray):
                 return item.tolist()
             elif isinstance(item, ub.odict):
                 return ub.odict([
