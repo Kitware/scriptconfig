@@ -4,7 +4,25 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.8 - Unreleased
+## Version 0.6.0 - Unreleased
+
+### Added 
+* `smartcast` can now disable splitting by specifying `allow_split=False`
+* ### Broken: Added `required` as an option to `Value`.
+
+* The `short_alias` keyword to `Value`, which allows single '-' prefix chars on
+  the command line.
+
+* The `port_argparse` method which takes an existing (simple) argparse CLI and
+  attempts to make a scriptconfig version of it.
+
+### Changed
+* The `alias` keyword no expands a single argparse argument instead of making
+  multiple of them.
+* Make numpy optional
+
+
+## Version 0.5.8 - Released 2021-05-19
 
 ### Added
 * Can now specify alias for a Value as a `str | List[str]`.

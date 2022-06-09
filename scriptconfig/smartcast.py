@@ -13,7 +13,7 @@ else:
 NoneType = type(None)
 
 
-def smartcast(item, astype=None, strict=False):
+def smartcast(item, astype=None, strict=False, allow_split=False):
     r"""
     Converts a string into a standard python type.
 
@@ -35,11 +35,33 @@ def smartcast(item, astype=None, strict=False):
         strict (bool, default=False):
             if True raises a TypeError if conversion fails
 
+        allow_split (bool, default=True):
+            if True will interpret strings with commas as sequences
+
     Returns:
         object: some item
 
     Raises:
         TypeError: if we cannot determine the type
+
+    Example:
+        >>> # Simple cases
+        >>> print(repr(smartcast('?')))
+        >>> print(repr(smartcast('1')))
+        >>> print(repr(smartcast('1,2,3')))
+        >>> print(repr(smartcast('abc')))
+        >>> print(repr(smartcast('[1,2,3,4]')))
+        >>> print(repr(smartcast('foo.py,/etc/conf.txt,/baz/biz,blah')))
+        '?'
+        1
+        [1, 2, 3]
+        'abc'
+        [1, 2, 3, 4]
+        ['foo.py', '/etc/conf.txt', '/baz/biz', 'blah']
+
+        >>> # Weird cases
+        >>> print(repr(smartcast('[1],2,abc,4')))
+        ['[1]', 2, 'abc', 4]
 
     Example:
         >>> assert smartcast('?') == '?'
