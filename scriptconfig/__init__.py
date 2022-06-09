@@ -4,7 +4,7 @@ mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative --diff
 mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.6.0'
+__version__ = '0.6.1'
 
 __submodules__ = ['config', 'value', 'cli']
 
