@@ -6,6 +6,9 @@ ScriptConfig
 The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
 **simply defining a dictionary**. Thie enables you to write simple configs and
 update from CLI, kwargs, and/or json.
+
+See the :mod:`scriptconfig.config` module docs for details and examples on
+getting started.
 """
 
 __autogen__ = """

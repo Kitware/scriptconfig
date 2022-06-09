@@ -113,6 +113,13 @@ __all__ = ['Config', 'define']
 def scfg_isinstance(item, cls):
     """
     use instead isinstance for scfg types when reloading
+
+    Args:
+        item (object): instance to check
+        cls (type): class to check against
+
+    Returns:
+        bool
     """
     # Note: it is safe to simply use isinstance(item, cls) when
     # not reloading
@@ -153,45 +160,42 @@ class Config(ub.NiceRepr, DictLike):
     special `Value` classes to denote types. You can also define a method
     `normalize`, to postprocess the arguments after this class receives them.
 
-    Usage:
-        Create a class that herits from this class.
+    Basic usage is as follows.
 
-        Assign the "default" class-level variable as a dictionary of options
+    Create a class that herits from this class.
 
-        The keys of this dictionary must be command line friendly strings.
+    Assign the "default" class-level variable as a dictionary of options
 
-        The values of the "defaults dictionary" can be literal values or
-        instances of the :class:`scriptconfig.Value` class, which allows
-        for specification of default values, type information, help strings,
-        and aliases.
+    The keys of this dictionary must be command line friendly strings.
 
-        You may also implement normalize (function with that takes no args and
-        has no return) to postprocess your results after initialization.
+    The values of the "defaults dictionary" can be literal values or
+    instances of the :class:`scriptconfig.Value` class, which allows
+    for specification of default values, type information, help strings,
+    and aliases.
 
-        When creating an instance of the class the defaults variable is used
-        to make a dictionary-like object. You can override defaults by
-        specifying the ``data`` keyword argument to either a file path or
-        another dictionary. You can also specify ``cmdline=True`` to allow
-        the contents of ``sys.argv`` to influence the values of the new
-        object.
+    You may also implement normalize (function with that takes no args and
+    has no return) to postprocess your results after initialization.
 
-        An instance of the config class behaves like a dictinary, except that
-        you cannot set keys that do not already exist (as specified in the
-        defaults dict).
+    When creating an instance of the class the defaults variable is used
+    to make a dictionary-like object. You can override defaults by
+    specifying the ``data`` keyword argument to either a file path or
+    another dictionary. You can also specify ``cmdline=True`` to allow
+    the contents of ``sys.argv`` to influence the values of the new
+    object.
 
-        Key Methods:
+    An instance of the config class behaves like a dictinary, except that
+    you cannot set keys that do not already exist (as specified in the
+    defaults dict).
 
-            * dump - dump a json representation to a file
+    Key Methods:
 
-            * dumps - dump a json representation to a string
+        * dump - dump a json representation to a file
 
-            * argparse - create the argparse object associated with this config
+        * dumps - dump a json representation to a string
 
-            * argparse - create an :class:`argparse.ArgumentParser` object that
-                is defined by the defaults of this config.
+        * argparse - create an :class:`argparse.ArgumentParser` object that is defined by the defaults of this config.
 
-            * load - rewrite the values based on a filepath, dictionary, or
-                command line contents.
+        * load - rewrite the values based on a filepath, dictionary, or command line contents.
 
     Attributes:
         _data : this protected variable holds the raw state of the config
@@ -276,6 +280,9 @@ class Config(ub.NiceRepr, DictLike):
         Raises:
             TypeError: if any non-builtin python objects without a __json__
                 method are encountered.
+
+        Returns:
+            dict
         """
         try:
             import numpy
@@ -315,12 +322,28 @@ class Config(ub.NiceRepr, DictLike):
         return str(self.asdict())
 
     def getitem(self, key):
+        """
+        Dictionary-like method to get the value of a key.
+
+        Args:
+            key (str): the key
+
+        Returns:
+            VT : the associated value
+        """
         value = self._data[key]
         if scfg_isinstance(value, Value):
             value = value.value
         return value
 
     def setitem(self, key, value):
+        """
+        Dictionary-like method to set the value of a key.
+
+        Args:
+            key (str): the key
+            value (VT): the new value
+        """
         if key not in self._data:
             raise Exception('Cannot add keys to ScriptConfig objects')
         if scfg_isinstance(value, Value):
@@ -341,28 +364,40 @@ class Config(ub.NiceRepr, DictLike):
         raise Exception('cannot delete items from a config')
 
     def keys(self):
+        """
+        Dictionary-like keys method
+
+        Yields:
+            KT
+        """
         return self._data.keys()
 
     def update_defaults(self, default):
+        """
+        Update the instance-level default values
+
+        Args:
+            default (dict): new defaults
+        """
         self._default.update(default)
 
     def load(self, data=None, cmdline=False, mode=None, default=None):
         """
         Updates the default configuration from a given data source.
 
-        Any option can be overwritten via the command line if `cmdline` is
+        Any option can be overwritten via the command line if ``cmdline`` is
         truthy.
 
         Args:
             data (PathLike | dict):
                 Either a path to a yaml / json file or a config dict
 
-            cmdline (bool | List[str] | str, default=False):
+            cmdline (bool | List[str] | str):
                 If False, then no command line information is used.
                 If True, then sys.argv is parsed and used.
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
-                    of sys.argv.
+                of sys.argv. Defaults to False.
 
         Example:
             >>> # Test load works correctly in cmdline True and False mode
@@ -380,7 +415,6 @@ class Config(ub.NiceRepr, DictLike):
             >>> # This is because cmdline=True overwrites data with defaults
             >>> self = MyConfig(data=data, cmdline=True)
             >>> assert self['src'] == 'hi'
-
         """
         if default:
             self.update_defaults(default)
@@ -620,6 +654,10 @@ class Config(ub.NiceRepr, DictLike):
     def dump(self, stream=None, mode=None):
         """
         Write configuration file to a file or stream
+
+        Args:
+            stream (FileLike | None): the stream to write to
+            mode (str | None): can be 'yaml' or 'json' (defaults to 'yaml')
         """
         # import six
         # if isinstance(stream, six.string_types):
@@ -650,6 +688,15 @@ class Config(ub.NiceRepr, DictLike):
         #         _stream.close()
 
     def dumps(self, mode=None):
+        """
+        Write the configuration to a text object and return it
+
+        Args:
+            mode (str | None): can be 'yaml' or 'json' (defaults to 'yaml')
+
+        Returns:
+            str - the configuration as a string
+        """
         return self.dump(mode=mode)
 
     def _parserkw(self):
@@ -697,7 +744,8 @@ class Config(ub.NiceRepr, DictLike):
         Create an instance from an existing argparse.
 
         Args:
-            parser (argparse.Parser): existing argparse parser we want to port
+            parser (argparse.ArgumentParser):
+                existing argparse parser we want to port
 
         Returns:
             str :
