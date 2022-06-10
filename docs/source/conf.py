@@ -59,6 +59,7 @@ Also:
 
 
 # -- Project information -----------------------------------------------------
+import sphinx_rtd_theme
 from os.path import exists
 from os.path import dirname
 from os.path import join
@@ -89,9 +90,7 @@ def parse_version(fpath):
     visitor.visit(pt)
     return visitor.version
 
-# The short X.Y version
 modpath = join(dirname(dirname(dirname(__file__))), modname, '__init__.py')
-# The full version, including alpha/beta/rc tags
 release = parse_version(modpath)
 version = '.'.join(release.split('.')[0:2])
 
@@ -106,13 +105,6 @@ version = '.'.join(release.split('.')[0:2])
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    # 'autoapi.extension',
-    # 'sphinx.ext.autodoc',
-    # 'sphinx.ext.viewcode',
-    # 'sphinx.ext.intersphinx',
-    # 'sphinx.ext.todo',
-    # 'sphinx.ext.napoleon',
-    # 'sphinx.ext.autosummary',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
@@ -120,6 +112,25 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.autosummary',
 ]
+
+# If true, `todo` and `todoList` produce output, else they produce nothing.
+todo_include_todos = True
+napoleon_google_docstring = True
+napoleon_use_param = False
+apoleon_use_ivar = True
+autodoc_inherit_docstrings = False
+autodoc_member_order = 'bysource'
+
+# Example configuration for intersphinx: refer to the Python standard library.
+intersphinx_mapping = {
+    # 'pytorch': ('http://pytorch.org/docs/master/', None),
+    'python': ('https://docs.python.org/3', None),
+    'click': ('https://click.palletsprojects.com/', None),
+    # 'xxhash': ('https://pypi.org/project/xxhash/', None),
+    # 'pygments': ('https://pygments.org/docs/', None),
+    # 'tqdm': ('https://tqdm.github.io/', None),
+}
+
 
 # autoapi_modules = {
 #     modname: {
@@ -139,7 +150,7 @@ templates_path = ['_templates']
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = 'index'
@@ -165,7 +176,6 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-import sphinx_rtd_theme  # NOQA
 html_theme = 'sphinx_rtd_theme'
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
@@ -174,6 +184,11 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # documentation.
 #
 # html_theme_options = {}
+html_theme_options = {
+    'collapse_navigation': False,
+    'display_version': True,
+    # 'logo_only': True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -246,38 +261,6 @@ texinfo_documents = [
      author, 'scriptconfig', 'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-# -- Extension configuration -------------------------------------------------
-
-# -- Options for intersphinx extension ---------------------------------------
-
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {
-    # 'pytorch': ('http://pytorch.org/docs/master/', None),
-    'python': ('https://docs.python.org/3', None),
-    'click': ('https://click.palletsprojects.com/', None),
-    # 'xxhash': ('https://pypi.org/project/xxhash/', None),
-    # 'pygments': ('https://pygments.org/docs/', None),
-    # 'tqdm': ('https://tqdm.github.io/', None),
-}
-
-# -- Options for todo extension ----------------------------------------------
-
-# If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = True
-napoleon_google_docstring = True
-napoleon_use_param = False
-napoleon_use_ivar = True
-autodoc_inherit_docstrings = False
-autodoc_member_order = 'bysource'
-
-html_theme_options = {
-    'collapse_navigation': False,
-    'display_version': True,
-    # 'logo_only': True,
-}
-
 
 # -- Extension configuration -------------------------------------------------
 
