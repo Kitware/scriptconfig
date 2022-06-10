@@ -214,6 +214,9 @@ if __name__ == '__main__':
         url='https://gitlab.kitware.com/utils/scriptconfig',
         packages=['scriptconfig'],
         python_requires='>=3.6',
+        package_data={
+            'scriptconfig': ['py.typed', '*.pyi'],
+        },
         classifiers=[
             # List of classifiers available at:
             # https://pypi.python.org/pypi?%3Aaction=list_classifiers

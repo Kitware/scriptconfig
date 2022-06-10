@@ -5,6 +5,7 @@ Submodules
 ----------
 
 .. toctree::
+   :maxdepth: 4
 
    scriptconfig.cli
    scriptconfig.config
@@ -18,5 +19,6 @@ Module contents
 
 .. automodule:: scriptconfig
    :members:
+   :noindex:
    :undoc-members:
    :show-inheritance:

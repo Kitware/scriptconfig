@@ -23,9 +23,9 @@ The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
 **simply defining a dictionary**. Thie enables you to write simple configs and
 update from CLI, kwargs, and/or json.
 
-The ``scriptconfig`` provides a simple way to make configurable scripts using a
-combination of config files, command line arguments, and simple Python keyword
-arguments. A script config object is defined by creating a subclass of
+The ``scriptconfig`` module provides a simple way to make configurable scripts
+using a combination of config files, command line arguments, and simple Python
+keyword arguments. A script config object is defined by creating a subclass of
 ``Config`` with a ``default`` dict class attribute. An instance of a custom
 ``Config`` object will behave similar a dictionary, but with a few
 conveniences.

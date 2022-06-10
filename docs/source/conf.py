@@ -19,6 +19,25 @@ Notes:
     make html
     sphinx-apidoc -f -o ~/code/scriptconfig/docs/source ~/code/scriptconfig/scriptconfig --separate
     make html
+
+Also:
+    # https://docs.readthedocs.io/en/stable/integrations.html
+    To turn on PR checks for a custom gitlab project use webhooks
+
+    Navigate to the repo integration page on readthedocs:
+    https://readthedocs.org/dashboard/scriptconfig/integrations/
+
+    Add a new generic incoming webhook, and record the URL and token
+
+    Then navigate to the webhooks gitlab page:
+    https://gitlab.kitware.com/utils/scriptconfig/-/hooks
+
+    Create a new webhook with that URL and the token as the secret.
+    Select push events.
+
+    Add a webhook to the readthedocs page
+    https://readthedocs.org/dashboard/scriptconfig/webhooks/
+
 """
 # -*- coding: utf-8 -*-
 #
@@ -71,10 +90,6 @@ def parse_version(fpath):
     return visitor.version
 
 # The short X.Y version
-# import ubelt as ub
-# module = ub.import_module_from_path(modpath)
-# release = module.__version__
-
 modpath = join(dirname(dirname(dirname(__file__))), modname, '__init__.py')
 # The full version, including alpha/beta/rc tags
 release = parse_version(modpath)
@@ -91,24 +106,30 @@ version = '.'.join(release.split('.')[0:2])
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'autoapi.extension',
+    # 'autoapi.extension',
+    # 'sphinx.ext.autodoc',
+    # 'sphinx.ext.viewcode',
+    # 'sphinx.ext.intersphinx',
+    # 'sphinx.ext.todo',
+    # 'sphinx.ext.napoleon',
+    # 'sphinx.ext.autosummary',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
 ]
 
-autoapi_modules = {
-    modname: {
-        'override': False,
-        'output': 'auto'
-    }
-}
+# autoapi_modules = {
+#     modname: {
+#         'override': False,
+#         'output': 'auto'
+#     }
+# }
 
 
-autoapi_dirs = [f'../../{modname}']
+# autoapi_dirs = [f'../../{modname}']
 # autoapi_keep_files = True
 
 # Add any paths that contain templates here, relative to this directory.
@@ -157,7 +178,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -232,12 +253,19 @@ texinfo_documents = [
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    # 'pytorch': ('http://pytorch.org/docs/master/', None),
+    'python': ('https://docs.python.org/3', None),
+    'click': ('https://click.palletsprojects.com/', None),
+    # 'xxhash': ('https://pypi.org/project/xxhash/', None),
+    # 'pygments': ('https://pygments.org/docs/', None),
+    # 'tqdm': ('https://tqdm.github.io/', None),
+}
 
 # -- Options for todo extension ----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = Truetodo_include_todos = True
+todo_include_todos = True
 napoleon_google_docstring = True
 napoleon_use_param = False
 napoleon_use_ivar = True
@@ -249,3 +277,119 @@ html_theme_options = {
     'display_version': True,
     # 'logo_only': True,
 }
+
+
+# -- Extension configuration -------------------------------------------------
+
+
+from sphinx.domains.python import PythonDomain  # NOQA
+# from sphinx.application import Sphinx  # NOQA
+from typing import Any, List  # NOQA
+
+
+class PatchedPythonDomain(PythonDomain):
+    """
+    References:
+        https://github.com/sphinx-doc/sphinx/issues/3866
+    """
+    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
+        # TODO: can use this to resolve references nicely
+        # if target.startswith('ub.'):
+        #     target = 'ubelt.' + target[3]
+        return_value = super(PatchedPythonDomain, self).resolve_xref(
+            env, fromdocname, builder, typ, target, node, contnode)
+        return return_value
+
+
+def process(app, what_: str, name: str, obj: Any, options: Any, lines:
+            List[str]) -> None:
+    """
+    Custom process to transform docstring lines Remove "Ignore" blocks
+
+    Args:
+        app (sphinx.application.Sphinx): the Sphinx application object
+
+        what (str):
+            the type of the object which the docstring belongs to (one of
+            "module", "class", "exception", "function", "method", "attribute")
+
+        name (str): the fully qualified name of the object
+
+        obj: the object itself
+
+        options: the options given to the directive: an object with
+            attributes inherited_members, undoc_members, show_inheritance
+            and noindex that are true if the flag option of same name was
+            given to the auto directive
+
+        lines (List[str]): the lines of the docstring, see above
+
+    References:
+        https://www.sphinx-doc.org/en/1.5.1/_modules/sphinx/ext/autodoc.html
+        https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
+    """
+    # if what and what_ not in what:
+    #     return
+    orig_lines = lines[:]
+
+    # text = '\n'.join(lines)
+    # if 'Example' in text and 'CommandLine' in text:
+    #     import xdev
+    #     xdev.embed()
+
+    ignore_tags = tuple(['Ignore'])
+
+    mode = None
+    # buffer = None
+    new_lines = []
+    for i, line in enumerate(orig_lines):
+
+        # See if the line triggers a mode change
+        if line.startswith(ignore_tags):
+            mode = 'ignore'
+        elif line.startswith('CommandLine'):
+            mode = 'cmdline'
+        elif line and not line.startswith(' '):
+            # if the line startswith anything but a space, we are no
+            # longer in the previous nested scope
+            mode = None
+
+        if mode is None:
+            new_lines.append(line)
+        elif mode == 'ignore':
+            # print('IGNORE line = {!r}'.format(line))
+            pass
+        elif mode == 'cmdline':
+            if line.startswith('CommandLine'):
+                new_lines.append('.. rubric:: CommandLine')
+                new_lines.append('')
+                new_lines.append('.. code-block:: bash')
+                new_lines.append('')
+                # new_lines.append('    # CommandLine')
+            else:
+                # new_lines.append(line.strip())
+                new_lines.append(line)
+        else:
+            raise KeyError(mode)
+
+    lines[:] = new_lines
+    # make sure there is a blank line at the end
+    if lines and lines[-1]:
+        lines.append('')
+
+
+def setup(app):
+    app.add_domain(PatchedPythonDomain, override=True)
+    if 1:
+        # New Way
+        # what = None
+        app.connect('autodoc-process-docstring', process)
+    else:
+        # OLD WAY
+        # https://stackoverflow.com/questions/26534184/can-sphinx-ignore-certain-tags-in-python-docstrings
+        # Register a sphinx.ext.autodoc.between listener to ignore everything
+        # between lines that contain the word IGNORE
+        # from sphinx.ext.autodoc import between
+        # app.connect('autodoc-process-docstring', between('^ *Ignore:$', exclude=True))
+        pass
+    return app
