@@ -19,6 +19,25 @@ Notes:
     make html
     sphinx-apidoc -f -o ~/code/scriptconfig/docs/source ~/code/scriptconfig/scriptconfig --separate
     make html
+
+Also:
+    # https://docs.readthedocs.io/en/stable/integrations.html
+    To turn on PR checks for a custom gitlab project use webhooks
+
+    Navigate to the repo integration page on readthedocs:
+    https://readthedocs.org/dashboard/scriptconfig/integrations/
+
+    Add a new generic incoming webhook, and record the URL and token
+
+    Then navigate to the webhooks gitlab page:
+    https://gitlab.kitware.com/utils/scriptconfig/-/hooks
+
+    Create a new webhook with that URL and the token as the secret.
+    Select push events.
+
+    Add a webhook to the readthedocs page
+    https://readthedocs.org/dashboard/scriptconfig/webhooks/
+
 """
 # -*- coding: utf-8 -*-
 #
@@ -87,24 +106,30 @@ version = '.'.join(release.split('.')[0:2])
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'autoapi.extension',
+    # 'autoapi.extension',
+    # 'sphinx.ext.autodoc',
+    # 'sphinx.ext.viewcode',
+    # 'sphinx.ext.intersphinx',
+    # 'sphinx.ext.todo',
+    # 'sphinx.ext.napoleon',
+    # 'sphinx.ext.autosummary',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'sphinx.ext.napoleon',
     'sphinx.ext.autosummary',
 ]
 
-autoapi_modules = {
-    modname: {
-        'override': False,
-        'output': 'auto'
-    }
-}
+# autoapi_modules = {
+#     modname: {
+#         'override': False,
+#         'output': 'auto'
+#     }
+# }
 
 
-autoapi_dirs = [f'../../{modname}']
+# autoapi_dirs = [f'../../{modname}']
 # autoapi_keep_files = True
 
 # Add any paths that contain templates here, relative to this directory.
@@ -153,7 +178,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -228,12 +253,19 @@ texinfo_documents = [
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    # 'pytorch': ('http://pytorch.org/docs/master/', None),
+    'python': ('https://docs.python.org/3', None),
+    'click': ('https://click.palletsprojects.com/', None),
+    # 'xxhash': ('https://pypi.org/project/xxhash/', None),
+    # 'pygments': ('https://pygments.org/docs/', None),
+    # 'tqdm': ('https://tqdm.github.io/', None),
+}
 
 # -- Options for todo extension ----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = Truetodo_include_todos = True
+todo_include_todos = True
 napoleon_google_docstring = True
 napoleon_use_param = False
 napoleon_use_ivar = True

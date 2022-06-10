@@ -19,5 +19,6 @@ Module contents
 
 .. automodule:: scriptconfig
    :members:
+   :noindex:
    :undoc-members:
    :show-inheritance:
