@@ -226,12 +226,19 @@ class Config(ub.NiceRepr, DictLike):
 
             default (dict, default=None): overrides the class defaults
 
-            cmdline (bool | List[str] | str, default=False):
+            cmdline (bool | List[str] | str | dict)
                 If False, then no command line information is used.
                 If True, then sys.argv is parsed and used.
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
                     of sys.argv.
+                If a dictionary grants fine grained controls over the args
+                passed to :func:`Config._read_argv`. Can contain:
+                    * strict (bool): defaults to False
+                    * argv (List[str]): defaults to None
+                    * special_options (bool): defaults to True
+                    * autocomplete (bool): defaults to False
+                Defaults to False.
         """
         # The _data attribute holds
         self._data = None
@@ -392,12 +399,32 @@ class Config(ub.NiceRepr, DictLike):
             data (PathLike | dict):
                 Either a path to a yaml / json file or a config dict
 
+            cmdline (bool | List[str] | str | dict)
+                If False, then no command line information is used.
+                If True, then sys.argv is parsed and used.
+                If a list of strings that used instead of sys.argv.
+                If a string, then that is parsed using shlex and used instead
+                    of sys.argv.
+                If a dictionary grants fine grained controls over the args
+                passed to :func:`Config._read_argv`. Can contain:
+                    * strict (bool): defaults to False
+                    * argv (List[str]): defaults to None
+                    * special_options (bool): defaults to True
+                    * autocomplete (bool): defaults to False
+                Defaults to False.
+
+            mode (str | None):
+                Either json or yaml.
+
             cmdline (bool | List[str] | str):
                 If False, then no command line information is used.
                 If True, then sys.argv is parsed and used.
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
                 of sys.argv. Defaults to False.
+
+            default (dict | None):
+                updated defaults
 
         Example:
             >>> # Test load works correctly in cmdline True and False mode
@@ -415,6 +442,44 @@ class Config(ub.NiceRepr, DictLike):
             >>> # This is because cmdline=True overwrites data with defaults
             >>> self = MyConfig(data=data, cmdline=True)
             >>> assert self['src'] == 'hi'
+
+        Example:
+            >>> # Test load works correctly in strict mode
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     default = {
+            >>>         'src': scfg.Value(None, help=('some help msg')),
+            >>>     }
+            >>> data = {'src': 'hi'}
+            >>> cmdlinekw = {
+            >>>     'strict': True,
+            >>>     'argv': '--src=hello',
+            >>> }
+            >>> self = MyConfig(data=data, cmdline=cmdlinekw)
+            >>> cmdlinekw = {
+            >>>     'strict': True,
+            >>>     'special_options': False,
+            >>>     'argv': '--src=hello --extra=arg',
+            >>> }
+            >>> import pytest
+            >>> with pytest.raises(SystemExit):
+            >>>     self = MyConfig(data=data, cmdline=cmdlinekw)
+
+        Example:
+            >>> # Test load works correctly with required
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     default = {
+            >>>         'src': scfg.Value(None, help=('some help msg'), required=True),
+            >>>     }
+            >>> cmdlinekw = {
+            >>>     'strict': True,
+            >>>     'special_options': False,
+            >>>     'argv': '',
+            >>> }
+            >>> import pytest
+            >>> with pytest.raises(Exception):
+            ...   self = MyConfig(cmdline=cmdlinekw)
         """
         if default:
             self.update_defaults(default)
@@ -463,13 +528,30 @@ class Config(ub.NiceRepr, DictLike):
             # override any values in user_config with the defaults? The CLI
             # should override them IF they exist on in sys.argv, but not if
             # they don't?
-            argv = cmdline if ub.iterable(cmdline) else None
-            self._read_argv(argv=argv)
+            read_argv_kwargs = {
+                'special_options': True,
+                'strict': False,
+                'autocomplete': False,
+                'argv': None,
+            }
+            if isinstance(cmdline, dict):
+                read_argv_kwargs.update(cmdline)
+            elif ub.iterable(cmdline) or isinstance(cmdline, str):
+                read_argv_kwargs['argv'] = cmdline
+            self._read_argv(**read_argv_kwargs)
 
+        if 1:
+            # Check that all required variables are not the same as defaults
+            # Probably a way to make this check nicer
+            for k, v in self._default.items():
+                if scfg_isinstance(v, Value):
+                    if v.required:
+                        if self[k] == v.value:
+                            raise Exception('Required variable {!r} still has default value'.format(k))
         self.normalize()
         return self
 
-    def _read_argv(self, argv=None, special_options=True):
+    def _read_argv(self, argv=None, special_options=True, strict=False, autocomplete=False):
         """
         Example:
             >>> import scriptconfig as scfg
@@ -558,7 +640,20 @@ class Config(ub.NiceRepr, DictLike):
         # TODO: warn about any unused flags
         parser = self.argparse(special_options=special_options)
 
-        ns = parser.parse_known_args(argv)[0].__dict__
+        if autocomplete:
+            # TODO: make this work
+            # print(f'autocomplete={autocomplete}')
+            try:
+                import argcomplete
+            except ImportError:
+                raise
+            else:
+                argcomplete.autocomplete(parser)
+
+        if strict:
+            ns = parser.parse_args(argv).__dict__
+        else:
+            ns = parser.parse_known_args(argv)[0].__dict__
 
         if special_options:
             config_fpath = ns.pop('config', None)
@@ -777,7 +872,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> vals = {}
             >>> exec(text, vals)
             >>> cls = vals['PortedConfig']
-            >>> self = cls()
+            >>> self = cls(data={'true_dataset': 1, 'pred_dataset': 1})
             >>> recon = self.argparse()
             >>> print('recon._actions = {}'.format(ub.repr2(recon._actions, nl=1)))
         """
@@ -952,12 +1047,12 @@ class Config(ub.NiceRepr, DictLike):
             >>>         'important':  scfg.Value(False, required=True),
             >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
             >>>     }
-            >>> self = MyConfig()
+            >>> self = MyConfig(data={'important': 1})
             >>> special_options = True
             >>> parser = None
             >>> parser = self.argparse(special_options=special_options)
             >>> parser.print_help()
-            >>> self._read_argv(argv=['objection', '42', '--path1=overruled!'])
+            >>> self._read_argv(argv=['objection', '42', '--path1=overruled!', '--important=1'])
             >>> print('self = {!r}'.format(self))
 
         Ignore:
@@ -1194,3 +1289,15 @@ class DataInterchange:
         elif self.mode == 'json':
             text = json.dumps(ub.odict(self.items()), indent=4)
         return text
+
+__notes__ = """
+
+export _ARC_DEBUG=1
+pip install argcomplete
+activate-global-python-argcomplete --dest=$HOME/.bash_completion.d --user
+eval "$(register-python-argcomplete xdev)"
+complete -r xdev
+
+
+
+"""
