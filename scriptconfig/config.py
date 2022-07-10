@@ -204,6 +204,9 @@ class Config(ub.NiceRepr, DictLike):
         _default : this protected variable maintains the default values for
             this config.
 
+        epilog (str): A class attribute that if specified will add an epilog
+            section to the help text.
+
     Example:
         >>> # Inherit from `Config` and assign `default`
         >>> import scriptconfig as scfg
