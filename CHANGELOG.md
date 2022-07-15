@@ -10,6 +10,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Can now pass cmdline as a kwargs dict.
 * Added support for `required=True` 
 
+### Fixed
+* Issue with custom parsers and tracking "explicitly given"
+
+
 ## Version 0.6.1 - Released 2022-06-09
 
 ### Changed

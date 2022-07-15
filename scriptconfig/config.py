@@ -925,23 +925,44 @@ class Config(ub.NiceRepr, DictLike):
             value_args = [
                 repr(action.default),
             ]
-            value_kw = [
-                'help={!r}'.format(action.help) if action.help else None,
-                'type={}'.format(action.type.__name__) if action.type else None,
-                'alias={}'.format(alias) if alias else None,
-                'short_alias={}'.format(short_alias) if short_alias else None,
-                'required={}'.format(action.required) if action.required else None,
-            ]
-            value_args.extend([v for v in value_kw if v is not None])
+
+            value_kw = {
+                'type': '{}'.format(action.type.__name__) if action.type else None,
+                'alias': '{}'.format(alias) if alias else None,
+                'short_alias': '{}'.format(short_alias) if short_alias else None,
+                'required': '{}'.format(action.required) if action.required else None,
+                'help': '{!r}'.format(action.help) if action.help else None,
+            }
+            HACKS = 1
+            if HACKS:
+                if value_kw['type'] == 'smartcast':
+                    value_kw.pop('type')
+                if action.help and len(action.help) > 40:
+                    import textwrap
+                    wrapped = ub.indent('\n'.join(textwrap.wrap(action.help, width=60)), ' ' * 4)
+                    block = ub.codeblock(
+                        """
+                        ub.paragraph(
+                            '''
+                        {}
+                            ''')
+                        """
+                    ).format(wrapped)
+                    value_kw['help'] = ub.indent(block, ' ' * 8).lstrip()
+                    # "ub.paragraph(\n'''\n{}\n''')".format(ub.indent(action.help, ' ' * 16))
+            value_args.extend(['{}={}'.format(k, v) for k, v in value_kw.items() if v is not None])
 
             if 0:
                 val_body = ', '.join(value_args)
             else:
-                arg_indent = '{}    '.format(indent)
-                arg_prefix = '\n{}'.format(arg_indent)
-                arg_sep = ',{}'.format(arg_prefix)
-                arg_tail = '\n{}'.format(indent)
-                val_body = arg_prefix + arg_sep.join(value_args) + arg_tail
+                if 0:
+                    arg_indent = '{}    '.format(indent)
+                    arg_prefix = '\n{}'.format(arg_indent)
+                    arg_sep = ',{}'.format(arg_prefix)
+                    arg_tail = '\n{}'.format(indent)
+                    val_body = arg_prefix + arg_sep.join(value_args) + arg_tail
+                else:
+                    val_body = ', '.join(value_args)
 
             recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
         recon_str.append('    }')
@@ -1118,6 +1139,10 @@ class Config(ub.NiceRepr, DictLike):
                         values = list(it.chain(*values))
 
                 setattr(namespace, action.dest, values)
+                if not hasattr(parser, '_explicitly_given'):
+                    # We might be given a subparser / parent parser
+                    # and not the original one we created.
+                    parser._explicitly_given = set()
                 parser._explicitly_given.add(action.dest)
 
         # IRC: this ensures each key has a real Value class
