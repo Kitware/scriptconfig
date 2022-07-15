@@ -4,13 +4,20 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.6.2 - Unreleased
-
-
 ## Version 0.6.2 - Released 2022-07-14
+### Added
+* New method: `to_omegaconf`
+* Experimental `dataconf` and `DataConfig`
+
+### Changed
+* Can now pass cmdline as a kwargs dict.
+* Added support for `required=True` 
+
+### Fixed
+* Issue with custom parsers and tracking "explicitly given"
 
 
-## Version 0.6.1 - Released 2022-07-14
+## Version 0.6.1 - Released 2022-06-09
 
 ### Changed
 * Added type information
