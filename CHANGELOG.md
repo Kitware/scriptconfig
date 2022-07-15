@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.2 - Unreleased
 
+### Added
+* New method: `to_omegaconf`
+* Experimental `dataconf` and `DataConfig`
+
 ### Changed
 * Can now pass cmdline as a kwargs dict.
 * Added support for `required=True` 

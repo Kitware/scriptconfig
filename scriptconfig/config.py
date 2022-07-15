@@ -79,6 +79,7 @@ Ignore:
 TODO:
     - [ ] Handle Nested Configs?
     - [ ] Integrate with Hyrda
+    - [ ] Dataclass support
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
@@ -246,9 +247,10 @@ class Config(ub.NiceRepr, DictLike):
         # The _data attribute holds
         self._data = None
         self._default = ub.odict()
-        if hasattr(self, 'default'):
+        cls_default = getattr(self, 'default', None)
+        if cls_default:
             # allow for class attributes to specify the default
-            self._default.update(self.default)
+            self._default.update(cls_default)
         self.load(data, cmdline=cmdline, default=default)
 
     @classmethod
@@ -985,6 +987,23 @@ class Config(ub.NiceRepr, DictLike):
         from argparse import Namespace
         return Namespace(**dict(self))
 
+    def to_omegaconf(self):
+        """
+        Creates an omegaconfig version of this.
+
+        Returns:
+            omegaconf.OmegaConf:
+
+        Example:
+            >>> # xdoctest: +REQUIRES(module:omegaconf)
+            >>> import scriptconfig
+            >>> self = scriptconfig.Config.demo()
+            >>> oconf = self.to_omegaconf()
+        """
+        from omegaconf import OmegaConf
+        oconf = OmegaConf.create(self.to_dict())
+        return oconf
+
     def argparse(self, parser=None, special_options=False):
         """
         construct or update an argparse.ArgumentParser CLI parser
@@ -1317,6 +1336,7 @@ class DataInterchange:
         elif self.mode == 'json':
             text = json.dumps(ub.odict(self.items()), indent=4)
         return text
+
 
 __notes__ = """
 

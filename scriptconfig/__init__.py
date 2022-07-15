@@ -144,10 +144,17 @@ Ignore:
 
 __version__ = '0.6.2'
 
-__submodules__ = ['config', 'value', 'cli']
+__submodules__ = {
+    'config': None,
+    'value': None,
+    'cli': None,
+    'dataconfig': None,
+}
 
 from .config import (Config, define,)
 from .value import (Path, PathList, Value,)
 from .cli import (quick_cli,)
+from .dataconfig import (DataConfig, dataconf,)
 
-__all__ = ['Config', 'Path', 'PathList', 'Value', 'define', 'quick_cli']
+__all__ = ['Config', 'DataConfig', 'Path', 'PathList', 'Value', 'dataconf',
+           'define', 'quick_cli']
