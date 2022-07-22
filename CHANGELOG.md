@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * Issue with custom parsers and tracking "explicitly given"
+* Added workaround for issue with pickle-ability 
 
 
 ## Version 0.6.1 - Released 2022-06-09
