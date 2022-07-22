@@ -45,6 +45,29 @@ def dataconf(cls):
         >>>     time_sampling = scfg.Value('soft2')
         >>> self = PathologicalConfig(1, 2, 3)
         >>> print(f'self={self}')
+
+    # FIXME: xdoctest problem. Need to be able to simulate a module global scope
+    # Example:
+    #     >>> # Using inheritance and the decorator lets you pickle the object
+    #     >>> from scriptconfig.dataconfig import *  # NOQA
+    #     >>> import scriptconfig as scfg
+    #     >>> @dataconf
+    #     >>> class PathologicalConfig2(scfg.DataConfig):
+    #     >>>     default0 = scfg.Value((256, 256), help='chip size')
+    #     >>>     default2 = scfg.Value((256, 256), help='chip size')
+    #     >>>     #keys = [1, 2, 3] : Too much
+    #     >>>     __default__3 = {
+    #     >>>         'argparse': 3.3,
+    #     >>>         'keys2': [4, 5],
+    #     >>>     }
+    #     >>>     default2 = None
+    #     >>>     time_sampling = scfg.Value('soft2')
+    #     >>> config = PathologicalConfig2()
+    #     >>> import pickle
+    #     >>> serial = pickle.dumps(config)
+    #     >>> recon = pickle.loads(serial)
+    #     >>> assert 'locals' not in str(PathologicalConfig2)
+
     """
     # if not dataclasses.is_dataclass(cls):
     #     dcls = dataclasses.dataclass(cls)
@@ -56,19 +79,30 @@ def dataconf(cls):
     #     field.type
     #     field.name
     #     field.default
-    default = {}
+    attr_default = {}
     for k, v in vars(cls).items():
         if not k.startswith('_'):
-            default[k] = v
-    default.update(getattr(cls, '__default__', {}))
+            attr_default[k] = v
+    default = attr_default.copy()
+    cls_default = getattr(cls, '__default__', None)
+    if cls_default is None:
+        cls_default = {}
+    default.update()
 
-    # dynamic subclass
-    class SubConfig(DataConfig):
-        __doc__ = getattr(cls, '__doc__', {})
-        __name__ = getattr(cls, '__name__', {})
-        __default__ = default
-        __description__ = getattr(cls, '__description__', {})
-        __epilog__ = getattr(cls, '__epilog__', {})
+    if issubclass(cls, DataConfig):
+        # Helps make the class pickleable. Pretty hacky though.
+        SubConfig = cls
+        SubConfig.__default__ = default
+        for k in attr_default:
+            delattr(SubConfig, k)
+    else:
+        # dynamic subclass
+        class SubConfig(DataConfig):
+            __doc__ = getattr(cls, '__doc__', {})
+            __name__ = getattr(cls, '__name__', {})
+            __default__ = default
+            __description__ = getattr(cls, '__description__', {})
+            __epilog__ = getattr(cls, '__epilog__', {})
     return SubConfig
 
 
@@ -98,8 +132,14 @@ class DataConfig(Config):
         # Note: attributes that mirror the public API will be supressed
         # It is gennerally better to use the dictionary interface instead
         # But we want this to be data-classy, so...
+        if key.startswith('_'):
+            # config vars cant start with '_'. Thats only for us
+            raise AttributeError(key)
         if key in self:
-            return self[key]
+            try:
+                return self[key]
+            except KeyError:
+                raise AttributeError(key)
         raise AttributeError(key)
 
     @classmethod

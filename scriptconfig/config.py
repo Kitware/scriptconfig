@@ -839,7 +839,7 @@ class Config(ub.NiceRepr, DictLike):
 
     # TODO:
     @classmethod
-    def port_argparse(cls, parser, name='MyConfig'):
+    def port_argparse(cls, parser, name='MyConfig', style='orig'):
         """
         Create an instance from an existing argparse.
 
@@ -884,15 +884,29 @@ class Config(ub.NiceRepr, DictLike):
         # raise NotImplementedError
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
-        recon_str = [
-            'import scriptconfig as scfg',
-            '',
-            'class ' + name + '(scfg.Config):',
-            '    """',
-            ub.indent(parser.description or ''),
-            '    """',
-            '    default = {',
-        ]
+        if style == 'orig':
+            recon_str = [
+                'import scriptconfig as scfg',
+                '',
+                'class ' + name + '(scfg.Config):',
+                '    """',
+                ub.indent(parser.description or ''),
+                '    """',
+                '    default = {',
+            ]
+        elif style == 'dataconf':
+            recon_str = [
+                'import scriptconfig as scfg',
+                '',
+                '@scfg.dataconf',
+                'class ' + name + ':',
+                '    """',
+                ub.indent(parser.description or ''),
+                '    """',
+            ]
+        else:
+            raise KeyError(style)
+
         def normalize_option_str(s):
             return s.lstrip('-').replace('-', '_')
 
@@ -923,7 +937,10 @@ class Config(ub.NiceRepr, DictLike):
                                   for s in short_option_strings)
             short_alias = list(short_alias - {key})
 
-            indent = ' ' * 8
+            if style == 'dataconf':
+                indent = ' ' * 4
+            else:
+                indent = ' ' * 8
             value_args = [
                 repr(action.default),
             ]
@@ -933,6 +950,7 @@ class Config(ub.NiceRepr, DictLike):
                 'alias': '{}'.format(alias) if alias else None,
                 'short_alias': '{}'.format(short_alias) if short_alias else None,
                 'required': '{}'.format(action.required) if action.required else None,
+                'choices': '{}'.format(action.choices) if action.choices else None,
                 'help': '{!r}'.format(action.help) if action.help else None,
             }
             HACKS = 1
@@ -966,8 +984,19 @@ class Config(ub.NiceRepr, DictLike):
                 else:
                     val_body = ', '.join(value_args)
 
-            recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
-        recon_str.append('    }')
+            if style == 'orig':
+                recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
+            elif style ==  'dataconf':
+                recon_str.append("{}{} = scfg.Value({})".format(indent, key, val_body))
+            else:
+                raise KeyError(style)
+
+        if style == 'orig':
+            recon_str.append('    }')
+        elif style ==  'dataconf':
+            ...
+        else:
+            raise KeyError(style)
         text = '\n'.join(recon_str)
         if 0:
             try:
