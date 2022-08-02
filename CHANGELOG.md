@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.4 - Unreleased
 
+### Changed
+* Added a metaclass to DataConfig, which means calling the decorator is no longer necessary.
+
 
 ## Version 0.6.3 - Released 2022-07-22 
 
