@@ -43,6 +43,8 @@ def dataconf(cls):
         >>>     }
         >>>     default = None
         >>>     time_sampling = scfg.Value('soft2')
+        >>>     def foobar(self):
+        >>>         ...
         >>> self = PathologicalConfig(1, 2, 3)
         >>> print(f'self={self}')
 
@@ -79,34 +81,81 @@ def dataconf(cls):
     #     field.type
     #     field.name
     #     field.default
+
+    if getattr(cls, '__did_dataconfig_init__', False):
+        # The metaclass took care of this.
+        # TODO: let the metaclass take care of most everything.
+        return cls
+
     attr_default = {}
     for k, v in vars(cls).items():
-        if not k.startswith('_'):
+        if not k.startswith('_') and not callable(v):
             attr_default[k] = v
     default = attr_default.copy()
     cls_default = getattr(cls, '__default__', None)
     if cls_default is None:
         cls_default = {}
-    default.update()
+    default.update(cls_default)
 
     if issubclass(cls, DataConfig):
         # Helps make the class pickleable. Pretty hacky though.
+        # TODO: Remove. This should no longer be necessary. Given the metaclass.
         SubConfig = cls
         SubConfig.__default__ = default
         for k in attr_default:
             delattr(SubConfig, k)
     else:
-        # dynamic subclass
+        # dynamic subclass, this has issues with pickle It would be nice if we
+        # could improve this. There must be a way that dataclasses does it that
+        # we could follow.
         class SubConfig(DataConfig):
             __doc__ = getattr(cls, '__doc__', {})
             __name__ = getattr(cls, '__name__', {})
             __default__ = default
             __description__ = getattr(cls, '__description__', {})
             __epilog__ = getattr(cls, '__epilog__', {})
+            __qualname__ = cls.__qualname__
+            __module__ = cls.__module__
     return SubConfig
 
 
-class DataConfig(Config):
+class MetaDataConfig(type):
+    """
+    This metaclass allows us to call `dataconf` when a new subclass is defined
+    without the extra boilerplate.
+    """
+    @staticmethod
+    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        # Defining a new class that inherits from DataConfig
+        # print(f'Meta.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
+
+        # Only do this for children of DataConfig, skip this for DataConfig
+        # itself. This is a hacky way to do that.
+        if namespace['__module__'] != 'scriptconfig.dataconfig' or name != 'DataConfig':
+            # Cant call datconf directly, but we can simulate
+            # We can modify the namespace before the class gets constructed
+            # too, which is slightly cleaner.
+            attr_default = {}
+            for k, v in namespace.items():
+                if not k.startswith('_') and not callable(v):
+                    attr_default[k] = v
+            default = attr_default.copy()
+            cls_default = namespace.get('__default__', None)
+            if cls_default is None:
+                cls_default = {}
+            default.update(cls_default)
+            # Helps make the class pickleable. Pretty hacky though.
+            for k in attr_default:
+                namespace.pop(k)
+            namespace['__default__'] = default
+            namespace['__did_dataconfig_init__'] = True
+        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
+        # print(f'Meta.__new__ returns: {cls=}')
+        return cls
+
+
+# class DataConfig(Config, metaclass=MetaDataConfig):
+class DataConfig(Config, metaclass=MetaDataConfig):
     __default__ = None
     __description__ = None
     __epilog__ = None
