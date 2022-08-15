@@ -496,8 +496,8 @@ class Config(ub.NiceRepr, DictLike):
             >>>     }
             >>> config1 = MyConfig(data={'opt2': 'foo'})
             >>> assert config1['opt2'] == 'foo'
-            >>> config2 = MyConfig(data={'arg2': 'foo'})
-            >>> assert config2['opt2'] == 'foo'
+            >>> config2 = MyConfig(data={'arg2': 'bar'})
+            >>> assert config2['opt2'] == 'bar'
             >>> assert 'arg2' not in config2
         """
         if default:
@@ -529,23 +529,24 @@ class Config(ub.NiceRepr, DictLike):
                 'Expected path or dict, but got {}'.format(type(data)))
 
         # check for unknown values
-        unknown_keys = set(user_config) - set(_default)
-        if unknown_keys:
+        indirect_keys = set(user_config) - set(_default)
+        if indirect_keys:
+            # Check if unknown keys are aliases
             _alias_map = {}
             for k, v in self._default.items():
                 alias = getattr(v, 'alias')
                 if alias:
                     for a in alias:
                         _alias_map[a] = k
-            unknown_keys_ = []
-            for a in unknown_keys:
+            unknown_keys = []
+            for a in indirect_keys:
                 if a in _alias_map:
                     k = _alias_map[a]
                     user_config[k] = user_config.pop(a)
                 else:
-                    unknown_keys_.append(a)
-            # Check if unknown keys are aliases
-            raise KeyError('Unknown data options {}'.format(unknown_keys_))
+                    unknown_keys.append(a)
+            if unknown_keys:
+                raise KeyError('Unknown data options {}'.format(unknown_keys))
 
         self._data = _default.copy()
         self.update(user_config)
