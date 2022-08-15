@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.5 - Unreleased
 
+### Changed
+* Config.load can now handle aliased input.
+
 
 ## Version 0.6.4 - Released 2022-08-02
 

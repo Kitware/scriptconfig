@@ -485,6 +485,20 @@ class Config(ub.NiceRepr, DictLike):
             >>> import pytest
             >>> with pytest.raises(Exception):
             ...   self = MyConfig(cmdline=cmdlinekw)
+
+        Example:
+            >>> # Test load works correctly with alias
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     default = {
+            >>>         'opt1': scfg.Value(None),
+            >>>         'opt2': scfg.Value(None, alias=['arg2']),
+            >>>     }
+            >>> config1 = MyConfig(data={'opt2': 'foo'})
+            >>> assert config1['opt2'] == 'foo'
+            >>> config2 = MyConfig(data={'arg2': 'foo'})
+            >>> assert config2['opt2'] == 'foo'
+            >>> assert 'arg2' not in config2
         """
         if default:
             self.update_defaults(default)
@@ -517,7 +531,21 @@ class Config(ub.NiceRepr, DictLike):
         # check for unknown values
         unknown_keys = set(user_config) - set(_default)
         if unknown_keys:
-            raise KeyError('Unknown data options {}'.format(unknown_keys))
+            _alias_map = {}
+            for k, v in self._default.items():
+                alias = getattr(v, 'alias')
+                if alias:
+                    for a in alias:
+                        _alias_map[a] = k
+            unknown_keys_ = []
+            for a in unknown_keys:
+                if a in _alias_map:
+                    k = _alias_map[a]
+                    user_config[k] = user_config.pop(a)
+                else:
+                    unknown_keys_.append(a)
+            # Check if unknown keys are aliases
+            raise KeyError('Unknown data options {}'.format(unknown_keys_))
 
         self._data = _default.copy()
         self.update(user_config)
@@ -846,6 +874,8 @@ class Config(ub.NiceRepr, DictLike):
         Args:
             parser (argparse.ArgumentParser):
                 existing argparse parser we want to port
+            name (str): the name of the config class
+            style (str): either orig or dataconf
 
         Returns:
             str :
@@ -871,7 +901,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> parser.add_argument('--score_space', default='video', help='can score in image or video space')
             >>> parser.add_argument('--workers', default='auto', help='number of parallel scoring workers')
             >>> parser.add_argument('--draw_workers', default='auto', help='number of parallel drawing workers')
-            >>> text = scfg.Config.port_argparse(parser, name='PortedConfig')
+            >>> text = scfg.Config.port_argparse(parser, name='PortedConfig', style='dataconf')
             >>> print(text)
             >>> # Make an instance of the ported class
             >>> vals = {}
@@ -898,8 +928,7 @@ class Config(ub.NiceRepr, DictLike):
             recon_str = [
                 'import scriptconfig as scfg',
                 '',
-                '@scfg.dataconf',
-                'class ' + name + ':',
+                'class ' + name + '(scfg.DataConfig):',
                 '    """',
                 ub.indent(parser.description or ''),
                 '    """',
