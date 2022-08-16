@@ -172,7 +172,9 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         new_defaults.update(kwargs)
         unknown_args = ub.dict_diff(new_defaults, self._default)
         if unknown_args:
-            raise ValueError("Unknown Arguments: {}".format(unknown_args))
+            raise ValueError((
+                "Unknown Arguments: {}. Expected arguments are: {}"
+            ).format(unknown_args, list(self._default)))
         self._default.update(new_defaults)
         self._data = self._default.copy()
         self.normalize()

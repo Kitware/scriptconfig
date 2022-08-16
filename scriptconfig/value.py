@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import glob
 import six
 import ubelt as ub
+import copy
 from . import smartcast
 
 
@@ -75,11 +76,15 @@ class Value(ub.NiceRepr):
 
     def update(self, value):
         self.value = self.cast(value)
+        return self
 
     def cast(self, value):
         if isinstance(value, six.string_types):
             value = smartcast.smartcast(value, self.type)
         return value
+
+    def copy(self):
+        return copy.copy(self)
 
 
 class Path(Value):

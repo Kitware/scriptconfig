@@ -446,7 +446,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> # In 0.5.8 and previous src fails to populate!
             >>> # This is because cmdline=True overwrites data with defaults
             >>> self = MyConfig(data=data, cmdline=True)
-            >>> assert self['src'] == 'hi'
+            >>> assert self['src'] == 'hi', f'Got: {self}'
 
         Example:
             >>> # Test load works correctly in strict mode
@@ -908,7 +908,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> vals = {}
             >>> exec(text, vals)
             >>> cls = vals['PortedConfig']
-            >>> self = cls(data={'true_dataset': 1, 'pred_dataset': 1})
+            >>> self = cls(**{'true_dataset': 1, 'pred_dataset': 1})
             >>> recon = self.argparse()
             >>> print('recon._actions = {}'.format(ub.repr2(recon._actions, nl=1)))
         """
@@ -1224,11 +1224,18 @@ class Config(ub.NiceRepr, DictLike):
                 parser._explicitly_given.add(action.dest)
 
         # IRC: this ensures each key has a real Value class
+        # This is messy and needs to be rethought
         _metadata = {
             key: self._data[key]
             for key, value in self._default.items()
             if isinstance(self._data[key], Value)
         }  # :type: Dict[str, Value]
+        for k, v in self._default.items():
+            # If the _data did not have value information but the _default
+            # does, use that. This is very ugly.
+            if k not in _metadata:
+                if isinstance(v, Value):
+                    _metadata[k] = v.copy().update(self._data[k])
         _positions = {k: v.position for k, v in _metadata.items()
                       if v.position is not None}
         if _positions:

@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 * Config.load can now handle aliased input.
 
+### Fixed
+* Fixed bug where argparse attributes were sometimes dropped.
+
 
 ## Version 0.6.4 - Released 2022-08-02
 
