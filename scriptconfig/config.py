@@ -1176,7 +1176,12 @@ class Config(ub.NiceRepr, DictLike):
 
         parent = self
 
-        class ParseAction(argparse.Action):
+        # Inherit from StoreAction to make configargparse happy.
+        # Hopefully python doesn't change the behavior of this private
+        # function.
+        # base = argparse.Action
+        # base = argparse._StoreAction
+        class ParseAction(argparse._StoreAction):
             def __init__(self, *args, **kwargs):
                 # required = kwargs.pop('required', False)
                 super(ParseAction, self).__init__(*args, **kwargs)
