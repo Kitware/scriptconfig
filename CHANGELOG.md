@@ -4,6 +4,15 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
+## Version 0.6.5 - Unreleased
+
+### Changed
+* Config.load can now handle aliased input.
+
+### Fixed
+* Fixed bug where argparse attributes were sometimes dropped.
+
+
 ## Version 0.6.4 - Released 2022-08-02
 
 ### Changed
