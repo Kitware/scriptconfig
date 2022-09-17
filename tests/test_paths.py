@@ -43,7 +43,7 @@ def test_globstr_with_nargs():
     from os.path import join
     import ubelt as ub
     import scriptconfig as scfg
-    dpath = ub.ensure_app_cache_dir('scriptconfig/tests/files')
+    dpath = ub.Path.appdir('scriptconfig', 'tests', 'files').ensuredir()
     ub.touch(join(dpath, 'file1.txt'))
     ub.touch(join(dpath, 'file2.txt'))
     ub.touch(join(dpath, 'file3.txt'))
@@ -63,4 +63,4 @@ def test_globstr_with_nargs():
     config = TestConfig(cmdline=cmdline)
 
     cmdline = '--paths=' + ','.join(list(glob.glob(join(dpath, '*'))))
-    config = TestConfig(cmdline=cmdline)
+    config = TestConfig(cmdline=cmdline)  # NOQA

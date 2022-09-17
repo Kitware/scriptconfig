@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
-import six
+"""
+Defines :class:`DictLike` which is a mixin class that makes it easier for
+objects to duck-type dictionaries.
+"""
 
 
-class DictLike(object):
+class DictLike:
     """
     An inherited class must specify the ``getitem``, ``setitem``, and
       ``keys`` methods.
@@ -65,16 +66,10 @@ class DictLike(object):
         return self.setitem(key, value)
 
     def items(self):
-        if six.PY2:
-            return list(self.iteritems())
-        else:
-            return self.iteritems()
+        return self.iteritems()
 
     def values(self):
-        if six.PY2:
-            return list(self.itervalues())
-        else:
-            return self.itervalues()
+        return self.itervalues()
 
     def copy(self):
         return dict(self.items())
