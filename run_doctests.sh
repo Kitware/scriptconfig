@@ -1,2 +1,2 @@
 #!/bin/bash
-xdoctest scriptconfig --style=google all
+xdoctest scriptconfig --style=google all "$@"
