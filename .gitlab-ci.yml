@@ -50,7 +50,7 @@ stages:
     python --version  # Print out python version for debugging
   script:
   - ls wheelhouse || echo "wheelhouse does not exist"
-  - pip install tomli
+  - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
   - MOD_DPATH=$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")
   - pip install "$MOD_NAME"[tests] -f wheelhouse
@@ -73,7 +73,7 @@ stages:
     python --version  # Print out python version for debugging
   script:
   - ls wheelhouse || echo "wheelhouse does not exist"
-  - pip install tomli
+  - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
   - MOD_DPATH=$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")
   - pip install "$MOD_NAME"[tests,optional] -f wheelhouse
@@ -96,7 +96,7 @@ stages:
     python --version  # Print out python version for debugging
   script:
   - ls wheelhouse || echo "wheelhouse does not exist"
-  - pip install tomli
+  - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
   - MOD_DPATH=$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")
   - pip install "$MOD_NAME"[tests-strict,runtime-strict] -f wheelhouse
@@ -119,7 +119,7 @@ stages:
     python --version  # Print out python version for debugging
   script:
   - ls wheelhouse || echo "wheelhouse does not exist"
-  - pip install tomli
+  - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
   - MOD_DPATH=$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")
   - pip install "$MOD_NAME"[tests-strict,runtime-strict,optional-strict] -f wheelhouse
