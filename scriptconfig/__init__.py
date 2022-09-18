@@ -142,7 +142,7 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.7.0'
+__version__ = '0.7.1'
 
 __submodules__ = {
     'config': None,
