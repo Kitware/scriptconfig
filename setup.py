@@ -219,8 +219,8 @@ if __name__ == "__main__":
 
     setupkw["name"] = NAME
     setupkw["version"] = VERSION
-    setupkw["author"] = ["Kitware Inc.", "Jon Crall"]
-    setupkw["author_email"] = ["kitware@kitware.com", "jon.crall@kitware.com"]
+    setupkw["author"] = "Kitware Inc., Jon Crall"
+    setupkw["author_email"] = "kitware@kitware.com, jon.crall@kitware.com"
     setupkw["url"] = None
     setupkw["description"] = "Easy dict-based script configuration with CLI support"
     setupkw["long_description"] = parse_description()
