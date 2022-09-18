@@ -284,6 +284,9 @@ deploy/wheels:
   <<: *common_template
   image: python:3.8
   stage: deploy
+  only:
+    refs:
+    - release
   script:
   - pip install pyopenssl ndg-httpsclient pyasn1 requests[security] twine -U
   - ls wheelhouse
