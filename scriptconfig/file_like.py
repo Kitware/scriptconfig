@@ -1,5 +1,4 @@
 from os.path import exists
-import six
 
 
 class FileLike(object):
@@ -7,7 +6,7 @@ class FileLike(object):
     Allows input to be a path or a file object
     """
     def __init__(self, path_or_file, mode='r'):
-        if isinstance(path_or_file, six.string_types):
+        if isinstance(path_or_file, str):
             _input_type = 'path'
             if not exists(path_or_file):
                 raise ValueError('Path {} does not exist'.format(path_or_file))

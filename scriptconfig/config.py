@@ -84,7 +84,6 @@ TODO:
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import yaml
-import six
 import copy
 import io
 import json
@@ -251,6 +250,7 @@ class Config(ub.NiceRepr, DictLike):
         if cls_default:
             # allow for class attributes to specify the default
             self._default.update(cls_default)
+        self._alias_map = None
         self.load(data, cmdline=cmdline, default=default)
 
     @classmethod
@@ -295,6 +295,13 @@ class Config(ub.NiceRepr, DictLike):
 
         Returns:
             dict
+
+        Example:
+            >>> self = Config.demo()
+            >>> self.__json__()
+            >>> self['option1'] = {1, 2, 3}
+            >>> self['option2'] = {(1, 2): 'fds'}
+            >>> self.__json__()
         """
         try:
             import numpy
@@ -305,30 +312,55 @@ class Config(ub.NiceRepr, DictLike):
         BUILTIN_SCALAR_TYPES = (str, int, float, complex)
         BUILTIN_VECTOR_TYPES = (set, frozenset, list, tuple)
 
-        def _rectify(item):
-            if item is None:
-                return item
-            elif isinstance(item, BUILTIN_SCALAR_TYPES):
-                return item
-            elif isinstance(item, BUILTIN_VECTOR_TYPES):
-                return [_rectify(v) for v in item]
-            elif numpy is not None and isinstance(item, numpy.ndarray):
-                return item.tolist()
-            elif isinstance(item, ub.odict):
-                return ub.odict([
-                    (_rectify(k), _rectify(v)) for k, v in item.items()
-                ])
-            elif isinstance(item, dict):
-                return ub.odict(sorted([
-                    (_rectify(k), _rectify(v)) for k, v in item.items()
-                ]))
-            else:
-                if hasattr(item, '__json__'):
-                    return item.__json__()
+        NEW = 1
+        if NEW:
+            # The walker method should be more efficient.
+            walker = ub.IndexableWalker(data, list_cls=BUILTIN_VECTOR_TYPES)
+            for path, item in walker:
+                if item is None or isinstance(item, BUILTIN_SCALAR_TYPES):
+                    ...
+                elif isinstance(item, list):
+                    ...
+                elif isinstance(item, (set, tuple)):
+                    walker[path] = list(item)
+                elif numpy is not None and isinstance(item, numpy.ndarray):
+                    walker[path] = item.tolist()
+                elif isinstance(item, ub.odict):
+                    ...
+                elif isinstance(item, dict):
+                    walker[path] = ub.odict(sorted(item.items()))
                 else:
-                    raise TypeError(
-                        'Unknown JSON serialization for type {!r}'.format(type(item)))
-        return _rectify(data)
+                    if hasattr(item, '__json__'):
+                        return item.__json__()
+                    else:
+                        raise TypeError(
+                            'Unknown JSON serialization for type {!r}'.format(type(item)))
+            return data
+        else:
+            def _rectify(item):
+                if item is None:
+                    return item
+                elif isinstance(item, BUILTIN_SCALAR_TYPES):
+                    return item
+                elif isinstance(item, BUILTIN_VECTOR_TYPES):
+                    return [_rectify(v) for v in item]
+                elif numpy is not None and isinstance(item, numpy.ndarray):
+                    return item.tolist()
+                elif isinstance(item, ub.odict):
+                    return ub.odict([
+                        (_rectify(k), _rectify(v)) for k, v in item.items()
+                    ])
+                elif isinstance(item, dict):
+                    return ub.odict(sorted([
+                        (_rectify(k), _rectify(v)) for k, v in item.items()
+                    ]))
+                else:
+                    if hasattr(item, '__json__'):
+                        return item.__json__()
+                    else:
+                        raise TypeError(
+                            'Unknown JSON serialization for type {!r}'.format(type(item)))
+            return _rectify(data)
 
     def __nice__(self):
         return str(self.asdict())
@@ -343,7 +375,13 @@ class Config(ub.NiceRepr, DictLike):
         Returns:
             VT : the associated value
         """
-        value = self._data[key]
+        try:
+            value = self._data[key]
+        except KeyError:
+            # Attempt alias
+            key = self._resolve_alias(key)
+            value = self._data[key]
+
         if scfg_isinstance(value, Value):
             value = value.value
         return value
@@ -357,7 +395,9 @@ class Config(ub.NiceRepr, DictLike):
             value (VT): the new value
         """
         if key not in self._data:
-            raise Exception('Cannot add keys to ScriptConfig objects')
+            key = self._resolve_alias(key)
+            if key not in self._data:
+                raise Exception('Cannot add keys to ScriptConfig objects')
         if scfg_isinstance(value, Value):
             # If the new item is a Value object simply overwrite the old one
             self._data[key] = value
@@ -392,6 +432,7 @@ class Config(ub.NiceRepr, DictLike):
             default (dict): new defaults
         """
         self._default.update(default)
+        self._alias_map = None
 
     def load(self, data=None, cmdline=False, mode=None, default=None):
         """
@@ -507,7 +548,7 @@ class Config(ub.NiceRepr, DictLike):
         _default = copy.deepcopy(self._default)
 
         if mode is None:
-            if isinstance(data, six.string_types):
+            if isinstance(data, str):
                 if data.lower().endswith('.json'):
                     mode = 'json'
         if mode is None:
@@ -516,7 +557,7 @@ class Config(ub.NiceRepr, DictLike):
 
         if data is None:
             user_config = {}
-        elif isinstance(data, six.string_types) or hasattr(data, 'readable'):
+        elif isinstance(data, str) or hasattr(data, 'readable'):
             with FileLike(data, 'r') as file:
                 user_config = yaml.load(file, Loader=yaml.SafeLoader)
             user_config.pop('__heredoc__', None)  # ignore special heredoc key
@@ -532,13 +573,8 @@ class Config(ub.NiceRepr, DictLike):
         indirect_keys = set(user_config) - set(_default)
         if indirect_keys:
             # Check if unknown keys are aliases
-            _alias_map = {}
-            for k, v in self._default.items():
-                alias = getattr(v, 'alias')
-                if alias:
-                    for a in alias:
-                        _alias_map[a] = k
             unknown_keys = []
+            _alias_map = self._build_alias_map()
             for a in indirect_keys:
                 if a in _alias_map:
                     k = _alias_map[a]
@@ -551,7 +587,7 @@ class Config(ub.NiceRepr, DictLike):
         self._data = _default.copy()
         self.update(user_config)
 
-        if isinstance(cmdline, six.string_types):
+        if isinstance(cmdline, str):
             # allow specification using the actual command line arg string
             import shlex
             import os
@@ -585,6 +621,20 @@ class Config(ub.NiceRepr, DictLike):
         self.normalize()
         return self
 
+    def _resolve_alias(self, key):
+        if self._alias_map is None:
+            self._alias_map = self._build_alias_map()
+        return self._alias_map[key]
+
+    def _build_alias_map(self):
+        _alias_map = {}
+        for k, v in self._default.items():
+            alias = getattr(v, 'alias')
+            if alias:
+                for a in alias:
+                    _alias_map[a] = k
+        return _alias_map
+
     def _read_argv(self, argv=None, special_options=True, strict=False, autocomplete=False):
         """
         Example:
@@ -594,7 +644,7 @@ class Config(ub.NiceRepr, DictLike):
             >>>     default = {
             >>>         'src':  scfg.Value(['foo'], position=1, nargs='+'),
             >>>         'dry':  scfg.Value(False),
-            >>>         'approx':  scfg.Value(False, isflag=False, alias=['a1', 'a2']),
+            >>>         'approx':  scfg.Value(False, isflag=True, alias=['a1', 'a2']),
             >>>     }
             >>> self = MyConfig()
             >>> # xdoctest: +REQUIRES(PY3)
@@ -609,8 +659,12 @@ class Config(ub.NiceRepr, DictLike):
             >>> self = MyConfig()
             >>> self._read_argv(argv='--src [,]')
             >>> print('self = {}'.format(self))
+            >>> self = MyConfig()
+            >>> self._read_argv(argv='--src [,] --a1')
+            >>> print('self = {}'.format(self))
             self = <MyConfig({'src': ['foo'], 'dry': False, 'approx': False})>
             self = <MyConfig({'src': [], 'dry': False, 'approx': False})>
+            self = <MyConfig({'src': [], 'dry': False, 'approx': True})>
 
 
             >>> self = MyConfig()
@@ -667,7 +721,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> print('self = {}'.format(self))
         """
         # print('---')
-        if isinstance(argv, six.string_types):
+        if isinstance(argv, str):
             import shlex
             argv = shlex.split(argv)
 
@@ -788,8 +842,7 @@ class Config(ub.NiceRepr, DictLike):
             stream (FileLike | None): the stream to write to
             mode (str | None): can be 'yaml' or 'json' (defaults to 'yaml')
         """
-        # import six
-        # if isinstance(stream, six.string_types):
+        # if isinstance(stream, str):
         #     _stream_path = stream
         #     print('Writing to _stream_path = {!r}'.format(_stream_path))
         #     _stream = stream = open(_stream_path, 'w')
@@ -832,7 +885,7 @@ class Config(ub.NiceRepr, DictLike):
         """
         Generate the kwargs for making a new argparse.ArgumentParser
         """
-        import argparse
+        from scriptconfig import argparse_ext
 
         prog = getattr(self, 'prog', None)
 
@@ -851,18 +904,13 @@ class Config(ub.NiceRepr, DictLike):
         if prog is None:
             prog = self.__class__.__name__
 
-        class RawDescriptionDefaultsHelpFormatter(
-                argparse.RawDescriptionHelpFormatter,
-                argparse.ArgumentDefaultsHelpFormatter):
-            pass
-
         parserkw = dict(
             prog=prog,
             description=description,
             epilog=epilog,
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             # formatter_class=argparse.RawDescriptionHelpFormatter,
-            formatter_class=RawDescriptionDefaultsHelpFormatter,
+            formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
         )
         return parserkw
 
@@ -1163,8 +1211,39 @@ class Config(ub.NiceRepr, DictLike):
             >>> self._read_argv(argv=['hi', 'hello', '--path1=foobar', '--help'])
             >>> self._read_argv(argv=['--path1=foobar', '--path1=baz'])
             >>> print('self = {!r}'.format(self))
+
+        Example:
+            >>> # Is it possible to the CLI as a key/val pair or an exist bool flag?
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     default = {
+            >>>         'path1':  scfg.Value(None, position=1, alias='src'),
+            >>>         'path2':  scfg.Value(None, position=2, alias='dst'),
+            >>>         'flag':  scfg.Value(None, isflag=True),
+            >>>     }
+            >>> self = MyConfig()
+            >>> special_options = True
+            >>> parser = None
+            >>> parser = self.argparse(special_options=special_options)
+            >>> parser.print_help()
+            >>> print(self._read_argv(argv=[], strict=True))
+            >>> # Test that we can specify the flag as a pure flag
+            >>> print(self._read_argv(argv=['--flag']))
+            >>> print(self._read_argv(argv=['--no-flag']))
+            >>> # Test that we can specify the flag with a key/val pair
+            >>> print(self._read_argv(argv=['--flag', 'TRUE']))
+            >>> print(self._read_argv(argv=['--flag=1']))
+            >>> print(self._read_argv(argv=['--flag=0']))
+            >>> # Test flag and positional
+            >>> self = MyConfig()
+            >>> print(self._read_argv(argv=['--flag', 'TRUE', 'SUFFIX']))
+            >>> self = MyConfig()
+            >>> print(self._read_argv(argv=['PREFIX', '--flag', 'TRUE']))
+            >>> self = MyConfig()
+            >>> print(self._read_argv(argv=['--path2=PREFIX', '--flag', 'TRUE']))
         """
         import argparse
+        from scriptconfig import argparse_ext
 
         if parser is None:
             parserkw = self._parserkw()
@@ -1181,10 +1260,12 @@ class Config(ub.NiceRepr, DictLike):
         # function.
         # base = argparse.Action
         # base = argparse._StoreAction
+        # TODO: can we move this to argparse_ext and clean it up?
+        # Is the closure scope necesary?
         class ParseAction(argparse._StoreAction):
             def __init__(self, *args, **kwargs):
-                # required = kwargs.pop('required', False)
-                super(ParseAction, self).__init__(*args, **kwargs)
+                # required/= kwargs.pop('required', False)
+                super().__init__(*args, **kwargs)
                 # with script config nothing should be required by default
                 # (unless specified) all positional arguments should have
                 # keyword arg variants Setting required=False here will prevent
@@ -1195,7 +1276,8 @@ class Config(ub.NiceRepr, DictLike):
                 self.required = False  # hack
 
                 if self.type is None:
-                    # Is this the right place to put this?
+                    # If a type isn't explicitly declared, we will either use
+                    # the template (if it exists) or try using a smartcast.
                     def _mytype(value):
                         key = self.dest
                         template = parent.default[key]
@@ -1207,8 +1289,6 @@ class Config(ub.NiceRepr, DictLike):
                         return value
 
                     self.type = _mytype
-
-                # print('self.type = {!r}'.format(self.type))
 
             def __call__(action, parser, namespace, values, option_string=None):
                 # print('CALL action = {!r}'.format(action))
@@ -1251,6 +1331,10 @@ class Config(ub.NiceRepr, DictLike):
         else:
             _keyorder = list(self._default.keys())
 
+        # If the new experimental behavior works well in production
+        # then remove the alternative.
+        NEW_BOOL_BEHAVIOR = 1
+
         def _add_arg(parser, name, argkw, positional, isflag, required=False,
                      aliases=None, short_aliases=None):
             _argkw = argkw.copy()
@@ -1266,27 +1350,34 @@ class Config(ub.NiceRepr, DictLike):
             if isflag:
                 # Can we support both flag and setitem methods of cli
                 # parsing?
-                if not isinstance(_argkw.get('default', None), bool):
-                    raise ValueError('can only use isflag with bools')
                 _argkw.pop('type', None)
                 _argkw.pop('choices', None)
                 _argkw.pop('action', None)
                 _argkw.pop('nargs', None)
                 _argkw['dest'] = name
 
-                _argkw_true = _argkw.copy()
-                _argkw_true['action'] = 'store_true'
+                if NEW_BOOL_BEHAVIOR:
+                    short_option_strings = ['-' + n for n in short_names]
+                    long_option_strings = ['--' + n for n in long_names]
+                    option_strings = short_option_strings + long_option_strings
+                    _argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+                    parser.add_argument(*option_strings, required=required, **_argkw)
+                else:
+                    if not isinstance(_argkw.get('default', None), bool):
+                        raise ValueError('can only use isflag with bools')
+                    _argkw_true = _argkw.copy()
+                    _argkw_true['action'] = 'store_true'
 
-                _argkw_false = _argkw.copy()
-                _argkw_false['action'] = 'store_false'
-                _argkw_false.pop('help', None)
+                    _argkw_false = _argkw.copy()
+                    _argkw_false['action'] = 'store_false'
+                    _argkw_false.pop('help', None)
 
-                short_pos_option_strings = ['-' + n for n in short_names]
-                pos_option_strings = ['--' + n for n in long_names]
-                neg_option_strings = ['--no-' + n for n in long_names]
-                parser.add_argument(*short_pos_option_strings,
-                                    *pos_option_strings, **_argkw_true)
-                parser.add_argument(*neg_option_strings, **_argkw_false)
+                    short_pos_option_strings = ['-' + n for n in short_names]
+                    pos_option_strings = ['--' + n for n in long_names]
+                    neg_option_strings = ['--no-' + n for n in long_names]
+                    parser.add_argument(*short_pos_option_strings,
+                                        *pos_option_strings, **_argkw_true)
+                    parser.add_argument(*neg_option_strings, **_argkw_false)
             else:
                 short_option_strings = ['-' + n for n in short_names]
                 long_option_strings = ['--' + n for n in long_names]
@@ -1346,7 +1437,7 @@ class Config(ub.NiceRepr, DictLike):
                 If specified, dump this config to disk.
                 ''').format(self.__class__.__name__))
 
-            parser.add_argument('--dumps', action='store_true', help=ub.codeblock(
+            parser.add_argument('--dumps', action=argparse_ext.BooleanFlagOrKeyValAction, help=ub.codeblock(
                 '''
                 If specified, dump this config stdout
                 ''').format(self.__class__.__name__))
@@ -1366,7 +1457,7 @@ class DataInterchange:
 
     def _rectify_mode(self, data):
         if self.mode is None:
-            if isinstance(data, six.string_types):
+            if isinstance(data, str):
                 if data.lower().endswith('.json'):
                     self.mode = 'json'
                 elif data.lower().endswith('.yml'):

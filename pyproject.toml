@@ -1,3 +1,34 @@
 [build-system]
-requires = ["setuptools>=41.0.1", "wheel", "ubelt"]
+requires = [ "setuptools>=41.0.1",]
 build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.xcookie]
+tags = [ "gitlab", "kitware", "purepy",]
+mod_name = "scriptconfig"
+repo_name = "scriptconfig"
+rel_mod_parent_dpath = "."
+os = [ "osx", "linux", "win", "all",]
+min_python = 3.6
+version = "{mod_dpath}/__init__.py::__version__"
+author = "Kitware Inc., Jon Crall"
+author_email = "kitware@kitware.com, jon.crall@kitware.com"
+description = "Easy dict-based script configuration with CLI support"
+license = "Apache 2"
+dev_status = "beta"
+enable_gpg = true
+typed = "partial"
+
+[tool.pytest.ini_options]
+addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py --ignore-glob=dev --ignore-glob=docs"
+norecursedirs = ".git ignore build __pycache__ dev _skbuild"
+filterwarnings = [ "default", "ignore:.*No cfgstr given in Cacher constructor or call.*:Warning", "ignore:.*Define the __nice__ method for.*:Warning", "ignore:.*private pytest class or function.*:Warning",]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [ "pragma: no cover", ".*  # pragma: no cover", ".*  # nocover", "def __repr__", "raise AssertionError", "raise NotImplementedError", "if 0:", "if trace is not None", "verbose = .*", "^ *raise", "^ *pass *$", "if _debug:", "if __name__ == .__main__.:", ".*if six.PY2:",]
+omit = [ "scriptconfig/__main__.py", "*/setup.py",]

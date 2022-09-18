@@ -1,14 +1,4 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
-import six
-import types
-
 __all__ = ['smartcast']
-
-if six.PY2:
-    BooleanType = types.BooleanType
-else:
-    BooleanType = bool
 
 NoneType = type(None)
 
@@ -94,7 +84,7 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
         >>> check_typed_value(1.0, 1.0)
         >>> check_typed_value([1.0], (1.0,), 'tuple')
     """
-    if isinstance(item, six.string_types):
+    if isinstance(item, str):
         if astype is None:
             type_list = [int, float, complex, bool, NoneType]
             if ',' in item:
@@ -121,7 +111,7 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
         else:
             if astype == eval:
                 return item
-            elif isinstance(astype, six.string_types):
+            elif isinstance(astype, str):
                 if astype == 'eval':
                     _astype = _identity
                 elif astype == 'int':
@@ -172,7 +162,7 @@ def _as_smart_type(item, astype):
         >>> assert _as_smart_type('(1,3)', eval) == (1, 3)
         >>> assert _as_smart_type('1::3', slice) == slice(1, None, 3)
     """
-    if not isinstance(item, six.string_types):
+    if not isinstance(item, str):
         raise TypeError('item must be a string')
 
     if astype is NoneType:
@@ -192,7 +182,7 @@ def _as_smart_type(item, astype):
         # TODO:
         # use parse_nestings to smartcast complex lists/tuples/sets
         return _smartcast_simple_sequence(item, astype)
-    elif isinstance(astype, six.string_types):
+    elif isinstance(astype, str):
         # allow types to be given as strings
         astype = {
             'bool': bool,

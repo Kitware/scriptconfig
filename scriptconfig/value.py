@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 import glob
-import six
 import ubelt as ub
 import copy
 from . import smartcast
@@ -79,7 +78,7 @@ class Value(ub.NiceRepr):
         return self
 
     def cast(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             value = smartcast.smartcast(value, self.type)
         return value
 
@@ -96,7 +95,7 @@ class Path(Value):
         super(Path, self).__init__(value, str, help=help, alias=alias)
 
     def cast(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             value = ub.expandpath(value)
         return value
 
@@ -121,7 +120,7 @@ class PathList(Value):
     """
 
     def cast(self, value=None):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             paths1 = sorted(glob.glob(ub.expandpath(value)))
             paths2 = smartcast.smartcast(value)
             if paths1:
