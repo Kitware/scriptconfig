@@ -55,7 +55,7 @@ stages:
   - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests] -f wheelhouse
   - |-
-    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../testscd ..
+    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
 .test-full-loose: &test-full-loose
   <<: *test_template
   before_script:
@@ -77,7 +77,7 @@ stages:
   - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests,optional] -f wheelhouse
   - |-
-    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../testscd ..
+    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
 .test-minimal-strict: &test-minimal-strict
   <<: *test_template
   before_script:
@@ -99,7 +99,7 @@ stages:
   - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests-strict,runtime-strict] -f wheelhouse
   - |-
-    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../testscd ..
+    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
 .test-full-strict: &test-full-strict
   <<: *test_template
   before_script:
@@ -121,7 +121,7 @@ stages:
   - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests-strict,runtime-strict,optional-strict] -f wheelhouse
   - |-
-    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../testscd ..
+    mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
 build/cp36_linux:
   <<: *build_template
   image: python:3.6
