@@ -32,7 +32,7 @@ class BooleanFlagOrKeyValAction(_Base):
     Example:
         >>> from scriptconfig.argparse_ext import *  # NOQA
         >>> import argparse
-        >>> parser = argparse.ArgumentParser(exit_on_error=0)
+        >>> parser = argparse.ArgumentParser()
         >>> parser.add_argument('--flag', action=BooleanFlagOrKeyValAction)
         >>> print(parser.format_usage())
         >>> print(parser.format_help())
@@ -65,7 +65,7 @@ class BooleanFlagOrKeyValAction(_Base):
         >>> # Does this play nice with other complex cases?
         >>> from scriptconfig.argparse_ext import *  # NOQA
         >>> import argparse
-        >>> parser = argparse.ArgumentParser(exit_on_error=0)
+        >>> parser = argparse.ArgumentParser()
         >>> parser.add_argument('--flag', action=BooleanFlagOrKeyValAction)
         >>> print(parser.format_usage())
         >>> print(parser.format_help())
