@@ -52,7 +52,7 @@ stages:
   - ls wheelhouse || echo "wheelhouse does not exist"
   - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
-  - echo "MOD_NAME=$MOD_NAME
+  - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" --xdoc "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
@@ -74,7 +74,7 @@ stages:
   - ls wheelhouse || echo "wheelhouse does not exist"
   - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
-  - echo "MOD_NAME=$MOD_NAME
+  - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests,optional] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" --xdoc "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
@@ -96,7 +96,7 @@ stages:
   - ls wheelhouse || echo "wheelhouse does not exist"
   - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
-  - echo "MOD_NAME=$MOD_NAME
+  - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests-strict,runtime-strict] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" --xdoc "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
@@ -118,7 +118,7 @@ stages:
   - ls wheelhouse || echo "wheelhouse does not exist"
   - pip install tomli ubelt
   - MOD_NAME=$(python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['tool']['xcookie']['mod_name'])")
-  - echo "MOD_NAME=$MOD_NAME
+  - echo "MOD_NAME=$MOD_NAME"
   - pip install "$MOD_NAME"[tests-strict,runtime-strict,optional-strict] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest --xdoctest-verbose=3 -s --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" --xdoc "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
