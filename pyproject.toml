@@ -18,6 +18,7 @@ author_email = "kitware@kitware.com, jon.crall@kitware.com"
 description = "Easy dict-based script configuration with CLI support"
 license = "Apache 2"
 dev_status = "beta"
+enable_gpg = true
 typed = "partial"
 
 [tool.pytest.ini_options]
