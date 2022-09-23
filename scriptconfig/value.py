@@ -40,6 +40,14 @@ class Value(ub.NiceRepr):
             other short names (that will be prefixed with '-') that will be
             accepted by the argparse CLI.
 
+        group (str | None):
+            Impacts display of underlying argparse object by grouping values
+            with the same type together. There is no other impact.
+
+        mutex_group (str | None):
+            Indicates that only one of the values in a group should be given on
+            the command line. This has no impact on python usage.
+
     Example:
         >>> self = Value(None, type=float)
         >>> print('self.value = {!r}'.format(self.value))
@@ -54,7 +62,8 @@ class Value(ub.NiceRepr):
 
     def __init__(self, value=None, type=None, help=None, choices=None,
                  position=None, isflag=False, nargs=None, alias=None,
-                 required=False, short_alias=None):
+                 required=False, short_alias=None, group=None,
+                 mutex_group=None):
         self.value = None
         self.type = type
         self.alias = alias
@@ -66,6 +75,8 @@ class Value(ub.NiceRepr):
             'choices': choices,
             'nargs': nargs,
         }
+        self.group = group
+        self.mutex_group = mutex_group
         self.required = required
         self.short_alias = short_alias
         self.update(value)

@@ -145,8 +145,10 @@ class BooleanFlagOrKeyValAction(_Base):
         if values is None:
             value = key_default
         else:
+            # Allow for non-boolean values (i.e. auto) to be passed
             from scriptconfig import smartcast as smartcast_mod
-            value = smartcast_mod._smartcast_bool(values)
+            value = smartcast_mod.smartcast(values)
+            # value = smartcast_mod._smartcast_bool(values)
             if not key_default:
                 value = not value
         setattr(namespace, action.dest, value)
@@ -157,3 +159,60 @@ class RawDescriptionDefaultsHelpFormatter(
         argparse.RawDescriptionHelpFormatter,
         argparse.ArgumentDefaultsHelpFormatter):
     ...
+
+
+class CompatArgumentParser(argparse.ArgumentParser):
+    """
+    For Python 3.6-3.8 compatibility where the exit_on_error flag does not
+    exist.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.exit_on_error = kwargs.get('exit_on_error', True)
+        super().__init__(*args, **kwargs)
+
+    # def error(self, message):
+    #     if self.exit_on_error:
+    #         super().error(message)
+
+    def parse_known_args(self, args=None, namespace=None):
+        # This is the version from Python 3.10
+        from argparse import _sys, Namespace, SUPPRESS, ArgumentError
+        from argparse import _UNRECOGNIZED_ARGS_ATTR
+        if args is None:
+            # args default to the system args
+            args = _sys.argv[1:]
+        else:
+            # make sure that args are mutable
+            args = list(args)
+
+        # default Namespace built from parser defaults
+        if namespace is None:
+            namespace = Namespace()
+
+        # add any action defaults that aren't present
+        for action in self._actions:
+            if action.dest is not SUPPRESS:
+                if not hasattr(namespace, action.dest):
+                    if action.default is not SUPPRESS:
+                        setattr(namespace, action.dest, action.default)
+
+        # add any parser defaults that aren't present
+        for dest in self._defaults:
+            if not hasattr(namespace, dest):
+                setattr(namespace, dest, self._defaults[dest])
+
+        # parse the arguments and exit if there are any errors
+        if self.exit_on_error:
+            try:
+                namespace, args = self._parse_known_args(args, namespace)
+            except ArgumentError:
+                err = _sys.exc_info()[1]
+                self.error(str(err))
+        else:
+            namespace, args = self._parse_known_args(args, namespace)
+
+        if hasattr(namespace, _UNRECOGNIZED_ARGS_ATTR):
+            args.extend(getattr(namespace, _UNRECOGNIZED_ARGS_ATTR))
+            delattr(namespace, _UNRECOGNIZED_ARGS_ATTR)
+        return namespace, args
