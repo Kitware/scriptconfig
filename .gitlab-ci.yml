@@ -8,13 +8,19 @@ stages:
 - deploy
 .common_template: &common_template
   tags:
+    # Tags define which runners will accept which jobs
   - docker
   - linux
   - build
+
   variables:
+    # Change pip's cache directory to be inside the project directory
+    # since we can only cache local items.
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
   except:
+    # Don't run the pipeline for new tags
   - tags
+
   cache:
     paths:
     - .cache/pip
@@ -267,21 +273,41 @@ gpgsign/wheels:
   artifacts:
     paths:
     - wheelhouse/*.asc
+
   only:
     refs:
+        # Gitlab will only expose protected variables on protected branches
+        # (which I've set to be main and release), so only run this stage
+        # there.
     - master
     - main
     - release
+  needs:
+  - job: build/cp36-linux-x86_64
+    artifacts: true
+  - job: build/cp37-linux-x86_64
+    artifacts: true
+  - job: build/cp38-linux-x86_64
+    artifacts: true
+  - job: build/cp39-linux-x86_64
+    artifacts: true
+  - job: build/cp310-linux-x86_64
+    artifacts: true
+  - job: build/cp311-linux-x86_64
+    artifacts: true
   script:
   - ls wheelhouse
   - export GPG_EXECUTABLE=gpg
   - export GPG_KEYID=$(cat dev/public_gpg_key)
   - echo "GPG_KEYID = $GPG_KEYID"
+    # Decrypt and import GPG Keys / trust
+    # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on main and release branch
   - source dev/secrets_configuration.sh
   - CI_SECRET=${!VARNAME_CI_SECRET}
   - $GPG_EXECUTABLE --version
   - openssl version
   - $GPG_EXECUTABLE --list-keys
+    # note CI_KITWARE_SECRET is a protected variables only available on main and release branch
   - CIS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:CIS -d -a
     -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import
   - CIS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:CIS -d -a
