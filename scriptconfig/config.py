@@ -912,7 +912,7 @@ class Config(ub.NiceRepr, DictLike):
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             # formatter_class=argparse.RawDescriptionHelpFormatter,
             formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
-            exit_on_error=False,
+            # exit_on_error=False,
         )
         return parserkw
 
@@ -1333,7 +1333,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> print(self.port_argparse(parser))
             >>> import pytest
             >>> import argparse
-            >>> with pytest.raises(argparse.ArgumentError):
+            >>> with pytest.raises(SystemExit):
             >>>     self._read_argv(argv=['--arg6', '42', '--arg5', '32'])
             >>> # self._read_argv(argv=['--arg6', '42', '--arg5']) Strange, this does not cause an mutex error
             >>> self._read_argv(argv=['--arg6', '42'])
