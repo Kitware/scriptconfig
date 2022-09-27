@@ -168,7 +168,7 @@ class CompatArgumentParser(argparse.ArgumentParser):
     """
 
     def __init__(self, *args, **kwargs):
-        self.exit_on_error = kwargs.get('exit_on_error', True)
+        self.exit_on_error = kwargs.pop('exit_on_error', True)
         super().__init__(*args, **kwargs)
 
     # def error(self, message):
