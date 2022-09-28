@@ -87,6 +87,7 @@ import yaml
 import copy
 import io
 import json
+import itertools as it
 from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
 from scriptconfig.file_like import FileLike
@@ -911,6 +912,7 @@ class Config(ub.NiceRepr, DictLike):
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             # formatter_class=argparse.RawDescriptionHelpFormatter,
             formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
+            # exit_on_error=False,
         )
         return parserkw
 
@@ -937,19 +939,33 @@ class Config(ub.NiceRepr, DictLike):
             produce 1-to-1 results, however it will provide a useful starting
             point.
 
+        TODO:
+            - [X] Handle "store_true".
+            - [ ] Argument groups.
+            - [ ] Handle mutually exclusive groups
 
         Example:
             >>> import scriptconfig as scfg
             >>> import argparse
-            >>> parser = argparse.ArgumentParser()
+            >>> parser = argparse.ArgumentParser(description='my argparse')
+            >>> parser.add_argument('pos_arg1')
+            >>> parser.add_argument('pos_arg2', nargs='*')
             >>> parser.add_argument('-t', '--true_dataset', '--test_dataset', help='path to the groundtruth dataset', required=True)
             >>> parser.add_argument('-p', '--pred_dataset', help='path to the predicted dataset', required=True)
             >>> parser.add_argument('--eval_dpath', help='path to dump results')
             >>> parser.add_argument('--draw_curves', default='auto', help='flag to draw curves or not')
-            >>> parser.add_argument('--draw_heatmaps', default='auto', help='flag to draw heatmaps or not')
             >>> parser.add_argument('--score_space', default='video', help='can score in image or video space')
             >>> parser.add_argument('--workers', default='auto', help='number of parallel scoring workers')
             >>> parser.add_argument('--draw_workers', default='auto', help='number of parallel drawing workers')
+            >>> group1 = parser.add_argument_group('mygroup1')
+            >>> group1.add_argument('--group1_opt1', action='store_true')
+            >>> group1.add_argument('--group1_opt2')
+            >>> group2 = parser.add_argument_group()
+            >>> group2.add_argument('--group2_opt1', action='store_true')
+            >>> group2.add_argument('--group2_opt2')
+            >>> mutex_group3 = parser.add_mutually_exclusive_group()
+            >>> mutex_group3.add_argument('--mgroup3_opt1')
+            >>> mutex_group3.add_argument('--mgroup3_opt2')
             >>> text = scfg.Config.port_argparse(parser, name='PortedConfig', style='dataconf')
             >>> print(text)
             >>> # Make an instance of the ported class
@@ -960,9 +976,9 @@ class Config(ub.NiceRepr, DictLike):
             >>> recon = self.argparse()
             >>> print('recon._actions = {}'.format(ub.repr2(recon._actions, nl=1)))
         """
-        # raise NotImplementedError
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
+        import re
         if style == 'orig':
             recon_str = [
                 'import scriptconfig as scfg',
@@ -988,11 +1004,45 @@ class Config(ub.NiceRepr, DictLike):
         def normalize_option_str(s):
             return s.lstrip('-').replace('-', '_')
 
-        for action in parser._actions:
-            import re
-            long_prefix_pat = re.compile('--[^-].*')
-            short_prefix_pat = re.compile('-[^-].*')
+        pos_counter = it.count(1)
 
+        # Determine if the parser has groups / mutex groups. Build mappings so
+        # we can lookup which action is associated with which group later.
+        group_counter = it.count(1)
+        mgroup_counter = it.count(1)
+        annon_groupid_to_key = {}
+        annon_mgroupid_to_key = {}
+        default_groups = {'positional arguments', 'options', 'required'}
+        actionid_to_groupkey = {}
+        actionid_to_mgroupkey = {}
+        # Build group lookups table
+        for group in parser._action_groups:
+            if group.title not in default_groups:
+                if group.title is not None:
+                    group_key = group.title
+                else:
+                    group_id = id(group)
+                    if group_id not in annon_groupid_to_key:
+                        annon_groupid_to_key[group_id] = next(group_counter)
+                    group_key = annon_groupid_to_key[group_id]
+                for action in group._group_actions:
+                    action_id = id(action)
+                    actionid_to_groupkey[action_id] = group_key
+        # Build mutex group lookups table
+        for mutex_group in parser._mutually_exclusive_groups:
+            mgroup_id = id(mutex_group)
+            if mgroup_id not in annon_mgroupid_to_key:
+                annon_mgroupid_to_key[mgroup_id] = next(mgroup_counter)
+            mgroup_key = annon_mgroupid_to_key[mgroup_id]
+            for action in mutex_group._group_actions:
+                action_id = id(action)
+                actionid_to_mgroupkey[action_id] = mgroup_key
+
+        # Iterate over all of the actions and build the appropriate value to be
+        # placed in the scriptconfig class.
+        long_prefix_pat = re.compile('--[^-].*')
+        short_prefix_pat = re.compile('-[^-].*')
+        for action in parser._actions:
             key = action.dest
             if key == 'help':
                 # scriptconfig takes care of help for us
@@ -1025,15 +1075,36 @@ class Config(ub.NiceRepr, DictLike):
 
             value_kw = {
                 'type': '{}'.format(action.type.__name__) if action.type else None,
+                'isflag': False,
                 'alias': '{}'.format(alias) if alias else None,
                 'short_alias': '{}'.format(short_alias) if short_alias else None,
                 'required': '{}'.format(action.required) if action.required else None,
                 'choices': '{}'.format(action.choices) if action.choices else None,
                 'help': '{!r}'.format(action.help) if action.help else None,
             }
+
+            action_id = id(action)
+            if action_id in actionid_to_groupkey:
+                value_kw['group'] = repr(actionid_to_groupkey[action_id])
+            if action_id in actionid_to_mgroupkey:
+                value_kw['mutex_group'] = repr(actionid_to_mgroupkey[action_id])
+
+            if len(action.option_strings) == 0:
+                value_kw['position'] = next(pos_counter)
+
+            if action.nargs == 0 and action.const is True:
+                # This is a boolean flag
+                value_kw['isflag'] = True
+            else:
+                value_kw.pop('isflag', None)
+                if action.nargs is not None:
+                    value_kw['nargs'] = repr(action.nargs)
+
             HACKS = 1
             if HACKS:
                 if value_kw['type'] == 'smartcast':
+                    value_kw.pop('type')
+                if value_kw['type'] == '_smart_type':
                     value_kw.pop('type')
                 if action.help and len(action.help) > 40:
                     import textwrap
@@ -1048,6 +1119,7 @@ class Config(ub.NiceRepr, DictLike):
                     ).format(wrapped)
                     value_kw['help'] = ub.indent(block, ' ' * 8).lstrip()
                     # "ub.paragraph(\n'''\n{}\n''')".format(ub.indent(action.help, ' ' * 16))
+
             value_args.extend(['{}={}'.format(k, v) for k, v in value_kw.items() if v is not None])
 
             if 0:
@@ -1241,19 +1313,46 @@ class Config(ub.NiceRepr, DictLike):
             >>> print(self._read_argv(argv=['PREFIX', '--flag', 'TRUE']))
             >>> self = MyConfig()
             >>> print(self._read_argv(argv=['--path2=PREFIX', '--flag', 'TRUE']))
+
+        Example:
+            >>> # Test groups
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     description = 'my CLI description'
+            >>>     default = {
+            >>>         'arg1':  scfg.Value(None, group='a'),
+            >>>         'arg2':  scfg.Value(None, group='a', alias='a2'),
+            >>>         'arg3':  scfg.Value(None, group='b'),
+            >>>         'arg4':  scfg.Value(None, group='b', alias='a4'),
+            >>>         'arg5':  scfg.Value(None, mutex_group='b', isflag=True),
+            >>>         'arg6':  scfg.Value(None, mutex_group='b', alias='a6'),
+            >>>     }
+            >>> self = MyConfig()
+            >>> parser = self.argparse()
+            >>> parser.print_help()
+            >>> print(self.port_argparse(parser))
+            >>> import pytest
+            >>> import argparse
+            >>> with pytest.raises(SystemExit):
+            >>>     self._read_argv(argv=['--arg6', '42', '--arg5', '32'])
+            >>> # self._read_argv(argv=['--arg6', '42', '--arg5']) Strange, this does not cause an mutex error
+            >>> self._read_argv(argv=['--arg6', '42'])
+            >>> self._read_argv(argv=['--arg5'])
+            >>> self._read_argv(argv=[])
         """
         import argparse
         from scriptconfig import argparse_ext
 
         if parser is None:
             parserkw = self._parserkw()
-            parser = argparse.ArgumentParser(**parserkw)
+            # parser = argparse.ArgumentParser(**parserkw)
+            parser = argparse_ext.CompatArgumentParser(**parserkw)
 
         # Use custom action used to mark which values were explicitly set on
         # the commandline
         parser._explicitly_given = set()
 
-        parent = self
+        scfg_object = self
 
         # Inherit from StoreAction to make configargparse happy.
         # Hopefully python doesn't change the behavior of this private
@@ -1278,9 +1377,9 @@ class Config(ub.NiceRepr, DictLike):
                 if self.type is None:
                     # If a type isn't explicitly declared, we will either use
                     # the template (if it exists) or try using a smartcast.
-                    def _mytype(value):
+                    def _smart_type(value):
                         key = self.dest
-                        template = parent.default[key]
+                        template = scfg_object.default[key]
                         if not isinstance(template, Value):
                             # smartcast non-valued params from commandline
                             value = smartcast.smartcast(value)
@@ -1288,7 +1387,7 @@ class Config(ub.NiceRepr, DictLike):
                             value = template.cast(value)
                         return value
 
-                    self.type = _mytype
+                    self.type = _smart_type
 
             def __call__(action, parser, namespace, values, option_string=None):
                 # print('CALL action = {!r}'.format(action))
@@ -1298,7 +1397,6 @@ class Config(ub.NiceRepr, DictLike):
                 if isinstance(values, list) and len(values):
                     # We got a list of lists, which we hack into a flat list
                     if isinstance(values[0], list):
-                        import itertools as it
                         values = list(it.chain(*values))
 
                 setattr(namespace, action.dest, values)
@@ -1325,6 +1423,7 @@ class Config(ub.NiceRepr, DictLike):
                       if v.position is not None}
         if _positions:
             if ub.find_duplicates(_positions.values()):
+                # TODO: make this a warning in 3.7+
                 raise Exception('two values have the same position')
             _keyorder = ub.oset(ub.argsort(_positions))
             _keyorder |= (ub.oset(self._default) - _keyorder)
@@ -1333,9 +1432,7 @@ class Config(ub.NiceRepr, DictLike):
 
         # If the new experimental behavior works well in production
         # then remove the alternative.
-        NEW_BOOL_BEHAVIOR = 1
-
-        def _add_arg(parser, name, argkw, positional, isflag, required=False,
+        def _add_arg(parent, name, argkw, positional, isflag, required=False,
                      aliases=None, short_aliases=None):
             _argkw = argkw.copy()
 
@@ -1343,7 +1440,7 @@ class Config(ub.NiceRepr, DictLike):
             short_names = list(short_aliases or [])
 
             if positional:
-                parser.add_argument(name, **_argkw)
+                parent.add_argument(name, **_argkw)
 
             _argkw['dest'] = name
 
@@ -1356,33 +1453,22 @@ class Config(ub.NiceRepr, DictLike):
                 _argkw.pop('nargs', None)
                 _argkw['dest'] = name
 
-                if NEW_BOOL_BEHAVIOR:
-                    short_option_strings = ['-' + n for n in short_names]
-                    long_option_strings = ['--' + n for n in long_names]
-                    option_strings = short_option_strings + long_option_strings
-                    _argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
-                    parser.add_argument(*option_strings, required=required, **_argkw)
-                else:
-                    if not isinstance(_argkw.get('default', None), bool):
-                        raise ValueError('can only use isflag with bools')
-                    _argkw_true = _argkw.copy()
-                    _argkw_true['action'] = 'store_true'
-
-                    _argkw_false = _argkw.copy()
-                    _argkw_false['action'] = 'store_false'
-                    _argkw_false.pop('help', None)
-
-                    short_pos_option_strings = ['-' + n for n in short_names]
-                    pos_option_strings = ['--' + n for n in long_names]
-                    neg_option_strings = ['--no-' + n for n in long_names]
-                    parser.add_argument(*short_pos_option_strings,
-                                        *pos_option_strings, **_argkw_true)
-                    parser.add_argument(*neg_option_strings, **_argkw_false)
+                short_option_strings = ['-' + n for n in short_names]
+                long_option_strings = ['--' + n for n in long_names]
+                option_strings = short_option_strings + long_option_strings
+                _argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+                parent.add_argument(*option_strings, required=required, **_argkw)
             else:
                 short_option_strings = ['-' + n for n in short_names]
                 long_option_strings = ['--' + n for n in long_names]
                 option_strings = short_option_strings + long_option_strings
-                parser.add_argument(*option_strings, required=required, **_argkw)
+                parent.add_argument(*option_strings, required=required, **_argkw)
+
+        # NOTE: current group support is very limited.
+        # properties of groups cannot be set, just that arguments belong to a
+        # group or not.
+        group_lut = {}
+        mutex_group_lut = {}
 
         for key, value in self._data.items():
             # key: str
@@ -1393,6 +1479,8 @@ class Config(ub.NiceRepr, DictLike):
             positional = None
             isflag = False
             required = False
+
+            parent = parser
             if name in _metadata:
                 # Use the metadata in the Value class to enhance argparse
                 _value = _metadata[name]
@@ -1401,6 +1489,22 @@ class Config(ub.NiceRepr, DictLike):
                 value = _value.value
                 isflag = _value.isflag
                 positional = _value.position
+
+                # If the args are flagged as belonging to a group, resepct
+                # that.
+                if _value.group is not None:
+                    if _value.group not in group_lut:
+                        groupkw = {}
+                        if isinstance(_value.group, str):
+                            groupkw['title'] = _value.group
+                        group_lut[_value.group] = parent.add_argument_group(**groupkw)
+                    parent = group_lut[_value.group]
+
+                if _value.mutex_group is not None:
+                    if _value.mutex_group not in mutex_group_lut:
+                        mutex_group_lut[_value.mutex_group] = parent.add_mutually_exclusive_group()
+                    parent = mutex_group_lut[_value.mutex_group]
+
             else:
                 _value = value if scfg_isinstance(value, Value) else None
                 # _value = value if isinstance(value, Value) else None
@@ -1421,7 +1525,7 @@ class Config(ub.NiceRepr, DictLike):
             if isinstance(short_aliases, str):
                 short_aliases = [short_aliases]
 
-            _add_arg(parser, name, argkw, positional, isflag,
+            _add_arg(parent, name, argkw, positional, isflag,
                      required=required, aliases=aliases,
                      short_aliases=short_aliases)
 

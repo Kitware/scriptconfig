@@ -8,13 +8,19 @@ stages:
 - deploy
 .common_template: &common_template
   tags:
+    # Tags define which runners will accept which jobs
   - docker
   - linux
   - build
+
   variables:
+    # Change pip's cache directory to be inside the project directory
+    # since we can only cache local items.
     PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip
   except:
+    # Don't run the pipeline for new tags
   - tags
+
   cache:
     paths:
     - .cache/pip
@@ -34,7 +40,7 @@ stages:
   <<: *common_template
   stage: test
   coverage: /TOTAL.+ ([0-9]{1,3}%)/
-.test-minimal-loose: &test-minimal-loose
+.test_minimal-loose_template: &test_minimal-loose_template
   <<: *test_template
   before_script:
   - |-
@@ -56,7 +62,7 @@ stages:
   - pip install "$MOD_NAME"[tests] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
-.test-full-loose: &test-full-loose
+.test_full-loose_template: &test_full-loose_template
   <<: *test_template
   before_script:
   - |-
@@ -78,7 +84,7 @@ stages:
   - pip install "$MOD_NAME"[tests,optional] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
-.test-minimal-strict: &test-minimal-strict
+.test_minimal-strict_template: &test_minimal-strict_template
   <<: *test_template
   before_script:
   - |-
@@ -100,7 +106,7 @@ stages:
   - pip install "$MOD_NAME"[tests-strict,runtime-strict] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
-.test-full-strict: &test-full-strict
+.test_full-strict_template: &test_full-strict_template
   <<: *test_template
   before_script:
   - |-
@@ -122,121 +128,144 @@ stages:
   - pip install "$MOD_NAME"[tests-strict,runtime-strict,optional-strict] -f wheelhouse
   - |-
     mkdir -p sandbox && cd sandbox && pytest -s --xdoc --xdoctest-verbose=3 --cov-config ../pyproject.toml --cov-report html --cov-report term --cov="$MOD_NAME" "$(python -c "import ubelt; print(ubelt.modname_to_modpath('${MOD_NAME}'))")" ../tests && cd ..
-build/cp36_linux:
+build/cp36-linux-x86_64:
   <<: *build_template
   image: python:3.6
-test/test-minimal-loose/cp36_linux:
-  <<: *test-minimal-loose
+test/minimal-loose/cp36-linux-x86_64:
+  <<: *test_minimal-loose_template
   image: python:3.6
   needs:
-  - build/cp36_linux
-test/test-full-loose/cp36_linux:
-  <<: *test-full-loose
+  - build/cp36-linux-x86_64
+test/full-loose/cp36-linux-x86_64:
+  <<: *test_full-loose_template
   image: python:3.6
   needs:
-  - build/cp36_linux
-test/test-minimal-strict/cp36_linux:
-  <<: *test-minimal-strict
+  - build/cp36-linux-x86_64
+test/minimal-strict/cp36-linux-x86_64:
+  <<: *test_minimal-strict_template
   image: python:3.6
   needs:
-  - build/cp36_linux
-test/test-full-strict/cp36_linux:
-  <<: *test-full-strict
+  - build/cp36-linux-x86_64
+test/full-strict/cp36-linux-x86_64:
+  <<: *test_full-strict_template
   image: python:3.6
   needs:
-  - build/cp36_linux
-build/cp37_linux:
+  - build/cp36-linux-x86_64
+build/cp37-linux-x86_64:
   <<: *build_template
   image: python:3.7
-test/test-minimal-loose/cp37_linux:
-  <<: *test-minimal-loose
+test/minimal-loose/cp37-linux-x86_64:
+  <<: *test_minimal-loose_template
   image: python:3.7
   needs:
-  - build/cp37_linux
-test/test-full-loose/cp37_linux:
-  <<: *test-full-loose
+  - build/cp37-linux-x86_64
+test/full-loose/cp37-linux-x86_64:
+  <<: *test_full-loose_template
   image: python:3.7
   needs:
-  - build/cp37_linux
-test/test-minimal-strict/cp37_linux:
-  <<: *test-minimal-strict
+  - build/cp37-linux-x86_64
+test/minimal-strict/cp37-linux-x86_64:
+  <<: *test_minimal-strict_template
   image: python:3.7
   needs:
-  - build/cp37_linux
-test/test-full-strict/cp37_linux:
-  <<: *test-full-strict
+  - build/cp37-linux-x86_64
+test/full-strict/cp37-linux-x86_64:
+  <<: *test_full-strict_template
   image: python:3.7
   needs:
-  - build/cp37_linux
-build/cp38_linux:
+  - build/cp37-linux-x86_64
+build/cp38-linux-x86_64:
   <<: *build_template
   image: python:3.8
-test/test-minimal-loose/cp38_linux:
-  <<: *test-minimal-loose
+test/minimal-loose/cp38-linux-x86_64:
+  <<: *test_minimal-loose_template
   image: python:3.8
   needs:
-  - build/cp38_linux
-test/test-full-loose/cp38_linux:
-  <<: *test-full-loose
+  - build/cp38-linux-x86_64
+test/full-loose/cp38-linux-x86_64:
+  <<: *test_full-loose_template
   image: python:3.8
   needs:
-  - build/cp38_linux
-test/test-minimal-strict/cp38_linux:
-  <<: *test-minimal-strict
+  - build/cp38-linux-x86_64
+test/minimal-strict/cp38-linux-x86_64:
+  <<: *test_minimal-strict_template
   image: python:3.8
   needs:
-  - build/cp38_linux
-test/test-full-strict/cp38_linux:
-  <<: *test-full-strict
+  - build/cp38-linux-x86_64
+test/full-strict/cp38-linux-x86_64:
+  <<: *test_full-strict_template
   image: python:3.8
   needs:
-  - build/cp38_linux
-build/cp39_linux:
+  - build/cp38-linux-x86_64
+build/cp39-linux-x86_64:
   <<: *build_template
   image: python:3.9
-test/test-minimal-loose/cp39_linux:
-  <<: *test-minimal-loose
+test/minimal-loose/cp39-linux-x86_64:
+  <<: *test_minimal-loose_template
   image: python:3.9
   needs:
-  - build/cp39_linux
-test/test-full-loose/cp39_linux:
-  <<: *test-full-loose
+  - build/cp39-linux-x86_64
+test/full-loose/cp39-linux-x86_64:
+  <<: *test_full-loose_template
   image: python:3.9
   needs:
-  - build/cp39_linux
-test/test-minimal-strict/cp39_linux:
-  <<: *test-minimal-strict
+  - build/cp39-linux-x86_64
+test/minimal-strict/cp39-linux-x86_64:
+  <<: *test_minimal-strict_template
   image: python:3.9
   needs:
-  - build/cp39_linux
-test/test-full-strict/cp39_linux:
-  <<: *test-full-strict
+  - build/cp39-linux-x86_64
+test/full-strict/cp39-linux-x86_64:
+  <<: *test_full-strict_template
   image: python:3.9
   needs:
-  - build/cp39_linux
-build/cp310_linux:
+  - build/cp39-linux-x86_64
+build/cp310-linux-x86_64:
   <<: *build_template
   image: python:3.10
-test/test-minimal-loose/cp310_linux:
-  <<: *test-minimal-loose
+test/minimal-loose/cp310-linux-x86_64:
+  <<: *test_minimal-loose_template
   image: python:3.10
   needs:
-  - build/cp310_linux
-test/test-full-loose/cp310_linux:
-  <<: *test-full-loose
+  - build/cp310-linux-x86_64
+test/full-loose/cp310-linux-x86_64:
+  <<: *test_full-loose_template
   image: python:3.10
   needs:
-  - build/cp310_linux
-test/test-minimal-strict/cp310_linux:
-  <<: *test-minimal-strict
+  - build/cp310-linux-x86_64
+test/minimal-strict/cp310-linux-x86_64:
+  <<: *test_minimal-strict_template
   image: python:3.10
   needs:
-  - build/cp310_linux
-test/test-full-strict/cp310_linux:
-  <<: *test-full-strict
+  - build/cp310-linux-x86_64
+test/full-strict/cp310-linux-x86_64:
+  <<: *test_full-strict_template
   image: python:3.10
   needs:
-  - build/cp310_linux
+  - build/cp310-linux-x86_64
+build/cp311-linux-x86_64:
+  <<: *build_template
+  image: python:3.11.0rc2
+test/minimal-loose/cp311-linux-x86_64:
+  <<: *test_minimal-loose_template
+  image: python:3.11.0rc2
+  needs:
+  - build/cp311-linux-x86_64
+test/full-loose/cp311-linux-x86_64:
+  <<: *test_full-loose_template
+  image: python:3.11.0rc2
+  needs:
+  - build/cp311-linux-x86_64
+test/minimal-strict/cp311-linux-x86_64:
+  <<: *test_minimal-strict_template
+  image: python:3.11.0rc2
+  needs:
+  - build/cp311-linux-x86_64
+test/full-strict/cp311-linux-x86_64:
+  <<: *test_full-strict_template
+  image: python:3.11.0rc2
+  needs:
+  - build/cp311-linux-x86_64
 gpgsign/wheels:
   <<: *common_template
   image: python:3.8
@@ -244,21 +273,41 @@ gpgsign/wheels:
   artifacts:
     paths:
     - wheelhouse/*.asc
+
   only:
     refs:
+        # Gitlab will only expose protected variables on protected branches
+        # (which I've set to be main and release), so only run this stage
+        # there.
     - master
     - main
     - release
+  needs:
+  - job: build/cp36-linux-x86_64
+    artifacts: true
+  - job: build/cp37-linux-x86_64
+    artifacts: true
+  - job: build/cp38-linux-x86_64
+    artifacts: true
+  - job: build/cp39-linux-x86_64
+    artifacts: true
+  - job: build/cp310-linux-x86_64
+    artifacts: true
+  - job: build/cp311-linux-x86_64
+    artifacts: true
   script:
   - ls wheelhouse
   - export GPG_EXECUTABLE=gpg
   - export GPG_KEYID=$(cat dev/public_gpg_key)
   - echo "GPG_KEYID = $GPG_KEYID"
+    # Decrypt and import GPG Keys / trust
+    # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on main and release branch
   - source dev/secrets_configuration.sh
   - CI_SECRET=${!VARNAME_CI_SECRET}
   - $GPG_EXECUTABLE --version
   - openssl version
   - $GPG_EXECUTABLE --list-keys
+    # note CI_KITWARE_SECRET is a protected variables only available on main and release branch
   - CIS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:CIS -d -a
     -in dev/ci_public_gpg_key.pgp.enc | $GPG_EXECUTABLE --import
   - CIS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:CIS -d -a

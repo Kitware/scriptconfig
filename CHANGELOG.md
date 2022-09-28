@@ -4,7 +4,20 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.0 - Unreleased
+## Version 0.7.1 - Unreleased
+
+### Added
+
+* Added basic support for groups and mutually exclusive groups by specifying an id in each value.
+
+
+### Changed
+
+* Options marked as isflag can now accept any type for the key/val style of
+  argument. The flag style will still return a boolean.
+
+
+## Version 0.7.0 - Released 2022-09-17
 
 ### Changed
 
