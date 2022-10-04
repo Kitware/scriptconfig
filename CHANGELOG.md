@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.2 - Unreleased
 
+### Changed
+* The CLI can now accept `_` or `-` in sys.argv
+
 
 ## Version 0.7.1 - Released 2022-09-28
 
