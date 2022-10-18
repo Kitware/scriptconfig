@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 * The CLI can now accept `_` or `-` in sys.argv
 
+### Fixed
+* Bug where trying to get a non-existing value raised an AttributeError instead of a KeyError due to aliases
+
 
 ## Version 0.7.1 - Released 2022-09-28
 

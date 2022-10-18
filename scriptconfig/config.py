@@ -630,7 +630,7 @@ class Config(ub.NiceRepr, DictLike):
     def _build_alias_map(self):
         _alias_map = {}
         for k, v in self._default.items():
-            alias = getattr(v, 'alias')
+            alias = getattr(v, 'alias', None)
             if alias:
                 for a in alias:
                     _alias_map[a] = k
