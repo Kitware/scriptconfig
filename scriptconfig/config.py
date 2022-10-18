@@ -313,55 +313,28 @@ class Config(ub.NiceRepr, DictLike):
         BUILTIN_SCALAR_TYPES = (str, int, float, complex)
         BUILTIN_VECTOR_TYPES = (set, frozenset, list, tuple)
 
-        NEW = 1
-        if NEW:
-            # The walker method should be more efficient.
-            walker = ub.IndexableWalker(data, list_cls=BUILTIN_VECTOR_TYPES)
-            for path, item in walker:
-                if item is None or isinstance(item, BUILTIN_SCALAR_TYPES):
-                    ...
-                elif isinstance(item, list):
-                    ...
-                elif isinstance(item, (set, tuple)):
-                    walker[path] = list(item)
-                elif numpy is not None and isinstance(item, numpy.ndarray):
-                    walker[path] = item.tolist()
-                elif isinstance(item, ub.odict):
-                    ...
-                elif isinstance(item, dict):
-                    walker[path] = ub.odict(sorted(item.items()))
+        # The walker method should be more efficient.
+        walker = ub.IndexableWalker(data, list_cls=BUILTIN_VECTOR_TYPES)
+        for path, item in walker:
+            if item is None or isinstance(item, BUILTIN_SCALAR_TYPES):
+                ...
+            elif isinstance(item, list):
+                ...
+            elif isinstance(item, (set, tuple)):
+                walker[path] = list(item)
+            elif numpy is not None and isinstance(item, numpy.ndarray):
+                walker[path] = item.tolist()
+            elif isinstance(item, ub.odict):
+                ...
+            elif isinstance(item, dict):
+                walker[path] = ub.odict(sorted(item.items()))
+            else:
+                if hasattr(item, '__json__'):
+                    return item.__json__()
                 else:
-                    if hasattr(item, '__json__'):
-                        return item.__json__()
-                    else:
-                        raise TypeError(
-                            'Unknown JSON serialization for type {!r}'.format(type(item)))
-            return data
-        else:
-            def _rectify(item):
-                if item is None:
-                    return item
-                elif isinstance(item, BUILTIN_SCALAR_TYPES):
-                    return item
-                elif isinstance(item, BUILTIN_VECTOR_TYPES):
-                    return [_rectify(v) for v in item]
-                elif numpy is not None and isinstance(item, numpy.ndarray):
-                    return item.tolist()
-                elif isinstance(item, ub.odict):
-                    return ub.odict([
-                        (_rectify(k), _rectify(v)) for k, v in item.items()
-                    ])
-                elif isinstance(item, dict):
-                    return ub.odict(sorted([
-                        (_rectify(k), _rectify(v)) for k, v in item.items()
-                    ]))
-                else:
-                    if hasattr(item, '__json__'):
-                        return item.__json__()
-                    else:
-                        raise TypeError(
-                            'Unknown JSON serialization for type {!r}'.format(type(item)))
-            return _rectify(data)
+                    raise TypeError(
+                        'Unknown JSON serialization for type {!r}'.format(type(item)))
+        return data
 
     def __nice__(self):
         return str(self.asdict())
