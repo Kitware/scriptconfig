@@ -177,6 +177,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             ).format(unknown_args, list(self._default)))
         self._default.update(new_defaults)
         self._data = self._default.copy()
+        self._enable_setattr = True
         self.normalize()
 
     def __getattr__(self, key):
@@ -193,21 +194,78 @@ class DataConfig(Config, metaclass=MetaDataConfig):
                 raise AttributeError(key)
         raise AttributeError(key)
 
+    def __setattr__(self, key, value):
+        """
+        Forwards setattrs in the configuration to the dictionary interface,
+        otherwise passes it through.
+        """
+        if getattr(self, '_enable_setattr', False) and key in self:
+            # After object initialization allow the user to use setattr on any
+            # value in the underlying dictionary. Everything else uses the
+            # normal mechanism.
+            try:
+                self[key] = value
+            except KeyError:
+                raise AttributeError(key)
+        else:
+            self.__dict__[key] = value
+
     @classmethod
-    def legacy(cls, cmdline=False, data=None, default=None):
+    def legacy(cls, cmdline=False, data=None, default=None, strict=False):
+        """
+        Calls the original "load" way of creating non-dataclass config objects.
+        This may be refactored in the future.
+        """
+        import ubelt as ub
+        ub.schedule_deprecation(
+            'scriptconfig', 'legacy', 'classmethod',
+            migration='use the cli classmethod instead.',
+            deprecate='0.7.2', error='1.0.0', remove='1.0.1',
+        )
         if default is None:
             default = {}
         self = cls(**default)
-        self.load(data, cmdline=cmdline, default=default)
+        self.load(data, cmdline=cmdline, default=default, strict=strict)
         return self
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None):
+    def cli(cls, data=None, default=None, argv=None, strict=False):
+        """
+        The underlying function used by parse_args and parse_known_args, which
+        allows for extra specifiction of data and defaults.
+
+        Calls the original "load" way of creating non-dataclass config objects.
+        This may be refactored in the future.
+        """
         if argv is None:
             cmdline = 1
         else:
             cmdline = argv
-        return cls.legacy(cmdline=cmdline, data=data, default=default)
+        if default is None:
+            default = {}
+        self = cls(**default)
+        self.load(data, cmdline=cmdline, default=default, strict=strict)
+        return self
+
+    @classmethod
+    def parse_args(cls, args=None, namespace=None):
+        """
+        Mimics argparse.ArgumentParser.parse_args
+        """
+        if namespace is not None:
+            raise NotImplementedError(
+                'namespaces are not handled in scriptconfig')
+        return cls.cli(argv=args, strict=True)
+
+    @classmethod
+    def parse_known_args(cls, args=None, namespace=None):
+        """
+        Mimics argparse.ArgumentParser.parse_known_args
+        """
+        if namespace is not None:
+            raise NotImplementedError(
+                'namespaces are not handled in scriptconfig')
+        return cls.cli(argv=args, strict=False)
 
     @property
     def default(self):
@@ -215,6 +273,9 @@ class DataConfig(Config, metaclass=MetaDataConfig):
 
 
 def __example__():
+    """
+    Doctests are broken for DataConfigs, so putting them here.
+    """
     import scriptconfig as scfg
     try:
         import dataclasses

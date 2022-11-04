@@ -407,7 +407,7 @@ class Config(ub.NiceRepr, DictLike):
         self._default.update(default)
         self._alias_map = None
 
-    def load(self, data=None, cmdline=False, mode=None, default=None):
+    def load(self, data=None, cmdline=False, mode=None, default=None, strict=False):
         """
         Updates the default configuration from a given data source.
 
@@ -444,6 +444,10 @@ class Config(ub.NiceRepr, DictLike):
 
             default (dict | None):
                 updated defaults
+
+            strict (bool):
+                if True an error will be raised if the command line
+                contains unknown arguments.
 
         Example:
             >>> # Test load works correctly in cmdline True and False mode
@@ -573,7 +577,7 @@ class Config(ub.NiceRepr, DictLike):
             # they don't?
             read_argv_kwargs = {
                 'special_options': True,
-                'strict': False,
+                'strict': strict,
                 'autocomplete': False,
                 'argv': None,
             }
@@ -1076,8 +1080,6 @@ class Config(ub.NiceRepr, DictLike):
             if HACKS:
                 if value_kw['type'] == 'smartcast':
                     value_kw.pop('type')
-                if value_kw['type'] == '_smart_type':
-                    value_kw.pop('type')
                 if action.help and len(action.help) > 40:
                     import textwrap
                     wrapped = ub.indent('\n'.join(textwrap.wrap(action.help, width=60)), ' ' * 4)
@@ -1559,6 +1561,39 @@ class DataInterchange:
             with open(fpath, 'r') as file:
                 data = json.load(file)
         return data
+
+    @classmethod
+    def cli(cls, data=None, default=None, argv=None, strict=False):
+        """
+        The underlying function used by parse_args and parse_known_args, which
+        allows for extra specifiction of data and defaults.
+        """
+        if argv is None:
+            cmdline = 1
+        else:
+            cmdline = argv
+        return cls.load(cmdline=cmdline, data=data, default=default,
+                        strict=strict)
+
+    @classmethod
+    def parse_args(cls, args=None, namespace=None):
+        """
+        Mimics argparse.ArgumentParser.parse_args
+        """
+        if namespace is not None:
+            raise NotImplementedError(
+                'namespaces are not handled in scriptconfig')
+        return self.load(argv=args, strict=True)
+
+    @classmethod
+    def parse_known_args(cls, args=None, namespace=None):
+        """
+        Mimics argparse.ArgumentParser.parse_known_args
+        """
+        if namespace is not None:
+            raise NotImplementedError(
+                'namespaces are not handled in scriptconfig')
+        return self.load(argv=args, strict=False)
 
     @classmethod
     def dumps(cls, data, mode='yml'):

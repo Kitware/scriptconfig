@@ -6,11 +6,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.2 - Unreleased
 
+### Added
+* `parse_args` and `parse_known_args` methods to Config and DataConfig 
+
 ### Changed
 * The CLI can now accept `_` or `-` in sys.argv
 
 ### Fixed
 * Bug where trying to get a non-existing value raised an AttributeError instead of a KeyError due to aliases
+* Fixed issue where using setattr on a DataConfig using a known key did not set its dictionary value.
 
 
 ## Version 0.7.1 - Released 2022-09-28
