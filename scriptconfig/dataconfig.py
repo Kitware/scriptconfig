@@ -9,6 +9,8 @@ Notes:
 
 """
 from scriptconfig.config import Config
+import warnings
+import ubelt as ub
 
 
 def dataconf(cls):
@@ -143,12 +145,24 @@ class MetaDataConfig(type):
             cls_default = namespace.get('__default__', None)
             if cls_default is None:
                 cls_default = {}
+
             default.update(cls_default)
             # Helps make the class pickleable. Pretty hacky though.
             for k in attr_default:
                 namespace.pop(k)
             namespace['__default__'] = default
             namespace['__did_dataconfig_init__'] = True
+
+            from scriptconfig.value import Value
+            for k, v in default.items():
+                if isinstance(v, tuple) and len(v) == 1 and isinstance(v[0], Value):
+                    warnings.warn(ub.paragraph(
+                        f'''
+                        It looks like you have a trailing comma in your
+                        {name} DataConfig.  The variable {k!r} has a value of
+                        {v!r}, which is a Tuple[Value]. Typically it should be
+                        a Value.
+                        '''))
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         # print(f'Meta.__new__ returns: {cls=}')
         return cls
@@ -161,7 +175,6 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     __epilog__ = None
 
     def __init__(self, *args, **kwargs):
-        import ubelt as ub
         self._data = None
         self._default = ub.odict()
         if getattr(self, '__default__', None):
