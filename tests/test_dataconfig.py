@@ -1,7 +1,8 @@
+import scriptconfig as scfg
+
 
 def test_dataconfig_setattr_simple():
     import pytest
-    import scriptconfig as scfg
 
     class ExampleDataConfig(scfg.DataConfig):
         x: int = 0
@@ -47,7 +48,6 @@ def test_dataconfig_setattr_simple():
 
 def test_dataconfig_setattr_combos():
 
-    import scriptconfig as scfg
     class ExampleDataConfig(scfg.DataConfig):
         x: int = 0
         y: str = 3
@@ -92,3 +92,14 @@ def test_dataconfig_setattr_combos():
         assert getmethod(self, key) == new_value
         assert key in self
         assert key not in self.__dict__
+
+
+class test_dataconfig_warning():
+    """
+    Test that the user gets a warning if they make this common mistake
+    """
+    import scriptconfig as scfg
+    import pytest
+    with pytest.warns(UserWarning):
+        class ExampleDataConfig(scfg.DataConfig):
+            x = scfg.Value(None),

@@ -162,7 +162,7 @@ class MetaDataConfig(type):
                         {name} DataConfig.  The variable {k!r} has a value of
                         {v!r}, which is a Tuple[Value]. Typically it should be
                         a Value.
-                        '''))
+                        '''), UserWarning)
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         # print(f'Meta.__new__ returns: {cls=}')
         return cls
