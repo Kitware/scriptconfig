@@ -1413,6 +1413,15 @@ class Config(ub.NiceRepr, DictLike):
             long_names = [name] + list((aliases or []))
             short_names = list(short_aliases or [])
 
+            FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
+            if FUZZY_HYPHENS:
+                # Do we want to allow for people to use hyphens on the CLI?
+                # Maybe, we can make it optional.
+                unique_long_names = set(long_names)
+                modified_long_names = {n.replace('_', '-') for n in unique_long_names}
+                extra_long_names = modified_long_names - unique_long_names
+                long_names += sorted(extra_long_names)
+
             if positional:
                 parent.add_argument(name, **_argkw)
 
