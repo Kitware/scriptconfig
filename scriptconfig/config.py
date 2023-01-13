@@ -443,7 +443,9 @@ class Config(ub.NiceRepr, DictLike):
                 of sys.argv. Defaults to False.
 
             default (dict | None):
-                updated defaults
+                updated defaults. Note: anything passed to default will be deep
+                copied and can be updated by argv or data if it is specified.
+                Generally prefer to pass directly to data instead.
 
             strict (bool):
                 if True an error will be raised if the command line
@@ -599,7 +601,7 @@ class Config(ub.NiceRepr, DictLike):
         return self
 
     def _resolve_alias(self, key):
-        if self._alias_map is None:
+        if getattr(self, '_alias_map', None) is None:
             self._alias_map = self._build_alias_map()
         return self._alias_map[key]
 

@@ -36,12 +36,13 @@ def test_dataconfig_setattr_simple():
     assert self['x'] == new_val
     assert self.x == new_val
 
+    # self.notakey
     with pytest.raises(AttributeError):
         self.notakey
     self.notakey = 100
     assert 'notakey' not in self
     assert 'notakey' in self.__dict__
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         self['notakey']
     assert self.notakey == 100
 

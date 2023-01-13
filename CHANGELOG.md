@@ -10,11 +10,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `parse_args` and `parse_known_args` methods to Config and DataConfig 
 
 ### Changed
-* The CLI can now accept `_` or `-` in sys.argv
+* Experimental feature where the CLI can now accept `_` or `-` in sys.argv if `__fuzzy_hyphens__` exists and is truthy
 
 ### Fixed
 * Bug where trying to get a non-existing value raised an AttributeError instead of a KeyError due to aliases
 * Fixed issue where using setattr on a DataConfig using a known key did not set its dictionary value.
+* Fixed DataConfig issue with aliases
 
 
 ## Version 0.7.1 - Released 2022-09-28
