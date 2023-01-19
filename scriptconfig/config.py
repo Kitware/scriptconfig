@@ -246,7 +246,7 @@ class Config(ub.NiceRepr, DictLike):
         # The _data attribute holds
         self._data = None
         self._default = ub.odict()
-        cls_default = getattr(self, 'default', None)
+        cls_default = getattr(self, '__default__', getattr(self, 'default', None))
         if cls_default:
             # allow for class attributes to specify the default
             self._default.update(cls_default)
@@ -868,7 +868,8 @@ class Config(ub.NiceRepr, DictLike):
 
         prog = getattr(self, 'prog', None)
 
-        description = getattr(self, 'description', None)
+        description = getattr(self, '__description__',
+                              getattr(self, 'description', None))
         if description is None:
             description = self.__class__.__doc__
         if description is None:
@@ -876,7 +877,7 @@ class Config(ub.NiceRepr, DictLike):
         if description is not None:
             description = ub.codeblock(description)
 
-        epilog = getattr(self, 'epilog', None)
+        epilog = getattr(self, '__epilog__', getattr(self, 'epilog', None))
         if epilog is not None:
             epilog = ub.codeblock(epilog)
 
