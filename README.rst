@@ -159,6 +159,8 @@ The equivalent version of the above code is:
         main()
 
     
+This can be invoked from the examples folder similarly to the above script
+(replace ``hash_data.py`` with ``hash_data_datconfig.py``.)
 
 
 Project Design Goals
@@ -229,6 +231,38 @@ like help documentation or type information.
     >>> assert config['ignore'] == ['spam', 'eggs']
     >>> # Note that the Value type can influence how data is parsed
     >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
+
+
+The above examples are even more concise with the new DataConfig syntax.
+
+.. code-block:: python
+
+    >>> import scriptconfig as scfg
+    >>> # In its simplest incarnation, the config class specifies default values.
+    >>> # For each configuration parameter.
+    >>> class ExampleConfig(scfg.DataConfig):
+    >>>     num = 1
+    >>>     mode = 'bar'
+    >>>     ignore = ['baz', 'biz']
+    >>> # Creating an instance, starts using the defaults
+    >>> config = ExampleConfig()
+    >>> assert config['num'] == 1
+    >>> # Or pass in known data. (load as shown in the original example still works)
+    >>> kwargs = {'num': 2}
+    >>> config = ExampleConfig.cli(default=kwargs, cmdline=False)
+    >>> assert config['num'] == 2
+    >>> # The `load` method can also be passed a json/yaml file/path.
+    >>> config_fpath = '/tmp/foo'
+    >>> open(config_fpath, 'w').write('{"mode": "foo"}')
+    >>> config.load(config_fpath, cmdline=False)
+    >>> assert config['num'] == 2
+    >>> assert config['mode'] == "foo"
+    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # or by setting it to a custom sys.argv
+    >>> config = ExampleConfig.cli(argv=['--num=4'])
+    >>> assert config['num'] == 4
+    >>> # Note that using `config.load(cmdline=True)` will just use the
+    >>> # contents of sys.argv
 
 
 Features
