@@ -60,19 +60,13 @@ file, computes its hash, and then prints it to stdout.
         The docstring will be the description in the CLI help
         """
         default = {
-            'fpath': scfg.Value(None, position=1, help=ub.paragraph(
-                '''
-                a path to a file to hash
-                ''')),
-            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help=ub.paragraph(
-                '''
-                a name of a hashlib hasher'
-                ''')),
+            'fpath': scfg.Value(None, position=1, help='a path to a file to hash'),
+            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher'),
         }
 
 
     def main(**kwargs):
-        config = FileHashConfig(default=kwargs, cmdline=True)
+        config = FileHashConfig(data=kwargs, cmdline=True)
         print('config = {!r}'.format(config))
         fpath = config['fpath']
         hasher = getattr(hashlib, config['hasher'])()
@@ -88,10 +82,8 @@ file, computes its hash, and then prints it to stdout.
     if __name__ == '__main__':
         main()
 
-
-
-If this script is in a module ``hash_demo.py``, it can be invoked in these
-following ways.
+If this script is in a module ``hash_demo.py`` (e.g. in the examples folder of
+this repo), it can be invoked in these following ways.
 
 Purely from the command line:
 
@@ -126,6 +118,46 @@ Lastly you can call it from good ol' Python.
 
     import hash_demo
     hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
+
+
+Example Script (New Syntax)
+---------------------------
+
+NEW in 0.6.2: there is now a more concice syntax available using a scriptconfig.DataConfig.
+The equivalent version of the above code is:
+
+
+.. code-block:: python
+
+    import scriptconfig as scfg
+    import hashlib
+
+
+    class FileHashConfig(scfg.DataConfig):
+        """
+        The docstring will be the description in the CLI help
+        """
+        fpath = scfg.Value(None, position=1, help='a path to a file to hash')
+        hasher = scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher')
+
+
+    def main(**kwargs):
+        config = FileHashConfig.cli(data=kwargs)
+        print('config = {!r}'.format(config))
+        fpath = config['fpath']
+        hasher = getattr(hashlib, config['hasher'])()
+
+        with open(fpath, 'rb') as file:
+            hasher.update(file.read())
+
+        hashstr = hasher.hexdigest()
+        print('The {hasher} hash of {fpath} is {hashstr}'.format(
+            hashstr=hashstr, **config))
+
+
+    if __name__ == '__main__':
+        main()
+
     
 
 

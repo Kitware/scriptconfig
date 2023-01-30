@@ -409,7 +409,7 @@ class Config(ub.NiceRepr, DictLike):
 
     def load(self, data=None, cmdline=False, mode=None, default=None, strict=False):
         """
-        Updates the default configuration from a given data source.
+        Updates the configuration from a given data source.
 
         Any option can be overwritten via the command line if ``cmdline`` is
         truthy.
@@ -450,6 +450,9 @@ class Config(ub.NiceRepr, DictLike):
             strict (bool):
                 if True an error will be raised if the command line
                 contains unknown arguments.
+
+        Note:
+            if cmdline=True, this will create an argument parser.
 
         Example:
             >>> # Test load works correctly in cmdline True and False mode
