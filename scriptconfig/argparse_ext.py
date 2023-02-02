@@ -179,12 +179,15 @@ class CompatArgumentParser(argparse.ArgumentParser):
         # This is the version from Python 3.10
         from argparse import _sys, Namespace, SUPPRESS, ArgumentError
         from argparse import _UNRECOGNIZED_ARGS_ATTR
+        import os
         if args is None:
             # args default to the system args
             args = _sys.argv[1:]
         else:
             # make sure that args are mutable
             args = list(args)
+            # Allow Paths objects
+            args = [os.fspath(a) if isinstance(a, os.PathLike) else a for a in args]
 
         # default Namespace built from parser defaults
         if namespace is None:
@@ -298,11 +301,11 @@ class CompatArgumentParser(argparse.ArgumentParser):
                 tup = action, underscored[option_prefix], explicit_arg
                 result.append(tup)
             elif self.allow_abbrev:
-                    for option_string in underscored:
-                        if option_string.startswith(option_prefix):
-                            action = self._option_string_actions[underscored[option_string]]
-                            tup = action, underscored[option_string], explicit_arg
-                            result.append(tup)
+                for option_string in underscored:
+                    if option_string.startswith(option_prefix):
+                        action = self._option_string_actions[underscored[option_string]]
+                        tup = action, underscored[option_string], explicit_arg
+                        result.append(tup)
 
         # return the collected option tuples
         return result

@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Bug where trying to get a non-existing value raised an AttributeError instead of a KeyError due to aliases
 * Fixed issue where using setattr on a DataConfig using a known key did not set its dictionary value.
 * Fixed DataConfig issue with aliases
+* Issue where `args` contains a `PathLike` object. This is now detected and cast to a string for convenience.
 
 
 ## Version 0.7.1 - Released 2022-09-28
