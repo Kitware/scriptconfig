@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Write simple configs and update from CLI, kwargs, and/or json.
 
@@ -84,7 +83,6 @@ TODO:
 import ubelt as ub
 import yaml
 import copy
-import io
 import json
 import itertools as it
 from scriptconfig.dict_like import DictLike
@@ -93,6 +91,14 @@ from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
 
 __all__ = ['Config', 'define']
+
+__docstubs__ = """
+from typing import Any
+
+KT = Any
+omegaconf: Any
+OmegaConf: object
+"""
 
 
 # def _is_autoreload_enabled():
@@ -227,7 +233,7 @@ class Config(ub.NiceRepr, DictLike):
         Args:
             data (object): filepath, dict, or None
 
-            default (dict, default=None): overrides the class defaults
+            default (dict | None): overrides the class defaults
 
             cmdline (bool | List[str] | str | dict)
                 If False, then no command line information is used.
@@ -346,7 +352,7 @@ class Config(ub.NiceRepr, DictLike):
             key (str): the key
 
         Returns:
-            VT : the associated value
+            Any : the associated value
         """
         try:
             value = self._data[key]
@@ -365,7 +371,7 @@ class Config(ub.NiceRepr, DictLike):
 
         Args:
             key (str): the key
-            value (VT): the new value
+            value (Any): the new value
         """
         if key not in self._data:
             key = self._resolve_alias(key)
@@ -393,7 +399,7 @@ class Config(ub.NiceRepr, DictLike):
         Dictionary-like keys method
 
         Yields:
-            KT
+            str:
         """
         return self._data.keys()
 

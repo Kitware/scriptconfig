@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import glob
 import ubelt as ub
 import copy
@@ -12,10 +11,10 @@ class Value(ub.NiceRepr):
     the type that the value should be (Used when parsing sys.argv).
 
     Attributes:
-        value (object):
+        value (Any):
             A float, int, etc...
 
-        type (Type):
+        type (type | None):
             the "type" of the value. This is usually used if the value
             specified is not the type that `self.value` would usually be set
             to.
@@ -29,13 +28,14 @@ class Value(ub.NiceRepr):
             will cause conflicts. Also note: positions indexes should start
             from 1.
 
-        isflag (bool, default=False): if True, args will be parsed as booleans
+        isflag (bool): if True, args will be parsed as booleans.
+            Default to False.
 
-        alias (List[str]):
+        alias (List[str] | None):
             other long names (that will be prefixed with '--') that will be
             accepted by the argparse CLI.
 
-        short_alias (List[str]):
+        short_alias (List[str] | None):
             other short names (that will be prefixed with '-') that will be
             accepted by the argparse CLI.
 

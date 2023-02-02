@@ -52,6 +52,13 @@ class DictLike:
     """
 
     def getitem(self, key):
+        """
+        Args:
+            key (Any): the key
+
+        Returns:
+            Any : the associated value
+        """
         raise NotImplementedError('abstract getitem function')
 
     def setitem(self, key, value):
@@ -61,6 +68,10 @@ class DictLike:
         raise NotImplementedError('abstract delitem function')
 
     def keys(self):
+        """
+        Yields:
+            str:
+        """
         raise NotImplementedError('abstract keys function')
 
     def __repr__(self):

@@ -1,8 +1,8 @@
-from typing import Any
+from _typeshed import Incomplete
 
 
 class FileLike:
-    mode: Any
+    mode: Incomplete
 
     def __init__(self, path_or_file, mode: str = ...) -> None:
         ...

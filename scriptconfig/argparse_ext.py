@@ -4,6 +4,11 @@ Argparse Extensions
 import argparse
 
 
+__docstubs__ = """
+import argparse
+_Base = argparse._StoreAction
+"""
+
 # Inherit from StoreAction to make configargparse happy.  Hopefully python
 # doesn't change the behavior of this private class.
 # If we ditch support for configargparse in the future, then we can more
