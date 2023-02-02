@@ -1,9 +1,12 @@
 from typing import Any
+from _typeshed import Incomplete
+from collections.abc import Generator
+from typing import Any
 
 
 class DictLike:
 
-    def getitem(self, key) -> None:
+    def getitem(self, key: Any) -> Any:
         ...
 
     def setitem(self, key, value) -> None:
@@ -12,7 +15,7 @@ class DictLike:
     def delitem(self, key) -> None:
         ...
 
-    def keys(self) -> None:
+    def keys(self) -> Generator[str, None, None]:
         ...
 
     def __len__(self):
@@ -60,5 +63,5 @@ class DictLike:
     def iterkeys(self):
         ...
 
-    def get(self, key, default: Any | None = ...):
+    def get(self, key, default: Incomplete | None = ...):
         ...

@@ -9,6 +9,8 @@ Notes:
 
 """
 from scriptconfig.config import Config
+import warnings
+import ubelt as ub
 
 
 def dataconf(cls):
@@ -143,12 +145,24 @@ class MetaDataConfig(type):
             cls_default = namespace.get('__default__', None)
             if cls_default is None:
                 cls_default = {}
+
             default.update(cls_default)
             # Helps make the class pickleable. Pretty hacky though.
             for k in attr_default:
                 namespace.pop(k)
             namespace['__default__'] = default
             namespace['__did_dataconfig_init__'] = True
+
+            from scriptconfig.value import Value
+            for k, v in default.items():
+                if isinstance(v, tuple) and len(v) == 1 and isinstance(v[0], Value):
+                    warnings.warn(ub.paragraph(
+                        f'''
+                        It looks like you have a trailing comma in your
+                        {name} DataConfig.  The variable {k!r} has a value of
+                        {v!r}, which is a Tuple[Value]. Typically it should be
+                        a Value.
+                        '''), UserWarning)
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         # print(f'Meta.__new__ returns: {cls=}')
         return cls
@@ -161,7 +175,6 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     __epilog__ = None
 
     def __init__(self, *args, **kwargs):
-        import ubelt as ub
         self._data = None
         self._default = ub.odict()
         if getattr(self, '__default__', None):
@@ -177,6 +190,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             ).format(unknown_args, list(self._default)))
         self._default.update(new_defaults)
         self._data = self._default.copy()
+        self._enable_setattr = True
         self.normalize()
 
     def __getattr__(self, key):
@@ -193,21 +207,94 @@ class DataConfig(Config, metaclass=MetaDataConfig):
                 raise AttributeError(key)
         raise AttributeError(key)
 
+    def __setattr__(self, key, value):
+        """
+        Forwards setattrs in the configuration to the dictionary interface,
+        otherwise passes it through.
+        """
+        if getattr(self, '_enable_setattr', False) and key in self:
+            # After object initialization allow the user to use setattr on any
+            # value in the underlying dictionary. Everything else uses the
+            # normal mechanism.
+            try:
+                self[key] = value
+            except KeyError:
+                raise AttributeError(key)
+        else:
+            self.__dict__[key] = value
+
     @classmethod
-    def legacy(cls, cmdline=False, data=None, default=None):
+    def legacy(cls, cmdline=False, data=None, default=None, strict=False):
+        """
+        Calls the original "load" way of creating non-dataclass config objects.
+        This may be refactored in the future.
+        """
+        import ubelt as ub
+        ub.schedule_deprecation(
+            'scriptconfig', 'legacy', 'classmethod',
+            migration='use the cli classmethod instead.',
+            deprecate='0.7.2', error='1.0.0', remove='1.0.1',
+        )
         if default is None:
             default = {}
         self = cls(**default)
-        self.load(data, cmdline=cmdline, default=default)
+        self.load(data, cmdline=cmdline, default=default, strict=strict)
         return self
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None):
-        if argv is None:
-            cmdline = 1
-        else:
+    def cli(cls, data=None, default=None, argv=None, strict=False, cmdline=True):
+        """
+        The underlying function used by parse_args and parse_known_args, which
+        allows for extra specifiction of data and defaults.
+
+        Calls the original "load" way of creating non-dataclass config objects.
+        This may be refactored in the future.
+
+        Args:
+            data (dict | str | None):
+                Values to update the configuration with. This can be a
+                regular dictionary or a path to a yaml / json file.
+
+            default (dict | None):
+                Values to update the defaults with (not the actual
+                configuration). Note: anything passed to default will be deep
+                copied and can be updated by argv or data if it is specified.
+                Generally prefer to pass directly to data instead.
+
+            cmdline (bool):
+                Defaults to True, which creates and uses an argparse object to
+                interact with the command line. If set to False, then the
+                argument parser is bypassed (useful for invoking a CLI
+                programatically).
+        """
+        if cmdline and argv:
             cmdline = argv
-        return cls.legacy(cmdline=cmdline, data=data, default=default)
+        if default is None:
+            default = {}
+        self = cls()
+        # **default)
+        self.load(data, cmdline=cmdline, default=default, strict=strict)
+        return self
+
+    @classmethod
+    def parse_args(cls, args=None, namespace=None):
+        """
+        Mimics argparse.ArgumentParser.parse_args
+        """
+        if namespace is not None:
+            raise NotImplementedError(
+                'namespaces are not handled in scriptconfig')
+        return cls.cli(argv=args, strict=True)
+
+    @classmethod
+    def parse_known_args(cls, args=None, namespace=None):
+        """
+        Mimics argparse.ArgumentParser.parse_known_args
+        """
+        if namespace is not None:
+            raise NotImplementedError(
+                'namespaces are not handled in scriptconfig')
+        return cls.cli(argv=args, strict=False)
 
     @property
     def default(self):
@@ -215,6 +302,9 @@ class DataConfig(Config, metaclass=MetaDataConfig):
 
 
 def __example__():
+    """
+    Doctests are broken for DataConfigs, so putting them here.
+    """
     import scriptconfig as scfg
     try:
         import dataclasses

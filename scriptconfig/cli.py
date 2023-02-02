@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 
 def quick_cli(default, name=None):
     """

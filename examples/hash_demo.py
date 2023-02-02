@@ -31,11 +31,9 @@ From the command line using a yaml config:
 
 Lastly you can call it from good ol' Python.
 
-.. code-block:: python
+.. code-block:: bash
 
-    import hash_demo
-    hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
-
+    python -c "import hash_demo; hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')"
 """
 import scriptconfig as scfg
 import hashlib
@@ -53,7 +51,7 @@ class FileHashConfig(scfg.Config):
             ''')),
         'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help=ub.paragraph(
             '''
-            a name of a hashlib hasher'
+            a name of a hashlib hasher
             ''')),
     }
 

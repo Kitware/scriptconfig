@@ -60,19 +60,13 @@ file, computes its hash, and then prints it to stdout.
         The docstring will be the description in the CLI help
         """
         default = {
-            'fpath': scfg.Value(None, position=1, help=ub.paragraph(
-                '''
-                a path to a file to hash
-                ''')),
-            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help=ub.paragraph(
-                '''
-                a name of a hashlib hasher'
-                ''')),
+            'fpath': scfg.Value(None, position=1, help='a path to a file to hash'),
+            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher'),
         }
 
 
     def main(**kwargs):
-        config = FileHashConfig(default=kwargs, cmdline=True)
+        config = FileHashConfig(data=kwargs, cmdline=True)
         print('config = {!r}'.format(config))
         fpath = config['fpath']
         hasher = getattr(hashlib, config['hasher'])()
@@ -88,10 +82,8 @@ file, computes its hash, and then prints it to stdout.
     if __name__ == '__main__':
         main()
 
-
-
-If this script is in a module ``hash_demo.py``, it can be invoked in these
-following ways.
+If this script is in a module ``hash_demo.py`` (e.g. in the examples folder of
+this repo), it can be invoked in these following ways.
 
 Purely from the command line:
 
@@ -126,7 +118,49 @@ Lastly you can call it from good ol' Python.
 
     import hash_demo
     hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
+
+
+Example Script (New Syntax)
+---------------------------
+
+NEW in 0.6.2: there is now a more concice syntax available using a scriptconfig.DataConfig.
+The equivalent version of the above code is:
+
+
+.. code-block:: python
+
+    import scriptconfig as scfg
+    import hashlib
+
+
+    class FileHashConfig(scfg.DataConfig):
+        """
+        The docstring will be the description in the CLI help
+        """
+        fpath = scfg.Value(None, position=1, help='a path to a file to hash')
+        hasher = scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher')
+
+
+    def main(**kwargs):
+        config = FileHashConfig.cli(data=kwargs)
+        print('config = {!r}'.format(config))
+        fpath = config['fpath']
+        hasher = getattr(hashlib, config['hasher'])()
+
+        with open(fpath, 'rb') as file:
+            hasher.update(file.read())
+
+        hashstr = hasher.hexdigest()
+        print('The {hasher} hash of {fpath} is {hashstr}'.format(
+            hashstr=hashstr, **config))
+
+
+    if __name__ == '__main__':
+        main()
+
     
+This can be invoked from the examples folder similarly to the above script
+(replace ``hash_data.py`` with ``hash_data_datconfig.py``.)
 
 
 Project Design Goals
@@ -199,6 +233,38 @@ like help documentation or type information.
     >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
 
 
+The above examples are even more concise with the new DataConfig syntax.
+
+.. code-block:: python
+
+    >>> import scriptconfig as scfg
+    >>> # In its simplest incarnation, the config class specifies default values.
+    >>> # For each configuration parameter.
+    >>> class ExampleConfig(scfg.DataConfig):
+    >>>     num = 1
+    >>>     mode = 'bar'
+    >>>     ignore = ['baz', 'biz']
+    >>> # Creating an instance, starts using the defaults
+    >>> config = ExampleConfig()
+    >>> assert config['num'] == 1
+    >>> # Or pass in known data. (load as shown in the original example still works)
+    >>> kwargs = {'num': 2}
+    >>> config = ExampleConfig.cli(default=kwargs, cmdline=False)
+    >>> assert config['num'] == 2
+    >>> # The `load` method can also be passed a json/yaml file/path.
+    >>> config_fpath = '/tmp/foo'
+    >>> open(config_fpath, 'w').write('{"mode": "foo"}')
+    >>> config.load(config_fpath, cmdline=False)
+    >>> assert config['num'] == 2
+    >>> assert config['mode'] == "foo"
+    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # or by setting it to a custom sys.argv
+    >>> config = ExampleConfig.cli(argv=['--num=4'])
+    >>> assert config['num'] == 4
+    >>> # Note that using `config.load(cmdline=True)` will just use the
+    >>> # contents of sys.argv
+
+
 Features
 --------
 
@@ -253,19 +319,52 @@ Answer:  This depends if you want to pass the path to that json file via the com
 Related Software
 ----------------
 
+I've never been completely happy with existing config / argument parser
+software. I prefer to not use decorators, so click and to some extend hydra are
+no-gos. Fire is nice when you want a really quick CLI, but is not so nice if
+you ever go to deploy the program in the real world.
+
+The builtin argparse in Python is pretty good, but I with it was eaiser to do
+things like allowing arguments to be flags or key/value pairs. This library
+uses argparse under the hood because of its stable and standard backend, but
+that does mean we inherit some of its quirks. 
+
+The configargparse library - like this one - augments argparse with the ability
+to read defaults from config files, but it has some major usage limitations due
+to its implementation and there are better options (like jsonargparse). It also
+does not support the use case of calling the CLI as a Python function very
+well.
+
+The jsonargparse library is newer than this one, and looks very compelling.  I
+feel like the definition of CLIs in this library are complementary and I'm
+considering adding support in this library for jsonargparse because it solves
+the problem of nested configurations and I would like to inherit from that.
+Keep an eye out for this feature in future work.
+
+
 Hydra - https://hydra.cc/docs/intro/#
 
 OmegaConf - https://omegaconf.readthedocs.io/en/latest/index.html
+
+Argparse - https://docs.python.org/3/library/argparse.html
+
+JsonArgparse - https://jsonargparse.readthedocs.io/en/stable/index.html
+
+Fire - https://pypi.org/project/fire/
+
+Click - https://pypi.org/project/click/
+
+ConfigArgparse - https://pypi.org/project/ConfigArgParse/
 
 
 TODO
 ----
 
-- [ ] Policy on nested heirachies (currently disallowed)
+- [ ] Policy on nested heirachies (currently disallowed) - jsonargparse will be the solution here.
 
 - [ ] Policy on smartcast (currently enabled)
 
-- [ ] Policy on positional arguments (currently experimental)
+- [ ] Policy on positional arguments (currently experimental) - may need a new API.
 
     - [ ] Fixed length
 
@@ -273,11 +372,11 @@ TODO
 
     - [ ] Can argparse be modified to always allow for them to appear at the beginning or end?
 
-    - [ ] Can we get argparse to allow a positional arg change the value of a prefixed arg and still have a sane help menu?
+    - [x] Can we get argparse to allow a positional arg change the value of a prefixed arg and still have a sane help menu?
 
-- [ ] Policy on boolean flags (needs exploration)
+- [x] Policy on boolean flags - See the ``isflag`` argument of ``scriptconfig.Value``
 
-- [ ] Improve over argparse's default autogenerated help docs (needs exploration on what is possible with argparse and where extensions are feasible)
+- [x] Improve over argparse's default autogenerated help docs (needs exploration on what is possible with argparse and where extensions are feasible)
 
 
 .. |GitlabCIPipeline| image:: https://gitlab.kitware.com/utils/scriptconfig/badges/master/pipeline.svg

@@ -18,15 +18,18 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
         item (str | object):
             represents some data of another type.
 
-        astype (type, default=None):
+        astype (type | None):
             if None, try infer what the best type is, if astype == 'eval' then
             try to return `eval(item)`, Otherwise, try to cast to this type.
+            Default to None.
 
-        strict (bool, default=False):
-            if True raises a TypeError if conversion fails
+        strict (bool):
+            if True raises a TypeError if conversion fails.
+            Default to False.
 
-        allow_split (bool, default=True):
-            if True will interpret strings with commas as sequences
+        allow_split (bool):
+            if True will interpret strings with commas as sequences.
+            Defaults to True.
 
     Returns:
         object: some item
@@ -146,7 +149,7 @@ def _as_smart_type(item, astype):
 
     Args:
         item (str): represents some data of another type.
-        astype (type or str): type to attempt to cast to
+        astype (type | str): type to attempt to cast to
 
     Returns:
         object:

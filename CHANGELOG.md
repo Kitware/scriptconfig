@@ -4,10 +4,26 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.2 - Unreleased
+## Version 0.7.3 - Unreleased
 
 
-## Version 0.7.1 - Released 2023-02-02
+## Version 0.7.2 - Released 2023-02-02
+### Added
+* `parse_args` and `parse_known_args` methods to Config and DataConfig 
+
+### Changed
+* Experimental feature where the CLI can now accept `_` or `-` in sys.argv if `__fuzzy_hyphens__` exists and is truthy
+* default, description, and epilog can now be specified with dunder __default__, __description__, and __epilog__ attributes
+* Added `cmdline` argument to `DataConfig.cli`
+ 
+### Fixed
+* Bug where trying to get a non-existing value raised an AttributeError instead of a KeyError due to aliases
+* Fixed issue where using setattr on a DataConfig using a known key did not set its dictionary value.
+* Fixed DataConfig issue with aliases
+* Issue where `args` contains a `PathLike` object. This is now detected and cast to a string for convenience.
+
+
+## Version 0.7.1 - Released 2022-09-28
 
 ### Added
 

@@ -1,13 +1,11 @@
 from typing import Union
-from typing import Any
+from _typeshed import Incomplete
 
-BooleanType: Any
-BooleanType = bool
-NoneType: Any
+NoneType: Incomplete
 
 
 def smartcast(item: Union[str, object],
-              astype: type = ...,
-              strict: bool = ...,
-              allow_split: bool = ...) -> object:
+              astype: Union[type, None] = None,
+              strict: bool = False,
+              allow_split: bool = False) -> object:
     ...
