@@ -242,7 +242,8 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         return self
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None, strict=False, cmdline=True):
+    def cli(cls, data=None, default=None, argv=None, strict=False,
+            cmdline=True, autocomplete=False):
         """
         The underlying function used by parse_args and parse_known_args, which
         allows for extra specifiction of data and defaults.
@@ -273,7 +274,8 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             default = {}
         self = cls()
         # **default)
-        self.load(data, cmdline=cmdline, default=default, strict=strict)
+        self.load(data, cmdline=cmdline, default=default, strict=strict,
+                  autocomplete=autocomplete)
         return self
 
     @classmethod
