@@ -139,7 +139,7 @@ class MetaDataConfig(type):
             # too, which is slightly cleaner.
             attr_default = {}
             for k, v in namespace.items():
-                if not k.startswith('_') and not callable(v):
+                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod):
                     attr_default[k] = v
             default = attr_default.copy()
             cls_default = namespace.get('__default__', None)
