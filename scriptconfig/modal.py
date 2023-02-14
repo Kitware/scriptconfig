@@ -151,7 +151,7 @@ class ModalCLI(object):
 
     build_parser = argparse
 
-    def run(self, argv=None):
+    def run(self, argv=None, strict=True):
         parser = self.argparse()
 
         try:
@@ -166,7 +166,11 @@ class ModalCLI(object):
         if argcomplete is not None:
             argcomplete.autocomplete(parser)
 
-        ns = parser.parse_args(args=argv)
+        if strict:
+            ns = parser.parse_args(args=argv)
+        else:
+            ns, _ = parser.parse_known_args(args=argv)
+
         kw = ns.__dict__
 
         if kw.pop('version', None):
