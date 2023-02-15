@@ -413,7 +413,8 @@ class Config(ub.NiceRepr, DictLike):
         self._default.update(default)
         self._alias_map = None
 
-    def load(self, data=None, cmdline=False, mode=None, default=None, strict=False):
+    def load(self, data=None, cmdline=False, mode=None, default=None,
+             strict=False, autocomplete=False):
         """
         Updates the configuration from a given data source.
 
@@ -456,6 +457,10 @@ class Config(ub.NiceRepr, DictLike):
             strict (bool):
                 if True an error will be raised if the command line
                 contains unknown arguments.
+
+            autocomplete (bool):
+                if True, attempts to use the autocomplete package if it is
+                available if reading from sys.argv. Defaults to False.
 
         Note:
             if cmdline=True, this will create an argument parser.
@@ -589,7 +594,7 @@ class Config(ub.NiceRepr, DictLike):
             read_argv_kwargs = {
                 'special_options': True,
                 'strict': strict,
-                'autocomplete': False,
+                'autocomplete': autocomplete,
                 'argv': None,
             }
             if isinstance(cmdline, dict):

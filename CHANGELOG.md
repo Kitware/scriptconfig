@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.3 - Unreleased
 
+### Added
+* Add `autocomplete` arg for `argcomplete`.
+* New `scriptconfig.modal` module with `ModalCLI` class for building modal CLIs
+  from multiple scriptconfig objects.
+
+### Fixed
+* DataConfig can now define classmethods 
+
 
 ## Version 0.7.2 - Released 2023-02-02
 ### Added

@@ -139,7 +139,7 @@ class MetaDataConfig(type):
             # too, which is slightly cleaner.
             attr_default = {}
             for k, v in namespace.items():
-                if not k.startswith('_') and not callable(v):
+                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod):
                     attr_default[k] = v
             default = attr_default.copy()
             cls_default = namespace.get('__default__', None)
@@ -242,7 +242,8 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         return self
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None, strict=False, cmdline=True):
+    def cli(cls, data=None, default=None, argv=None, strict=False,
+            cmdline=True, autocomplete=False):
         """
         The underlying function used by parse_args and parse_known_args, which
         allows for extra specifiction of data and defaults.
@@ -273,7 +274,8 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             default = {}
         self = cls()
         # **default)
-        self.load(data, cmdline=cmdline, default=default, strict=strict)
+        self.load(data, cmdline=cmdline, default=default, strict=strict,
+                  autocomplete=autocomplete)
         return self
 
     @classmethod
