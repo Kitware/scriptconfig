@@ -1332,7 +1332,6 @@ class Config(ub.NiceRepr, DictLike):
             >>> self._read_argv(argv=['--arg5'])
             >>> self._read_argv(argv=[])
         """
-        import argparse
         from scriptconfig import argparse_ext
 
         if parser is None:
@@ -1343,60 +1342,6 @@ class Config(ub.NiceRepr, DictLike):
         # Use custom action used to mark which values were explicitly set on
         # the commandline
         parser._explicitly_given = set()
-
-        scfg_object = self
-
-        # Inherit from StoreAction to make configargparse happy.
-        # Hopefully python doesn't change the behavior of this private
-        # function.
-        # base = argparse.Action
-        # base = argparse._StoreAction
-        # TODO: can we move this to argparse_ext and clean it up?
-        # Is the closure scope necesary?
-        class ParseAction(argparse._StoreAction):
-            def __init__(self, *args, **kwargs):
-                # required/= kwargs.pop('required', False)
-                super().__init__(*args, **kwargs)
-                # with script config nothing should be required by default
-                # (unless specified) all positional arguments should have
-                # keyword arg variants Setting required=False here will prevent
-                # positional args from erroring if they are not specified. I
-                # dont think there are other side effects, but we should make
-                # sure that is actually the case.
-                self.required = required
-                self.required = False  # hack
-
-                if self.type is None:
-                    # If a type isn't explicitly declared, we will either use
-                    # the template (if it exists) or try using a smartcast.
-                    def _smart_type(value):
-                        key = self.dest
-                        template = scfg_object.default[key]
-                        if not isinstance(template, Value):
-                            # smartcast non-valued params from commandline
-                            value = smartcast.smartcast(value)
-                        else:
-                            value = template.cast(value)
-                        return value
-
-                    self.type = _smart_type
-
-            def __call__(action, parser, namespace, values, option_string=None):
-                # print('CALL action = {!r}'.format(action))
-                # print('option_string = {!r}'.format(option_string))
-                # print('values = {!r}'.format(values))
-
-                if isinstance(values, list) and len(values):
-                    # We got a list of lists, which we hack into a flat list
-                    if isinstance(values[0], list):
-                        values = list(it.chain(*values))
-
-                setattr(namespace, action.dest, values)
-                if not hasattr(parser, '_explicitly_given'):
-                    # We might be given a subparser / parent parser
-                    # and not the original one we created.
-                    parser._explicitly_given = set()
-                parser._explicitly_given.add(action.dest)
 
         # IRC: this ensures each key has a real Value class
         # This is messy and needs to be rethought
@@ -1422,113 +1367,24 @@ class Config(ub.NiceRepr, DictLike):
         else:
             _keyorder = list(self._default.keys())
 
-        # If the new experimental behavior works well in production
-        # then remove the alternative.
-        def _add_arg(parent, name, argkw, positional, isflag, required=False,
-                     aliases=None, short_aliases=None):
-            _argkw = argkw.copy()
-
-            long_names = [name] + list((aliases or []))
-            short_names = list(short_aliases or [])
-
-            FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
-            if FUZZY_HYPHENS:
-                # Do we want to allow for people to use hyphens on the CLI?
-                # Maybe, we can make it optional.
-                unique_long_names = set(long_names)
-                modified_long_names = {n.replace('_', '-') for n in unique_long_names}
-                extra_long_names = modified_long_names - unique_long_names
-                long_names += sorted(extra_long_names)
-
-            if positional:
-                parent.add_argument(name, **_argkw)
-
-            _argkw['dest'] = name
-
-            if isflag:
-                # Can we support both flag and setitem methods of cli
-                # parsing?
-                _argkw.pop('type', None)
-                _argkw.pop('choices', None)
-                _argkw.pop('action', None)
-                _argkw.pop('nargs', None)
-                _argkw['dest'] = name
-
-                short_option_strings = ['-' + n for n in short_names]
-                long_option_strings = ['--' + n for n in long_names]
-                option_strings = short_option_strings + long_option_strings
-                _argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
-                parent.add_argument(*option_strings, required=required, **_argkw)
-            else:
-                short_option_strings = ['-' + n for n in short_names]
-                long_option_strings = ['--' + n for n in long_names]
-                option_strings = short_option_strings + long_option_strings
-                parent.add_argument(*option_strings, required=required, **_argkw)
-
-        # NOTE: current group support is very limited.
-        # properties of groups cannot be set, just that arguments belong to a
-        # group or not.
-        group_lut = {}
-        mutex_group_lut = {}
+        FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
 
         for key, value in self._data.items():
-            # key: str
-            # value: Any | Value
-            name = key
-            argkw = {}
-            argkw['help'] = ''
-            positional = None
-            isflag = False
-            required = False
+            if 1:
+                if key in _metadata:
+                    # Use the metadata in the Value class to enhance argparse
+                    _value = _metadata[key]
+                else:
+                    _value = value if scfg_isinstance(value, Value) else None
 
-            parent = parser
-            if name in _metadata:
-                # Use the metadata in the Value class to enhance argparse
-                _value = _metadata[name]
-                argkw.update(_value.parsekw)
-                required = _value.required
-                value = _value.value
-                isflag = _value.isflag
-                positional = _value.position
-
-                # If the args are flagged as belonging to a group, resepct
-                # that.
-                if _value.group is not None:
-                    if _value.group not in group_lut:
-                        groupkw = {}
-                        if isinstance(_value.group, str):
-                            groupkw['title'] = _value.group
-                        group_lut[_value.group] = parent.add_argument_group(**groupkw)
-                    parent = group_lut[_value.group]
-
-                if _value.mutex_group is not None:
-                    if _value.mutex_group not in mutex_group_lut:
-                        mutex_group_lut[_value.mutex_group] = parent.add_mutually_exclusive_group()
-                    parent = mutex_group_lut[_value.mutex_group]
-
-            else:
-                _value = value if scfg_isinstance(value, Value) else None
-                # _value = value if isinstance(value, Value) else None
-
-            if not argkw['help']:
-                argkw['help'] = '<undocumented>'
-
-            argkw['default'] = value
-            argkw['action'] = ParseAction
-
-            aliases = None
-            short_aliases = None
-            if _value is not None:
-                aliases = _value.alias
-                short_aliases = _value.short_alias
-            if isinstance(aliases, str):
-                aliases = [aliases]
-            if isinstance(short_aliases, str):
-                short_aliases = [short_aliases]
-
-            _add_arg(parent, name, argkw, positional, isflag,
-                     required=required, aliases=aliases,
-                     short_aliases=short_aliases)
+                # if not scfg_isinstance(value, Value):
+                #     _value = None
+                #     value = Value(value)
+                # else:
+                #     _value = value
+                from scriptconfig import value as value_mod
+                value_mod._value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
+                continue
 
         if special_options:
             parser.add_argument('--config', default=None, help=ub.codeblock(

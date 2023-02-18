@@ -4,6 +4,18 @@ import copy
 from . import smartcast
 
 
+__note__ = """
+TODO:
+    After we remove 3.6 support, deprecate position and add the ispositional
+    argument. Or maybe just "positional"?
+
+    ispositional (bool):
+        if True the argument will be treated as a positional argument with
+        its order determined by its location in the config.
+
+"""
+
+
 class Value(ub.NiceRepr):
     """
     You may set any item in the config's default to an instance of this class.
@@ -138,3 +150,171 @@ class PathList(Value):
             else:
                 value = paths2
         return value
+
+
+def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=0):
+    """
+    POC for a new simplified way for a value to add itself as an argument to a
+    parser.
+    """
+    # import argparse
+    from scriptconfig import argparse_ext
+
+    # value: Any | Value
+    name = key
+    argkw = {}
+    argkw['help'] = ''
+    positional = None
+    isflag = False
+    required = False
+
+    group_lut = getattr(parser, '_sc_group_lut', {})
+    mutex_group_lut = getattr(parser, '_sc_mutex_group_lut', {})
+    parser._sc_mutex_group_lut = mutex_group_lut
+    parser._sc_group_lut = group_lut
+
+    parent = parser
+    if _value is not None:
+        # Use the metadata in the Value class to enhance argparse
+        # _value = _metadata[name]
+        argkw.update(_value.parsekw)
+        required = _value.required
+        value = _value.value
+        isflag = _value.isflag
+        positional = _value.position
+
+        # If the args are flagged as belonging to a group, resepct that.
+        if _value.group is not None:
+            if _value.group not in group_lut:
+                groupkw = {}
+                if isinstance(_value.group, str):
+                    groupkw['title'] = _value.group
+                group_lut[_value.group] = parent.add_argument_group(**groupkw)
+            parent = group_lut[_value.group]
+
+        if _value.mutex_group is not None:
+            if _value.mutex_group not in mutex_group_lut:
+                mutex_group_lut[_value.mutex_group] = parent.add_mutually_exclusive_group()
+            parent = mutex_group_lut[_value.mutex_group]
+
+    if not argkw['help']:
+        argkw['help'] = '<undocumented>'
+
+    argkw['default'] = value
+    argkw['action'] = _maker_smart_parse_action(self)
+
+    aliases = None
+    short_aliases = None
+    if _value is not None:
+        aliases = _value.alias
+        short_aliases = _value.short_alias
+    if isinstance(aliases, str):
+        aliases = [aliases]
+    if isinstance(short_aliases, str):
+        short_aliases = [short_aliases]
+
+    long_names = [name] + list((aliases or []))
+    short_names = list(short_aliases or [])
+    if fuzzy_hyphens:
+        # Do we want to allow for people to use hyphens on the CLI?
+        # Maybe, we can make it optional.
+        unique_long_names = set(long_names)
+        modified_long_names = {n.replace('_', '-') for n in unique_long_names}
+        extra_long_names = modified_long_names - unique_long_names
+        long_names += sorted(extra_long_names)
+    short_option_strings = ['-' + n for n in short_names]
+    long_option_strings = ['--' + n for n in long_names]
+
+    if positional:
+        parent.add_argument(name, **argkw)
+
+    argkw['dest'] = name
+
+    if isflag:
+        # Can we support both flag and setitem methods of cli
+        # parsing?
+        argkw.pop('type', None)
+        argkw.pop('choices', None)
+        argkw.pop('action', None)
+        argkw.pop('nargs', None)
+        argkw['dest'] = name
+
+        option_strings = short_option_strings + long_option_strings
+        argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+        parent.add_argument(*option_strings, required=required, **argkw)
+    else:
+        option_strings = short_option_strings + long_option_strings
+        parent.add_argument(*option_strings, required=required, **argkw)
+
+
+def scfg_isinstance(item, cls):
+    """
+    use instead isinstance for scfg types when reloading
+
+    Args:
+        item (object): instance to check
+        cls (type): class to check against
+
+    Returns:
+        bool
+    """
+    # Note: it is safe to simply use isinstance(item, cls) when
+    # not reloading
+    if hasattr(item, '__scfg_class__')  and hasattr(cls, '__scfg_class__'):
+        return item.__scfg_class__ == cls.__scfg_class__
+    else:
+        return isinstance(item, cls)
+
+
+def _maker_smart_parse_action(self):
+    import argparse
+    from itertools import chain
+
+    scfg_object = self
+
+    ### TODO: be slightly less smart
+    class ParseAction(argparse._StoreAction):
+        def __init__(self, *args, **kwargs):
+            # required/= kwargs.pop('required', False)
+            super().__init__(*args, **kwargs)
+            # with script config nothing should be required by default
+            # (unless specified) all positional arguments should have
+            # keyword arg variants Setting required=False here will prevent
+            # positional args from erroring if they are not specified. I
+            # dont think there are other side effects, but we should make
+            # sure that is actually the case.
+            self.required = False  # hack
+
+            if self.type is None:
+                # If a type isn't explicitly declared, we will either use
+                # the template (if it exists) or try using a smartcast.
+                def _smart_type(value):
+                    key = self.dest
+                    template = scfg_object.default[key]
+                    if not isinstance(template, Value):
+                        # smartcast non-valued params from commandline
+                        value = smartcast.smartcast(value)
+                    else:
+                        value = template.cast(value)
+                    return value
+
+                self.type = _smart_type
+
+        def __call__(action, parser, namespace, values, option_string=None):
+            # print('CALL action = {!r}'.format(action))
+            # print('option_string = {!r}'.format(option_string))
+            # print('values = {!r}'.format(values))
+
+            if isinstance(values, list) and len(values):
+                # We got a list of lists, which we hack into a flat list
+                if isinstance(values[0], list):
+                    values = list(chain(*values))
+
+            setattr(namespace, action.dest, values)
+            if not hasattr(parser, '_explicitly_given'):
+                # We might be given a subparser / parent parser
+                # and not the original one we created.
+                parser._explicitly_given = set()
+            parser._explicitly_given.add(action.dest)
+
+    return ParseAction
