@@ -203,16 +203,39 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     argkw['default'] = value
     argkw['action'] = _maker_smart_parse_action(self)
 
-    aliases = None
-    short_aliases = None
-    if _value is not None:
+    if positional:
+        parent.add_argument(name, **argkw)
+
+    argkw['dest'] = name
+
+    option_strings = _resolve_alias(name, _value, fuzzy_hyphens)
+
+    if isflag:
+        # Can we support both flag and setitem methods of cli
+        # parsing?
+        argkw.pop('type', None)
+        argkw.pop('choices', None)
+        argkw.pop('action', None)
+        argkw.pop('nargs', None)
+        argkw['dest'] = name
+
+        argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+        parent.add_argument(*option_strings, required=required, **argkw)
+    else:
+        parent.add_argument(*option_strings, required=required, **argkw)
+
+
+def _resolve_alias(name, _value, fuzzy_hyphens):
+    if _value is None:
+        aliases = None
+        short_aliases = None
+    else:
         aliases = _value.alias
         short_aliases = _value.short_alias
     if isinstance(aliases, str):
         aliases = [aliases]
     if isinstance(short_aliases, str):
         short_aliases = [short_aliases]
-
     long_names = [name] + list((aliases or []))
     short_names = list(short_aliases or [])
     if fuzzy_hyphens:
@@ -224,27 +247,8 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
         long_names += sorted(extra_long_names)
     short_option_strings = ['-' + n for n in short_names]
     long_option_strings = ['--' + n for n in long_names]
-
-    if positional:
-        parent.add_argument(name, **argkw)
-
-    argkw['dest'] = name
-
-    if isflag:
-        # Can we support both flag and setitem methods of cli
-        # parsing?
-        argkw.pop('type', None)
-        argkw.pop('choices', None)
-        argkw.pop('action', None)
-        argkw.pop('nargs', None)
-        argkw['dest'] = name
-
-        option_strings = short_option_strings + long_option_strings
-        argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
-        parent.add_argument(*option_strings, required=required, **argkw)
-    else:
-        option_strings = short_option_strings + long_option_strings
-        parent.add_argument(*option_strings, required=required, **argkw)
+    option_strings = short_option_strings + long_option_strings
+    return option_strings
 
 
 def scfg_isinstance(item, cls):
