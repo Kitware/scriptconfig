@@ -1,5 +1,54 @@
 """
-Experimental module
+The new way to declare configurations.
+
+Similar to the old-style Config objects, you simply declare a class that
+inherits from :class:`scriptconfig.DataConfig` (or is wrapped by
+:func:`scriptconfig.datconf`) and declare the class variables as the config
+attributes much like you would write a dataclass.
+
+
+Creating an instance of a ``DataConfig`` class works just like a regular
+dataclass, and nothing special happens. You can create the argument parser by
+using the :func:``DataConfig.cli`` classmethod, which works similarly to the
+old-style :class:`scriptconfig.Config` constructor.
+
+The following is the same top-level example as in :mod:`scriptconfig.config`,
+but using ``DataConfig`` instead. It works as a drop-in replacement.
+
+
+Example:
+    >>> import scriptconfig as scfg
+    >>> # In its simplest incarnation, the config class specifies default values.
+    >>> # For each configuration parameter.
+    >>> class ExampleConfig(scfg.DataConfig):
+    >>>      num = 1
+    >>>      mode = 'bar'
+    >>>      ignore = ['baz', 'biz']
+    >>> # Creating an instance, starts using the defaults
+    >>> config = ExampleConfig()
+    >>> # Typically you will want to update default from a dict or file.  By
+    >>> # specifying cmdline=True you denote that it is ok for the contents of
+    >>> # `sys.argv` to override config values. Here we pass a dict to `load`.
+    >>> kwargs = {'num': 2}
+    >>> config.load(kwargs, cmdline=False)
+    >>> assert config['num'] == 2
+    >>> # The `load` method can also be passed a json/yaml file/path.
+    >>> import tempfile
+    >>> config_fpath = tempfile.mktemp()
+    >>> open(config_fpath, 'w').write('{"num": 3}')
+    >>> config.load(config_fpath, cmdline=False)
+    >>> assert config['num'] == 3
+    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # or by setting it to a custom sys.argv
+    >>> config.load(cmdline=['--num=4', '--mode' ,'fiz'])
+    >>> assert config['num'] == 4
+    >>> assert config['mode'] == 'fiz'
+    >>> # You can also just use the command line string itself
+    >>> config.load(cmdline='--num=4 --mode fiz')
+    >>> assert config['num'] == 4
+    >>> assert config['mode'] == 'fiz'
+    >>> # Note that using `config.load(cmdline=True)` will just use the
+    >>> # contents of sys.argv
 
 Notes:
 
@@ -9,6 +58,7 @@ Notes:
 
 """
 from scriptconfig.config import Config
+from scriptconfig.value import Value
 import warnings
 import ubelt as ub
 
@@ -153,7 +203,6 @@ class MetaDataConfig(type):
             namespace['__default__'] = default
             namespace['__did_dataconfig_init__'] = True
 
-            from scriptconfig.value import Value
             for k, v in default.items():
                 if isinstance(v, tuple) and len(v) == 1 and isinstance(v[0], Value):
                     warnings.warn(ub.paragraph(

@@ -119,11 +119,17 @@ class Value(ub.NiceRepr):
     def _to_value_kw(self):
         value = self
         orig_help = self.parsekw['help']
+        orig_type = self.parsekw['type']
         value_kw = {k: str(v) for k, v in self.__dict__.items() if v}
         value_kw.pop('parsekw')
         value_kw.update(value.parsekw)
         value_kw['help'] = repr(orig_help)
         value_kw['nargs'] = repr(value.parsekw['nargs'])
+        if orig_type is not None:
+            if isinstance(orig_type, str):
+                value_kw['type'] = repr(orig_type)
+            else:
+                value_kw['type'] = orig_type.__name__
 
         value_kw = ub.udict(value_kw)
         order = value_kw & ['value', 'nargs', 'type', 'isflag', 'position', 'required',
@@ -189,7 +195,7 @@ class Value(ub.NiceRepr):
         else:
             real_value_kw.pop('isflag', None)
             if action.nargs is not None:
-                real_value_kw['nargs'] = repr(action.nargs)
+                real_value_kw['nargs'] = action.nargs
         action_id = id(action)
         if action_id in actionid_to_groupkey:
             real_value_kw['group'] = repr(actionid_to_groupkey[action_id])
