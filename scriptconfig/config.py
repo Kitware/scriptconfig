@@ -910,7 +910,23 @@ class Config(ub.NiceRepr, DictLike):
         )
         return parserkw
 
-    # TODO:
+    @classmethod
+    def port_click(cls, click_main, name='MyConfig', style='orig'):
+        """
+        Example:
+            @click.command()
+            @click.option('--dataset', required=True, type=click.Path(exists=True), help='input dataset')
+            @click.option('--deployed', required=True, type=click.Path(exists=True), help='weights file')
+            def click_main(dataset, deployed):
+                ...
+        """
+        raise NotImplementedError('todo: figure out how to do this')
+        import click
+        ctx = click.Context(click.Command(''))
+        # parser = click_main.make_parser(ctx)
+        # print(f'parser={parser}')  # not an argparse object
+        info_dict = click_main.to_info_dict(ctx)
+
     @classmethod
     def port_argparse(cls, parser, name='MyConfig', style='orig'):
         """
@@ -973,27 +989,6 @@ class Config(ub.NiceRepr, DictLike):
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
         import re
-        if style == 'orig':
-            recon_str = [
-                'import scriptconfig as scfg',
-                '',
-                'class ' + name + '(scfg.Config):',
-                '    """',
-                ub.indent(parser.description or ''),
-                '    """',
-                '    __default__ = {',
-            ]
-        elif style == 'dataconf':
-            recon_str = [
-                'import scriptconfig as scfg',
-                '',
-                'class ' + name + '(scfg.DataConfig):',
-                '    """',
-                ub.indent(parser.description or ''),
-                '    """',
-            ]
-        else:
-            raise KeyError(style)
 
         def normalize_option_str(s):
             return s.lstrip('-').replace('-', '_')
@@ -1036,6 +1031,8 @@ class Config(ub.NiceRepr, DictLike):
         # placed in the scriptconfig class.
         long_prefix_pat = re.compile('--[^-].*')
         short_prefix_pat = re.compile('-[^-].*')
+
+        entries = []
         for action in parser._actions:
             key = action.dest
             if key == 'help':
@@ -1063,9 +1060,6 @@ class Config(ub.NiceRepr, DictLike):
                 indent = ' ' * 4
             else:
                 indent = ' ' * 8
-            value_args = [
-                repr(action.default),
-            ]
 
             value_kw = {
                 'type': '{}'.format(action.type.__name__) if action.type else None,
@@ -1112,19 +1106,40 @@ class Config(ub.NiceRepr, DictLike):
                     value_kw['help'] = ub.indent(block, ' ' * 8).lstrip()
                     # "ub.paragraph(\n'''\n{}\n''')".format(ub.indent(action.help, ' ' * 16))
 
-            value_args.extend(['{}={}'.format(k, v) for k, v in value_kw.items() if v is not None])
+            value_kw['default'] = action.default
+            entries.append(value_kw)
 
-            if 0:
-                val_body = ', '.join(value_args)
-            else:
-                if 0:
-                    arg_indent = '{}    '.format(indent)
-                    arg_prefix = '\n{}'.format(arg_indent)
-                    arg_sep = ',{}'.format(arg_prefix)
-                    arg_tail = '\n{}'.format(indent)
-                    val_body = arg_prefix + arg_sep.join(value_args) + arg_tail
-                else:
-                    val_body = ', '.join(value_args)
+        if style == 'orig':
+            recon_str = [
+                'import scriptconfig as scfg',
+                '',
+                'class ' + name + '(scfg.Config):',
+                '    """',
+                ub.indent(parser.description or ''),
+                '    """',
+                '    __default__ = {',
+            ]
+        elif style == 'dataconf':
+            recon_str = [
+                'import scriptconfig as scfg',
+                '',
+                'class ' + name + '(scfg.DataConfig):',
+                '    """',
+                ub.indent(parser.description or ''),
+                '    """',
+            ]
+        else:
+            raise KeyError(style)
+
+        for value_kw in entries:
+            _value_kw = value_kw.copy()
+
+            default = _value_kw.pop('default')
+            value_args = [
+                repr(default),
+            ]
+            value_args.extend(['{}={}'.format(k, v) for k, v in _value_kw.items() if v is not None])
+            val_body = ', '.join(value_args)
 
             if style == 'orig':
                 recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
@@ -1149,6 +1164,10 @@ class Config(ub.NiceRepr, DictLike):
             except Exception:
                 pass
         return text
+
+    @classmethod
+    def _construct_config_text(cls):
+        ...
 
     @property
     def namespace(self):

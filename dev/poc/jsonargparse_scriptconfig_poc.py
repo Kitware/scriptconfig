@@ -30,80 +30,80 @@ class ScriptConfigArgumentParser(jsonargparse.ArgumentParser):
     See if we can do something to land this functionality upstream
     """
 
-    def add_subclass_arguments(
-        self,
-        baseclass: Union[Type, Tuple[Type, ...]],
-        nested_key: str,
-        as_group: bool = True,
-        skip: Optional[Set[str]] = None,
-        instantiate: bool = True,
-        required: bool = False,
-        metavar: str = 'CONFIG | CLASS_PATH_OR_NAME | .INIT_ARG_NAME VALUE',
-        help: str = 'One or more arguments specifying "class_path" and "init_args" for any subclass of %(baseclass_name)s.',
-        **kwargs
-    ):
-        """Adds arguments to allow specifying any subclass of the given base class.
+    # def add_subclass_arguments(
+    #     self,
+    #     baseclass: Union[Type, Tuple[Type, ...]],
+    #     nested_key: str,
+    #     as_group: bool = True,
+    #     skip: Optional[Set[str]] = None,
+    #     instantiate: bool = True,
+    #     required: bool = False,
+    #     metavar: str = 'CONFIG | CLASS_PATH_OR_NAME | .INIT_ARG_NAME VALUE',
+    #     help: str = 'One or more arguments specifying "class_path" and "init_args" for any subclass of %(baseclass_name)s.',
+    #     **kwargs
+    # ):
+    #     """Adds arguments to allow specifying any subclass of the given base class.
 
-        This adds an argument that requires a dictionary with a "class_path"
-        entry which must be a import dot notation expression. Optionally any
-        init arguments for the class can be given in the "init_args" entry.
-        Since subclasses can have different init arguments, the help does not
-        show the details of the arguments of the base class. Instead a help
-        argument is added that will print the details for a given class path.
+    #     This adds an argument that requires a dictionary with a "class_path"
+    #     entry which must be a import dot notation expression. Optionally any
+    #     init arguments for the class can be given in the "init_args" entry.
+    #     Since subclasses can have different init arguments, the help does not
+    #     show the details of the arguments of the base class. Instead a help
+    #     argument is added that will print the details for a given class path.
 
-        Args:
-            baseclass: Base class or classes to use to check subclasses.
-            nested_key: Key for nested namespace.
-            as_group: Whether arguments should be added to a new argument group.
-            skip: Names of parameters that should be skipped.
-            required: Whether the argument group is required.
-            metavar: Variable string to show in the argument's help.
-            help: Description of argument to show in the help.
-            **kwargs: Additional parameters like in add_class_arguments.
+    #     Args:
+    #         baseclass: Base class or classes to use to check subclasses.
+    #         nested_key: Key for nested namespace.
+    #         as_group: Whether arguments should be added to a new argument group.
+    #         skip: Names of parameters that should be skipped.
+    #         required: Whether the argument group is required.
+    #         metavar: Variable string to show in the argument's help.
+    #         help: Description of argument to show in the help.
+    #         **kwargs: Additional parameters like in add_class_arguments.
 
-        Raises:
-            ValueError: When given an invalid base class.
-        """
-        if is_final_class(baseclass):
-            raise ValueError("Not allowed for classes that are final.")
-        if type(baseclass) is not tuple:
-            baseclass = (baseclass,)  # type: ignore
-        if not all(inspect.isclass(c) for c in baseclass):
-            raise ValueError('Expected "baseclass" argument to be a class or a tuple of classes.')
+    #     Raises:
+    #         ValueError: When given an invalid base class.
+    #     """
+    #     if is_final_class(baseclass):
+    #         raise ValueError("Not allowed for classes that are final.")
+    #     if type(baseclass) is not tuple:
+    #         baseclass = (baseclass,)  # type: ignore
+    #     if not all(inspect.isclass(c) for c in baseclass):
+    #         raise ValueError('Expected "baseclass" argument to be a class or a tuple of classes.')
 
-        # print(f'Parse add_subclass_arguments: function_or_class={baseclass}')
-        doc_group = get_doc_short_description(baseclass[0], logger=self.logger)
-        group = self._create_group_if_requested(
-            baseclass,
-            nested_key,
-            as_group,
-            doc_group,
-            config_load=False,
-            required=required,
-            instantiate=False,
-        )
+    #     # print(f'Parse add_subclass_arguments: function_or_class={baseclass}')
+    #     doc_group = get_doc_short_description(baseclass[0], logger=self.logger)
+    #     group = self._create_group_if_requested(
+    #         baseclass,
+    #         nested_key,
+    #         as_group,
+    #         doc_group,
+    #         config_load=False,
+    #         required=required,
+    #         instantiate=False,
+    #     )
 
-        added_args: List[str] = []
-        if skip is not None:
-            skip = {nested_key + '.init_args.' + s for s in skip}
-        param = ParamData(name=nested_key, annotation=Union[baseclass], component=baseclass)
-        str_baseclass = iter_to_set_str(get_import_path(x) for x in baseclass)
-        kwargs.update({
-            'metavar': metavar,
-            'help': (help % {'baseclass_name': str_baseclass}),
-        })
-        if 'default' not in kwargs:
-            kwargs['default'] = SUPPRESS
-        self._add_signature_parameter(
-            group,
-            None,
-            param,
-            added_args,
-            skip,
-            sub_configs=True,
-            instantiate=instantiate,
-            **kwargs
-        )
+    #     added_args: List[str] = []
+    #     if skip is not None:
+    #         skip = {nested_key + '.init_args.' + s for s in skip}
+    #     param = ParamData(name=nested_key, annotation=Union[baseclass], component=baseclass)
+    #     str_baseclass = iter_to_set_str(get_import_path(x) for x in baseclass)
+    #     kwargs.update({
+    #         'metavar': metavar,
+    #         'help': (help % {'baseclass_name': str_baseclass}),
+    #     })
+    #     if 'default' not in kwargs:
+    #         kwargs['default'] = SUPPRESS
+    #     self._add_signature_parameter(
+    #         group,
+    #         None,
+    #         param,
+    #         added_args,
+    #         skip,
+    #         sub_configs=True,
+    #         instantiate=instantiate,
+    #         **kwargs
+    #     )
 
     def _add_signature_arguments(
         self,
