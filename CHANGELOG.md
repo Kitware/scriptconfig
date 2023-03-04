@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.4 - Unreleased
 
+### Changed
+* Reworked how the "port" functions work under the hood, and added a new one.
 
 ## Version 0.7.3 - Released 2023-02-15
 
