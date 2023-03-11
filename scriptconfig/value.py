@@ -136,6 +136,8 @@ class Value(ub.NiceRepr):
                             'choices', 'alias', 'short_alias', 'group', 'mutex_group',
                             'help']
         value_kw = order | (value_kw - order)
+        if value_kw.get('nargs', None) in {None, 'None'}:
+            value_kw.pop('nargs', None)
 
         HACKS = 1
         if HACKS:
