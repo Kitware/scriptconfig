@@ -1,4 +1,4 @@
-# python ~/local/tools/supported_python_versions_pip.py numpy
+# xdev availpkg numpy
 # 1.19.2 is the tensorflow minimum
 numpy>=1.23.2  ;                             python_version >= '3.11'  # Python 3.11
 numpy>=1.21.6  ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
