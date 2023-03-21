@@ -51,13 +51,9 @@ Example:
     >>> # contents of sys.argv
 
 Notes:
-
     https://docs.python.org/3/library/dataclasses.html
-
-    __post_init__ corresponds to normalize
-
 """
-from scriptconfig.config import Config
+from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
 import warnings
 import ubelt as ub
@@ -66,6 +62,11 @@ import ubelt as ub
 def dataconf(cls):
     """
     Aims to be simlar to the dataclass decorator
+
+    Note:
+        It is currently recommended to extend from the :class:`DataConfig`
+        object instead of decorating with ``@dataconf``. These have slightly
+        different behaviors and the former is more well-tested.
 
     Example:
         >>> from scriptconfig.dataconfig import *  # NOQA
@@ -171,7 +172,7 @@ def dataconf(cls):
     return SubConfig
 
 
-class MetaDataConfig(type):
+class MetaDataConfig(MetaConfig):
     """
     This metaclass allows us to call `dataconf` when a new subclass is defined
     without the extra boilerplate.
@@ -217,7 +218,6 @@ class MetaDataConfig(type):
         return cls
 
 
-# class DataConfig(Config, metaclass=MetaDataConfig):
 class DataConfig(Config, metaclass=MetaDataConfig):
     __default__ = None
     __description__ = None
@@ -231,6 +231,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             self._default.update(self.__default__)
         argkeys = list(self._default.keys())[0:len(args)]
         new_defaults = ub.dzip(argkeys, args)
+        kwargs = self._normalize_alias(kwargs)
         new_defaults.update(kwargs)
         unknown_args = ub.dict_diff(new_defaults, self._default)
         if unknown_args:
@@ -240,7 +241,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         self._default.update(new_defaults)
         self._data = self._default.copy()
         self._enable_setattr = True
-        self.normalize()
+        self.__post_init__()
 
     def __getattr__(self, key):
         # Note: attributes that mirror the public API will be supressed

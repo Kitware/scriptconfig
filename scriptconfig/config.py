@@ -82,12 +82,13 @@ Ignore:
 TODO:
     - [ ] Handle Nested Configs?
     - [ ] Integrate with Hyrda
-    - [ ] Dataclass support
+    - [x] Dataclass support - See DataConfig
 """
 import ubelt as ub
 import yaml
 import copy
 import json
+import warnings
 import itertools as it
 from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
@@ -160,7 +161,54 @@ def define(default={}, name=None):
     return cls
 
 
-class Config(ub.NiceRepr, DictLike):
+class MetaConfig(type):
+    """
+    A metaclass for Config to help make usage between Config and DataConfig
+    consistent.
+
+    Ensures that class attributes are mirrored:
+        * __default__ mirrors default
+        * __post_init__ mirrors normalize
+    """
+
+    @staticmethod
+    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+
+        if 'default' in namespace and '__default__' not in namespace:
+            # Ensure the user updates to the newer "__default__" paradigm
+            namespace['__default__'] = namespace['default']
+            warnings.warn(
+                ub.paragraph(
+                    f'''
+                    A scriptconfig class {name} was defined using the default
+                    class attribute. As of scriptconfig version 0.7.4, use the
+                    __default__ class attribute instead.
+                    '''))
+
+        if '__default__' in namespace and 'default' not in namespace:
+            # Backport to the older non-duner __default__
+            namespace['default'] = namespace['__default__']
+
+        if 'normalize' in namespace and '__post_init__' not in namespace:
+            # Ensure the newer __post_init__ is specified
+            namespace['__post_init__'] = namespace['normalize']
+            warnings.warn(
+                ub.paragraph(
+                    f'''
+                    A scriptconfig class {name} was defined using the default
+                    normalize method. As of scriptconfig version 0.7.4, use the
+                    __post_init__ method instead.
+                    '''))
+
+        if '__post_init__' in namespace and 'normalize' not in namespace:
+            # Backport to the older non-duner normalize
+            namespace['normalize'] = namespace['__post_init__']
+
+        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
+        return cls
+
+
+class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     """
     Base class for custom configuration objects
 
@@ -168,7 +216,7 @@ class Config(ub.NiceRepr, DictLike):
     file, and / or a in-code dictionary. To use, define a class variable named
     "__default__" and assing it to a dict of default values. You can also use
     special `Value` classes to denote types. You can also define a method
-    `normalize`, to postprocess the arguments after this class receives them.
+    `__post_init__`, to postprocess the arguments after this class receives them.
 
     Basic usage is as follows.
 
@@ -183,7 +231,7 @@ class Config(ub.NiceRepr, DictLike):
     for specification of default values, type information, help strings,
     and aliases.
 
-    You may also implement normalize (function with that takes no args and
+    You may also implement __post_init__ (function with that takes no args and
     has no return) to postprocess your results after initialization.
 
     When creating an instance of the class the defaults variable is used
@@ -618,13 +666,29 @@ class Config(ub.NiceRepr, DictLike):
                     if v.required:
                         if self[k] == v.value:
                             raise Exception('Required variable {!r} still has default value'.format(k))
-        self.normalize()
+        self.__post_init__()
         return self
 
     def _resolve_alias(self, key):
+        """
+        normalizes a single aliased key
+        """
         if getattr(self, '_alias_map', None) is None:
             self._alias_map = self._build_alias_map()
         return self._alias_map[key]
+
+    def _normalize_alias(self, data):
+        """
+        Args:
+            data (dict): dictionary with keys that could be aliases
+
+        Returns:
+            dict: keys are normalized to be primary keys.
+        """
+        if getattr(self, '_alias_map', None) is None:
+            self._alias_map = self._build_alias_map()
+        norm = {self._alias_map.get(k, k): v for k, v in data.items()}
+        return norm
 
     def _build_alias_map(self):
         _alias_map = {}
@@ -665,7 +729,6 @@ class Config(ub.NiceRepr, DictLike):
             self = <MyConfig({'src': ['foo'], 'dry': False, 'approx': False})>
             self = <MyConfig({'src': [], 'dry': False, 'approx': False})>
             self = <MyConfig({'src': [], 'dry': False, 'approx': True})>
-
 
             >>> self = MyConfig()
             >>> self._read_argv(argv='p1 p2 p3')
@@ -806,7 +869,7 @@ class Config(ub.NiceRepr, DictLike):
             # if value is not None:
             self[key] = value
 
-        self.normalize()
+        self.__post_init__()
 
         if special_options:
             import sys
@@ -831,9 +894,13 @@ class Config(ub.NiceRepr, DictLike):
                 sys.exit(1)
         return self
 
-    def normalize(self):
+    def __post_init__(self):
         """ overloadable function called after each load """
         pass
+
+    # def normalize(self):
+    #     """ overloadable function called after each load """
+    #     self.__post_init__()
 
     def dump(self, stream=None, mode=None):
         """
@@ -843,13 +910,6 @@ class Config(ub.NiceRepr, DictLike):
             stream (FileLike | None): the stream to write to
             mode (str | None): can be 'yaml' or 'json' (defaults to 'yaml')
         """
-        # if isinstance(stream, str):
-        #     _stream_path = stream
-        #     print('Writing to _stream_path = {!r}'.format(_stream_path))
-        #     _stream = stream = open(_stream_path, 'w')
-        # else:
-        #     _stream_path = None
-        # try:
         if mode is None:
             mode = 'yaml'
         if mode == 'yaml':
@@ -863,12 +923,6 @@ class Config(ub.NiceRepr, DictLike):
         else:
             raise KeyError(mode)
             return yaml.safe_dump(dict(self.items()), stream)
-        # except Exception:
-        #     raise
-        # finally:
-        #     if _stream_path is not None:
-        #         _stream_path
-        #         _stream.close()
 
     def dumps(self, mode=None):
         """
@@ -881,6 +935,14 @@ class Config(ub.NiceRepr, DictLike):
             str - the configuration as a string
         """
         return self.dump(mode=mode)
+
+    def __getattr__(self, key):
+        # Handle aliasing of old "default" and new "__default__"
+        if key == 'default' and hasattr(self, '__default__'):
+            return self.__default__
+        elif key == '__default__' and hasattr(self, 'default'):
+            return self.default
+        raise AttributeError(key)
 
     @property
     def _description(self):
@@ -1401,111 +1463,11 @@ class Config(ub.NiceRepr, DictLike):
 
         return parser
 
-    def __getattr__(self, key):
-        # Handle aliasing of old "default" and new "__default__"
-        if key == 'default' and hasattr(self, '__default__'):
-            return self.__default__
-        elif key == '__default__' and hasattr(self, 'default'):
-            return self.default
-        raise AttributeError(key)
-
-
-# class DataInterchange:
-#     """
-#     Seraializes / Loads / Dumps YAML or json
-
-#     UNUSED:
-#     """
-#     def __init__(self, mode=None, strict=None):
-#         self.mode = mode
-#         self.strict = strict
-
-#     def _rectify_mode(self, data):
-#         if self.mode is None:
-#             if isinstance(data, str):
-#                 if data.lower().endswith('.json'):
-#                     self.mode = 'json'
-#                 elif data.lower().endswith('.yml'):
-#                     self.mode = 'yml'
-#                 else:
-#                     if self.strict:
-#                         raise Exception('unknown mode')
-#         if self.mode is None:
-#             # Default to yaml
-#             if self.strict:
-#                 raise Exception('unknown mode')
-#             else:
-#                 self.mode = 'yaml'
-
-#     @classmethod
-#     def load(cls, fpath):
-#         self = cls()
-#         self._rectify_mode(fpath)
-#         if self.mode == 'yml':
-#             with open(fpath, 'r') as file:
-#                 data = yaml.load(file)
-#         elif self.mode == 'json':
-#             with open(fpath, 'r') as file:
-#                 data = json.load(file)
-#         return data
-
-#     @classmethod
-#     def cli(cls, data=None, default=None, argv=None, strict=False):
-#         """
-#         The underlying function used by parse_args and parse_known_args, which
-#         allows for extra specifiction of data and defaults.
-#         """
-#         if argv is None:
-#             cmdline = 1
-#         else:
-#             cmdline = argv
-#         return cls.load(cmdline=cmdline, data=data, default=default,
-#                         strict=strict)
-
-#     @classmethod
-#     def parse_args(cls, args=None, namespace=None):
-#         """
-#         Mimics argparse.ArgumentParser.parse_args
-#         """
-#         if namespace is not None:
-#             raise NotImplementedError(
-#                 'namespaces are not handled in scriptconfig')
-#         return self.load(argv=args, strict=True)
-
-#     @classmethod
-#     def parse_known_args(cls, args=None, namespace=None):
-#         """
-#         Mimics argparse.ArgumentParser.parse_known_args
-#         """
-#         if namespace is not None:
-#             raise NotImplementedError(
-#                 'namespaces are not handled in scriptconfig')
-#         return self.load(argv=args, strict=False)
-
-#     @classmethod
-#     def dumps(cls, data, mode='yml'):
-#         self = cls(mode=mode)
-#         if self.mode == 'yml':
-#             def order_rep(dumper, data):
-#                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
-#             yaml.add_representer(ub.odict, order_rep)
-#             stream = io.StringIO()
-#             yaml.safe_dump(dict(self.items()), stream)
-#             stream.seek(0)
-#             text = stream.read()
-#         elif self.mode == 'json':
-#             text = json.dumps(ub.odict(self.items()), indent=4)
-#         return text
-
 
 __notes__ = """
-
 export _ARC_DEBUG=1
 pip install argcomplete
 activate-global-python-argcomplete --dest=$HOME/.bash_completion.d --user
 eval "$(register-python-argcomplete xdev)"
 complete -r xdev
-
-
-
 """
