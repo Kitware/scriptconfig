@@ -38,7 +38,7 @@ Example:
     >>> open(config_fpath, 'w').write('{"num": 3}')
     >>> config.load(config_fpath, cmdline=False)
     >>> assert config['num'] == 3
-    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # It is possible to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
     >>> config.load(cmdline=['--num=4', '--mode' ,'fiz'])
     >>> assert config['num'] == 4
@@ -214,13 +214,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     A configuration that can be specified by commandline args, a yaml config
     file, and / or a in-code dictionary. To use, define a class variable named
-    "__default__" and assing it to a dict of default values. You can also use
+    "__default__" and passing it to a dict of default values. You can also use
     special `Value` classes to denote types. You can also define a method
     `__post_init__`, to postprocess the arguments after this class receives them.
 
     Basic usage is as follows.
 
-    Create a class that herits from this class.
+    Create a class that inherits from this class.
 
     Assign the "__default__" class-level variable as a dictionary of options
 
@@ -231,8 +231,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     for specification of default values, type information, help strings,
     and aliases.
 
-    You may also implement __post_init__ (function with that takes no args and
-    has no return) to postprocess your results after initialization.
+    You may also implement ``__post_init__`` (function with that takes no args
+    and has no return) to postprocess your results after initialization.
 
     When creating an instance of the class the defaults variable is used
     to make a dictionary-like object. You can override defaults by
@@ -241,7 +241,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     the contents of ``sys.argv`` to influence the values of the new
     object.
 
-    An instance of the config class behaves like a dictinary, except that
+    An instance of the config class behaves like a dictionary, except that
     you cannot set keys that do not already exist (as specified in the
     defaults dict).
 
@@ -1095,7 +1095,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     @classmethod
     def port_argparse(cls, parser, name='MyConfig', style='orig'):
         """
-        Create an instance from an existing argparse.
+        Generate the corresponding scriptconfig code from an existing argparse
+        instance.
 
         Args:
             parser (argparse.ArgumentParser):
@@ -1204,9 +1205,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         text = cls._write_code(entries, name, style, description)
         return text
 
-    @classmethod
-    def _construct_config_text(cls):
-        ...
+    # @classmethod
+    # def _construct_config_text(cls):
+    #     ...
 
     @property
     def namespace(self):

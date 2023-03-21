@@ -61,7 +61,7 @@ import ubelt as ub
 
 def dataconf(cls):
     """
-    Aims to be simlar to the dataclass decorator
+    Aims to be similar to the dataclass decorator
 
     Note:
         It is currently recommended to extend from the :class:`DataConfig`
