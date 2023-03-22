@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.4 - Unreleased
+## Version 0.7.5 - Unreleased
+
+
+## Version 0.7.4 - Released 2023-03-22
 
 ### Changed
 * Reworked how the "port" functions work under the hood, and added a new one.
