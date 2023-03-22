@@ -20,13 +20,13 @@ ScriptConfig
 The main webpage for this project is: https://gitlab.kitware.com/utils/scriptconfig
 
 The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
-**simply defining a dictionary**. Thie enables you to write simple configs and
+**simply defining a dictionary**. This enables you to write simple configs and
 update from CLI, kwargs, and/or json.
 
 The ``scriptconfig`` module provides a simple way to make configurable scripts
 using a combination of config files, command line arguments, and simple Python
 keyword arguments. A script config object is defined by creating a subclass of
-``Config`` with a ``default`` dict class attribute. An instance of a custom
+``Config`` with a ``__default__`` dict class attribute. An instance of a custom
 ``Config`` object will behave similar a dictionary, but with a few
 conveniences.
 
@@ -59,7 +59,7 @@ file, computes its hash, and then prints it to stdout.
         """
         The docstring will be the description in the CLI help
         """
-        default = {
+        __default__ = {
             'fpath': scfg.Value(None, position=1, help='a path to a file to hash'),
             'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher'),
         }
@@ -123,7 +123,7 @@ Lastly you can call it from good ol' Python.
 Example Script (New Syntax)
 ---------------------------
 
-NEW in 0.6.2: there is now a more concice syntax available using a scriptconfig.DataConfig.
+NEW in 0.6.2: there is now a more concise syntax available using a scriptconfig.DataConfig.
 The equivalent version of the above code is:
 
 
@@ -172,7 +172,7 @@ Project Design Goals
     * Drop in replacement for any dictionary-based configuration system.
 
     * Intuitive parsing (currently working on this), ideally improve on
-      argparse if possible. This means being able to easilly specify simple
+      argparse if possible. This means being able to easily specify simple
       lists, numbers, strings, and paths.
 
 To get started lets consider some example usage:
@@ -183,7 +183,7 @@ To get started lets consider some example usage:
     >>> # In its simplest incarnation, the config class specifies default values.
     >>> # For each configuration parameter.
     >>> class ExampleConfig(scfg.Config):
-    >>>     default = {
+    >>>     __default__ = {
     >>>         'num': 1,
     >>>         'mode': 'bar',
     >>>         'ignore': ['baz', 'biz'],
@@ -201,7 +201,7 @@ To get started lets consider some example usage:
     >>> open(config_fpath, 'w').write('{"num": 3}')
     >>> config.load(config_fpath, cmdline=False)
     >>> assert config['num'] == 3
-    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # It is possible to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
     >>> config.load(cmdline=['--num=4'])
     >>> assert config['num'] == 4
@@ -219,7 +219,7 @@ like help documentation or type information.
 
     >>> import scriptconfig as scfg
     >>> class ExampleConfig(scfg.Config):
-    >>>     default = {
+    >>>     __default__ = {
     >>>         'num': scfg.Value(1, help='a number'),
     >>>         'mode': scfg.Value('bar', help='mode1 help'),
     >>>         'mode2': scfg.Value('bar', type=str, help='mode2 help'),
@@ -324,7 +324,7 @@ software. I prefer to not use decorators, so click and to some extend hydra are
 no-gos. Fire is nice when you want a really quick CLI, but is not so nice if
 you ever go to deploy the program in the real world.
 
-The builtin argparse in Python is pretty good, but I with it was eaiser to do
+The builtin argparse in Python is pretty good, but I with it was easier to do
 things like allowing arguments to be flags or key/value pairs. This library
 uses argparse under the hood because of its stable and standard backend, but
 that does mean we inherit some of its quirks. 

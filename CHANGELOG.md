@@ -6,8 +6,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.4 - Unreleased
 
+### Changed
+* Reworked how the "port" functions work under the hood, and added a new one.
+* The `default` and `__default__` class variables are now treated as aliases in Config.
+* The `normalize` and `__post_init__` methods are now treated as aliases in Config and DataConfig.
 
-## Version 0.7.3 - Released 2023-03-22
+### Fixed:
+* Dataconfigs can now be instantiated with aliased kwargs
+
+## Version 0.7.3 - Released 2023-02-15
 
 ### Added
 * Add `autocomplete` arg for `argcomplete`.

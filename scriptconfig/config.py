@@ -8,6 +8,10 @@ arguments. A script config object is defined by creating a subclass of
 ``Config`` object will behave similar a dictionary, but with a few
 conveniences.
 
+Note:
+    * This class implements the old-style legacy Config class, new applications
+      should favor using DataConfig instead, which has simpler boilerplate.
+
 To get started lets consider some example usage:
 
 Example:
@@ -15,7 +19,7 @@ Example:
     >>> # In its simplest incarnation, the config class specifies default values.
     >>> # For each configuration parameter.
     >>> class ExampleConfig(scfg.Config):
-    >>>     default = {
+    >>>     __default__ = {
     >>>         'num': 1,
     >>>         'mode': 'bar',
     >>>         'ignore': ['baz', 'biz'],
@@ -34,7 +38,7 @@ Example:
     >>> open(config_fpath, 'w').write('{"num": 3}')
     >>> config.load(config_fpath, cmdline=False)
     >>> assert config['num'] == 3
-    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # It is possible to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
     >>> config.load(cmdline=['--num=4', '--mode' ,'fiz'])
     >>> assert config['num'] == 4
@@ -48,7 +52,7 @@ Example:
 
 Ignore:
     >>> class ExampleConfig(scfg.Config):
-    >>>     default = {
+    >>>     __default__ = {
     >>>         'num': 1,
     >>>         'mode': 'bar',
     >>>         'mode2': scfg.Value('bar', str),
@@ -63,7 +67,7 @@ Ignore:
 
     >>> # FIXME: We need make parsing lists a bit more intuitive
     >>> class ExampleConfig(scfg.Config):
-    >>>     default = {
+    >>>     __default__ = {
     >>>         'item1': [],
     >>>         'item2': scfg.Value([], list),
     >>>         'item3': scfg.Value([]),
@@ -78,12 +82,13 @@ Ignore:
 TODO:
     - [ ] Handle Nested Configs?
     - [ ] Integrate with Hyrda
-    - [ ] Dataclass support
+    - [x] Dataclass support - See DataConfig
 """
 import ubelt as ub
 import yaml
 import copy
 import json
+import warnings
 import itertools as it
 from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
@@ -156,21 +161,64 @@ def define(default={}, name=None):
     return cls
 
 
-class Config(ub.NiceRepr, DictLike):
+class MetaConfig(type):
+    """
+    A metaclass for Config to help make usage between Config and DataConfig
+    consistent.
+
+    Ensures that class attributes are mirrored:
+        * __default__ mirrors default
+        * __post_init__ mirrors normalize
+    """
+
+    @staticmethod
+    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+
+        if 'default' in namespace and '__default__' not in namespace:
+            # Ensure the user updates to the newer "__default__" paradigm
+            namespace['__default__'] = namespace['default']
+            ub.schedule_deprecation(
+                'scriptconfig', 'default', f'class attribute of {name}',
+                migration='Use __default__ instead',
+                deprecate='0.7.4', error='0.8.0', remove='0.9.0',
+            )
+
+        if '__default__' in namespace and 'default' not in namespace:
+            # Backport to the older non-dunder __default__
+            namespace['default'] = namespace['__default__']
+
+        if 'normalize' in namespace and '__post_init__' not in namespace:
+            # Ensure the newer __post_init__ is specified
+            namespace['__post_init__'] = namespace['normalize']
+            ub.schedule_deprecation(
+                'scriptconfig', 'normalize', f'class attribute of {name}',
+                migration='Use __post_init__ instead',
+                deprecate='0.7.4', error='0.8.0', remove='0.9.0',
+            )
+
+        if '__post_init__' in namespace and 'normalize' not in namespace:
+            # Backport to the older non-dunder normalize
+            namespace['normalize'] = namespace['__post_init__']
+
+        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
+        return cls
+
+
+class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     """
     Base class for custom configuration objects
 
     A configuration that can be specified by commandline args, a yaml config
     file, and / or a in-code dictionary. To use, define a class variable named
-    "default" and assing it to a dict of default values. You can also use
+    "__default__" and passing it to a dict of default values. You can also use
     special `Value` classes to denote types. You can also define a method
-    `normalize`, to postprocess the arguments after this class receives them.
+    `__post_init__`, to postprocess the arguments after this class receives them.
 
     Basic usage is as follows.
 
-    Create a class that herits from this class.
+    Create a class that inherits from this class.
 
-    Assign the "default" class-level variable as a dictionary of options
+    Assign the "__default__" class-level variable as a dictionary of options
 
     The keys of this dictionary must be command line friendly strings.
 
@@ -179,8 +227,8 @@ class Config(ub.NiceRepr, DictLike):
     for specification of default values, type information, help strings,
     and aliases.
 
-    You may also implement normalize (function with that takes no args and
-    has no return) to postprocess your results after initialization.
+    You may also implement ``__post_init__`` (function with that takes no args
+    and has no return) to postprocess your results after initialization.
 
     When creating an instance of the class the defaults variable is used
     to make a dictionary-like object. You can override defaults by
@@ -189,7 +237,7 @@ class Config(ub.NiceRepr, DictLike):
     the contents of ``sys.argv`` to influence the values of the new
     object.
 
-    An instance of the config class behaves like a dictinary, except that
+    An instance of the config class behaves like a dictionary, except that
     you cannot set keys that do not already exist (as specified in the
     defaults dict).
 
@@ -272,15 +320,18 @@ class Config(ub.NiceRepr, DictLike):
             >>> from scriptconfig.config import *
             >>> self = Config.demo()
             >>> print('self = {}'.format(self))
-            self = <MyConfig({...'option1': ...}...)...>...
+            self = <DemoConfig({...'option1': ...}...)...>...
             >>> self.argparse().print_help()
             >>> # xdoc: +REQUIRES(--cli)
             >>> self.load(cmdline=True)
             >>> print(ub.repr2(dict(self), nl=1))
         """
         import scriptconfig as scfg
-        class MyConfig(scfg.Config):
-            default = {
+        class DemoConfig(scfg.Config):
+            """
+            This was generated by scriptconfig.Config.demo
+            """
+            __default__ = {
                 'option1': scfg.Value('bar', help='an option'),
                 'option2': scfg.Value((1, 2, 3), tuple, help='another option'),
                 'option3': None,
@@ -288,7 +339,7 @@ class Config(ub.NiceRepr, DictLike):
                 'discrete': scfg.Value(None, choices=['a', 'b', 'c']),
                 'apath': scfg.Path(help='a path'),
             }
-        self = MyConfig()
+        self = DemoConfig()
         return self
 
     def __json__(self):
@@ -469,7 +520,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> # Test load works correctly in cmdline True and False mode
             >>> import scriptconfig as scfg
             >>> class MyConfig(scfg.Config):
-            >>>     default = {
+            >>>     __default__ = {
             >>>         'src': scfg.Value(None, help=('some help msg')),
             >>>     }
             >>> data = {'src': 'hi'}
@@ -486,7 +537,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> # Test load works correctly in strict mode
             >>> import scriptconfig as scfg
             >>> class MyConfig(scfg.Config):
-            >>>     default = {
+            >>>     __default__ = {
             >>>         'src': scfg.Value(None, help=('some help msg')),
             >>>     }
             >>> data = {'src': 'hi'}
@@ -508,7 +559,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> # Test load works correctly with required
             >>> import scriptconfig as scfg
             >>> class MyConfig(scfg.Config):
-            >>>     default = {
+            >>>     __default__ = {
             >>>         'src': scfg.Value(None, help=('some help msg'), required=True),
             >>>     }
             >>> cmdlinekw = {
@@ -524,7 +575,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> # Test load works correctly with alias
             >>> import scriptconfig as scfg
             >>> class MyConfig(scfg.Config):
-            >>>     default = {
+            >>>     __default__ = {
             >>>         'opt1': scfg.Value(None),
             >>>         'opt2': scfg.Value(None, alias=['arg2']),
             >>>     }
@@ -611,13 +662,29 @@ class Config(ub.NiceRepr, DictLike):
                     if v.required:
                         if self[k] == v.value:
                             raise Exception('Required variable {!r} still has default value'.format(k))
-        self.normalize()
+        self.__post_init__()
         return self
 
     def _resolve_alias(self, key):
+        """
+        normalizes a single aliased key
+        """
         if getattr(self, '_alias_map', None) is None:
             self._alias_map = self._build_alias_map()
         return self._alias_map[key]
+
+    def _normalize_alias(self, data):
+        """
+        Args:
+            data (dict): dictionary with keys that could be aliases
+
+        Returns:
+            dict: keys are normalized to be primary keys.
+        """
+        if getattr(self, '_alias_map', None) is None:
+            self._alias_map = self._build_alias_map()
+        norm = {self._alias_map.get(k, k): v for k, v in data.items()}
+        return norm
 
     def _build_alias_map(self):
         _alias_map = {}
@@ -634,7 +701,7 @@ class Config(ub.NiceRepr, DictLike):
             >>> import scriptconfig as scfg
             >>> class MyConfig(scfg.Config):
             >>>     description = 'my CLI description'
-            >>>     default = {
+            >>>     __default__ = {
             >>>         'src':  scfg.Value(['foo'], position=1, nargs='+'),
             >>>         'dry':  scfg.Value(False),
             >>>         'approx':  scfg.Value(False, isflag=True, alias=['a1', 'a2']),
@@ -658,7 +725,6 @@ class Config(ub.NiceRepr, DictLike):
             self = <MyConfig({'src': ['foo'], 'dry': False, 'approx': False})>
             self = <MyConfig({'src': [], 'dry': False, 'approx': False})>
             self = <MyConfig({'src': [], 'dry': False, 'approx': True})>
-
 
             >>> self = MyConfig()
             >>> self._read_argv(argv='p1 p2 p3')
@@ -799,7 +865,7 @@ class Config(ub.NiceRepr, DictLike):
             # if value is not None:
             self[key] = value
 
-        self.normalize()
+        self.__post_init__()
 
         if special_options:
             import sys
@@ -824,9 +890,13 @@ class Config(ub.NiceRepr, DictLike):
                 sys.exit(1)
         return self
 
-    def normalize(self):
+    def __post_init__(self):
         """ overloadable function called after each load """
         pass
+
+    # def normalize(self):
+    #     """ overloadable function called after each load """
+    #     self.__post_init__()
 
     def dump(self, stream=None, mode=None):
         """
@@ -836,13 +906,6 @@ class Config(ub.NiceRepr, DictLike):
             stream (FileLike | None): the stream to write to
             mode (str | None): can be 'yaml' or 'json' (defaults to 'yaml')
         """
-        # if isinstance(stream, str):
-        #     _stream_path = stream
-        #     print('Writing to _stream_path = {!r}'.format(_stream_path))
-        #     _stream = stream = open(_stream_path, 'w')
-        # else:
-        #     _stream_path = None
-        # try:
         if mode is None:
             mode = 'yaml'
         if mode == 'yaml':
@@ -856,12 +919,6 @@ class Config(ub.NiceRepr, DictLike):
         else:
             raise KeyError(mode)
             return yaml.safe_dump(dict(self.items()), stream)
-        # except Exception:
-        #     raise
-        # finally:
-        #     if _stream_path is not None:
-        #         _stream_path
-        #         _stream.close()
 
     def dumps(self, mode=None):
         """
@@ -875,14 +932,16 @@ class Config(ub.NiceRepr, DictLike):
         """
         return self.dump(mode=mode)
 
-    def _parserkw(self):
-        """
-        Generate the kwargs for making a new argparse.ArgumentParser
-        """
-        from scriptconfig import argparse_ext
+    def __getattr__(self, key):
+        # Handle aliasing of old "default" and new "__default__"
+        if key == 'default' and hasattr(self, '__default__'):
+            return self.__default__
+        elif key == '__default__' and hasattr(self, 'default'):
+            return self.default
+        raise AttributeError(key)
 
-        prog = getattr(self, 'prog', None)
-
+    @property
+    def _description(self):
         description = getattr(self, '__description__',
                               getattr(self, 'description', None))
         if description is None:
@@ -891,18 +950,31 @@ class Config(ub.NiceRepr, DictLike):
             description = 'argparse CLI generated by scriptconfig'
         if description is not None:
             description = ub.codeblock(description)
+        return description
 
+    @property
+    def _epilog(self):
         epilog = getattr(self, '__epilog__', getattr(self, 'epilog', None))
         if epilog is not None:
             epilog = ub.codeblock(epilog)
+        return epilog
 
+    @property
+    def _prog(self):
+        prog = getattr(self, 'prog', None)
         if prog is None:
             prog = self.__class__.__name__
+        prog
 
+    def _parserkw(self):
+        """
+        Generate the kwargs for making a new argparse.ArgumentParser
+        """
+        from scriptconfig import argparse_ext
         parserkw = dict(
-            prog=prog,
-            description=description,
-            epilog=epilog,
+            prog=self._prog,
+            description=self._description,
+            epilog=self._epilog,
             # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
             # formatter_class=argparse.RawDescriptionHelpFormatter,
             formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
@@ -910,11 +982,117 @@ class Config(ub.NiceRepr, DictLike):
         )
         return parserkw
 
-    # TODO:
+    def port_to_dataconf(self):
+        """
+        Helper that will write the code to express this config as a DataConfig.
+
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.port_to_dataconf
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> self = scfg.Config.demo()
+            >>> print(self.port_to_dataconf())
+        """
+        entries = []
+        for key, value in self.__default__.items():
+            if not scfg_isinstance(value, Value):
+                value_kw = Value(value)._to_value_kw()
+            else:
+                value_kw = value._to_value_kw()
+            entries.append((key, value_kw))
+        description = self._description
+        name = self.__class__.__name__
+        style = 'dataconf'
+        text = self._write_code(entries, name, style, description)
+        return text
+
+    @classmethod
+    def _write_code(self, entries, name='MyConfig', style='dataconf', description=None):
+
+        if style == 'dataconf':
+            indent = ' ' * 4
+        else:
+            indent = ' ' * 8
+
+        if style == 'orig':
+            recon_str = [
+                'import scriptconfig as scfg',
+                '',
+                'class ' + name + '(scfg.Config):',
+                '    """',
+                ub.indent(description or ''),
+                '    """',
+                '    __default__ = {',
+            ]
+        elif style == 'dataconf':
+            recon_str = [
+                'import scriptconfig as scfg',
+                '',
+                'class ' + name + '(scfg.DataConfig):',
+                '    """',
+                ub.indent(description or ''),
+                '    """',
+            ]
+        else:
+            raise KeyError(style)
+
+        for (key, value_kw) in entries:
+            _value_kw = value_kw.copy()
+
+            default = _value_kw.pop('default')
+            value_args = [
+                repr(default),
+            ]
+            value_args.extend(['{}={}'.format(k, v) for k, v in _value_kw.items() if v is not None])
+            val_body = ', '.join(value_args)
+
+            if style == 'orig':
+                recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
+            elif style ==  'dataconf':
+                recon_str.append("{}{} = scfg.Value({})".format(indent, key, val_body))
+            else:
+                raise KeyError(style)
+
+        if style == 'orig':
+            recon_str.append('    }')
+        elif style ==  'dataconf':
+            ...
+        else:
+            raise KeyError(style)
+        text = '\n'.join(recon_str)
+        if 0:
+            try:
+                import black
+                text = black.format_str(
+                    text, mode=black.Mode(string_normalization=True)
+                )
+            except Exception:
+                pass
+        return text
+
+    @classmethod
+    def port_click(cls, click_main, name='MyConfig', style='orig'):
+        """
+        Example:
+            @click.command()
+            @click.option('--dataset', required=True, type=click.Path(exists=True), help='input dataset')
+            @click.option('--deployed', required=True, type=click.Path(exists=True), help='weights file')
+            def click_main(dataset, deployed):
+                ...
+        """
+        raise NotImplementedError('todo: figure out how to do this')
+        import click
+        ctx = click.Context(click.Command(''))
+        # parser = click_main.make_parser(ctx)
+        # print(f'parser={parser}')  # not an argparse object
+        info_dict = click_main.to_info_dict(ctx)  # NOQA
+
     @classmethod
     def port_argparse(cls, parser, name='MyConfig', style='orig'):
         """
-        Create an instance from an existing argparse.
+        Generate the corresponding scriptconfig code from an existing argparse
+        instance.
 
         Args:
             parser (argparse.ArgumentParser):
@@ -972,32 +1150,6 @@ class Config(ub.NiceRepr, DictLike):
         """
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
-        import re
-        if style == 'orig':
-            recon_str = [
-                'import scriptconfig as scfg',
-                '',
-                'class ' + name + '(scfg.Config):',
-                '    """',
-                ub.indent(parser.description or ''),
-                '    """',
-                '    __default__ = {',
-            ]
-        elif style == 'dataconf':
-            recon_str = [
-                'import scriptconfig as scfg',
-                '',
-                'class ' + name + '(scfg.DataConfig):',
-                '    """',
-                ub.indent(parser.description or ''),
-                '    """',
-            ]
-        else:
-            raise KeyError(style)
-
-        def normalize_option_str(s):
-            return s.lstrip('-').replace('-', '_')
-
         pos_counter = it.count(1)
 
         # Determine if the parser has groups / mutex groups. Build mappings so
@@ -1034,121 +1186,24 @@ class Config(ub.NiceRepr, DictLike):
 
         # Iterate over all of the actions and build the appropriate value to be
         # placed in the scriptconfig class.
-        long_prefix_pat = re.compile('--[^-].*')
-        short_prefix_pat = re.compile('-[^-].*')
+        entries = []
         for action in parser._actions:
             key = action.dest
             if key == 'help':
                 # scriptconfig takes care of help for us
                 continue
+            value = Value._from_action(
+                action, actionid_to_groupkey, actionid_to_mgroupkey, pos_counter)
+            value_kw = value._to_value_kw()
+            entries.append((key, value_kw))
 
-            long_option_strings = [
-                s for s in action.option_strings
-                if long_prefix_pat.match(s)
-            ]
-            short_option_strings = [
-                s for s in action.option_strings
-                if short_prefix_pat.match(s)
-            ]
-
-            alias = ub.oset(normalize_option_str(s)
-                            for s in long_option_strings)
-            alias = list(alias - {key})
-
-            short_alias = ub.oset(normalize_option_str(s)
-                                  for s in short_option_strings)
-            short_alias = list(short_alias - {key})
-
-            if style == 'dataconf':
-                indent = ' ' * 4
-            else:
-                indent = ' ' * 8
-            value_args = [
-                repr(action.default),
-            ]
-
-            value_kw = {
-                'type': '{}'.format(action.type.__name__) if action.type else None,
-                'isflag': False,
-                'alias': '{}'.format(alias) if alias else None,
-                'short_alias': '{}'.format(short_alias) if short_alias else None,
-                'required': '{}'.format(action.required) if action.required else None,
-                'choices': '{}'.format(action.choices) if action.choices else None,
-                'help': '{!r}'.format(action.help) if action.help else None,
-            }
-
-            action_id = id(action)
-            if action_id in actionid_to_groupkey:
-                value_kw['group'] = repr(actionid_to_groupkey[action_id])
-            if action_id in actionid_to_mgroupkey:
-                value_kw['mutex_group'] = repr(actionid_to_mgroupkey[action_id])
-
-            if len(action.option_strings) == 0:
-                value_kw['position'] = next(pos_counter)
-
-            if action.nargs == 0 and action.const is True:
-                # This is a boolean flag
-                value_kw['isflag'] = True
-            else:
-                value_kw.pop('isflag', None)
-                if action.nargs is not None:
-                    value_kw['nargs'] = repr(action.nargs)
-
-            HACKS = 1
-            if HACKS:
-                if value_kw['type'] == 'smartcast':
-                    value_kw.pop('type')
-                if action.help and len(action.help) > 40:
-                    import textwrap
-                    wrapped = ub.indent('\n'.join(textwrap.wrap(action.help, width=60)), ' ' * 4)
-                    block = ub.codeblock(
-                        """
-                        ub.paragraph(
-                            '''
-                        {}
-                            ''')
-                        """
-                    ).format(wrapped)
-                    value_kw['help'] = ub.indent(block, ' ' * 8).lstrip()
-                    # "ub.paragraph(\n'''\n{}\n''')".format(ub.indent(action.help, ' ' * 16))
-
-            value_args.extend(['{}={}'.format(k, v) for k, v in value_kw.items() if v is not None])
-
-            if 0:
-                val_body = ', '.join(value_args)
-            else:
-                if 0:
-                    arg_indent = '{}    '.format(indent)
-                    arg_prefix = '\n{}'.format(arg_indent)
-                    arg_sep = ',{}'.format(arg_prefix)
-                    arg_tail = '\n{}'.format(indent)
-                    val_body = arg_prefix + arg_sep.join(value_args) + arg_tail
-                else:
-                    val_body = ', '.join(value_args)
-
-            if style == 'orig':
-                recon_str.append("{}'{}': scfg.Value({}),".format(indent, key, val_body))
-            elif style ==  'dataconf':
-                recon_str.append("{}{} = scfg.Value({})".format(indent, key, val_body))
-            else:
-                raise KeyError(style)
-
-        if style == 'orig':
-            recon_str.append('    }')
-        elif style ==  'dataconf':
-            ...
-        else:
-            raise KeyError(style)
-        text = '\n'.join(recon_str)
-        if 0:
-            try:
-                import black
-                text = black.format_str(
-                    text, mode=black.Mode(string_normalization=True)
-                )
-            except Exception:
-                pass
+        description = parser.description
+        text = cls._write_code(entries, name, style, description)
         return text
+
+    # @classmethod
+    # def _construct_config_text(cls):
+    #     ...
 
     @property
     def namespace(self):
@@ -1332,7 +1387,6 @@ class Config(ub.NiceRepr, DictLike):
             >>> self._read_argv(argv=['--arg5'])
             >>> self._read_argv(argv=[])
         """
-        import argparse
         from scriptconfig import argparse_ext
 
         if parser is None:
@@ -1343,60 +1397,6 @@ class Config(ub.NiceRepr, DictLike):
         # Use custom action used to mark which values were explicitly set on
         # the commandline
         parser._explicitly_given = set()
-
-        scfg_object = self
-
-        # Inherit from StoreAction to make configargparse happy.
-        # Hopefully python doesn't change the behavior of this private
-        # function.
-        # base = argparse.Action
-        # base = argparse._StoreAction
-        # TODO: can we move this to argparse_ext and clean it up?
-        # Is the closure scope necesary?
-        class ParseAction(argparse._StoreAction):
-            def __init__(self, *args, **kwargs):
-                # required/= kwargs.pop('required', False)
-                super().__init__(*args, **kwargs)
-                # with script config nothing should be required by default
-                # (unless specified) all positional arguments should have
-                # keyword arg variants Setting required=False here will prevent
-                # positional args from erroring if they are not specified. I
-                # dont think there are other side effects, but we should make
-                # sure that is actually the case.
-                self.required = required
-                self.required = False  # hack
-
-                if self.type is None:
-                    # If a type isn't explicitly declared, we will either use
-                    # the template (if it exists) or try using a smartcast.
-                    def _smart_type(value):
-                        key = self.dest
-                        template = scfg_object.default[key]
-                        if not isinstance(template, Value):
-                            # smartcast non-valued params from commandline
-                            value = smartcast.smartcast(value)
-                        else:
-                            value = template.cast(value)
-                        return value
-
-                    self.type = _smart_type
-
-            def __call__(action, parser, namespace, values, option_string=None):
-                # print('CALL action = {!r}'.format(action))
-                # print('option_string = {!r}'.format(option_string))
-                # print('values = {!r}'.format(values))
-
-                if isinstance(values, list) and len(values):
-                    # We got a list of lists, which we hack into a flat list
-                    if isinstance(values[0], list):
-                        values = list(it.chain(*values))
-
-                setattr(namespace, action.dest, values)
-                if not hasattr(parser, '_explicitly_given'):
-                    # We might be given a subparser / parent parser
-                    # and not the original one we created.
-                    parser._explicitly_given = set()
-                parser._explicitly_given.add(action.dest)
 
         # IRC: this ensures each key has a real Value class
         # This is messy and needs to be rethought
@@ -1422,113 +1422,24 @@ class Config(ub.NiceRepr, DictLike):
         else:
             _keyorder = list(self._default.keys())
 
-        # If the new experimental behavior works well in production
-        # then remove the alternative.
-        def _add_arg(parent, name, argkw, positional, isflag, required=False,
-                     aliases=None, short_aliases=None):
-            _argkw = argkw.copy()
-
-            long_names = [name] + list((aliases or []))
-            short_names = list(short_aliases or [])
-
-            FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
-            if FUZZY_HYPHENS:
-                # Do we want to allow for people to use hyphens on the CLI?
-                # Maybe, we can make it optional.
-                unique_long_names = set(long_names)
-                modified_long_names = {n.replace('_', '-') for n in unique_long_names}
-                extra_long_names = modified_long_names - unique_long_names
-                long_names += sorted(extra_long_names)
-
-            if positional:
-                parent.add_argument(name, **_argkw)
-
-            _argkw['dest'] = name
-
-            if isflag:
-                # Can we support both flag and setitem methods of cli
-                # parsing?
-                _argkw.pop('type', None)
-                _argkw.pop('choices', None)
-                _argkw.pop('action', None)
-                _argkw.pop('nargs', None)
-                _argkw['dest'] = name
-
-                short_option_strings = ['-' + n for n in short_names]
-                long_option_strings = ['--' + n for n in long_names]
-                option_strings = short_option_strings + long_option_strings
-                _argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
-                parent.add_argument(*option_strings, required=required, **_argkw)
-            else:
-                short_option_strings = ['-' + n for n in short_names]
-                long_option_strings = ['--' + n for n in long_names]
-                option_strings = short_option_strings + long_option_strings
-                parent.add_argument(*option_strings, required=required, **_argkw)
-
-        # NOTE: current group support is very limited.
-        # properties of groups cannot be set, just that arguments belong to a
-        # group or not.
-        group_lut = {}
-        mutex_group_lut = {}
+        FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
 
         for key, value in self._data.items():
-            # key: str
-            # value: Any | Value
-            name = key
-            argkw = {}
-            argkw['help'] = ''
-            positional = None
-            isflag = False
-            required = False
+            if 1:
+                if key in _metadata:
+                    # Use the metadata in the Value class to enhance argparse
+                    _value = _metadata[key]
+                else:
+                    _value = value if scfg_isinstance(value, Value) else None
 
-            parent = parser
-            if name in _metadata:
-                # Use the metadata in the Value class to enhance argparse
-                _value = _metadata[name]
-                argkw.update(_value.parsekw)
-                required = _value.required
-                value = _value.value
-                isflag = _value.isflag
-                positional = _value.position
-
-                # If the args are flagged as belonging to a group, resepct
-                # that.
-                if _value.group is not None:
-                    if _value.group not in group_lut:
-                        groupkw = {}
-                        if isinstance(_value.group, str):
-                            groupkw['title'] = _value.group
-                        group_lut[_value.group] = parent.add_argument_group(**groupkw)
-                    parent = group_lut[_value.group]
-
-                if _value.mutex_group is not None:
-                    if _value.mutex_group not in mutex_group_lut:
-                        mutex_group_lut[_value.mutex_group] = parent.add_mutually_exclusive_group()
-                    parent = mutex_group_lut[_value.mutex_group]
-
-            else:
-                _value = value if scfg_isinstance(value, Value) else None
-                # _value = value if isinstance(value, Value) else None
-
-            if not argkw['help']:
-                argkw['help'] = '<undocumented>'
-
-            argkw['default'] = value
-            argkw['action'] = ParseAction
-
-            aliases = None
-            short_aliases = None
-            if _value is not None:
-                aliases = _value.alias
-                short_aliases = _value.short_alias
-            if isinstance(aliases, str):
-                aliases = [aliases]
-            if isinstance(short_aliases, str):
-                short_aliases = [short_aliases]
-
-            _add_arg(parent, name, argkw, positional, isflag,
-                     required=required, aliases=aliases,
-                     short_aliases=short_aliases)
+                # if not scfg_isinstance(value, Value):
+                #     _value = None
+                #     value = Value(value)
+                # else:
+                #     _value = value
+                from scriptconfig import value as value_mod
+                value_mod._value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
+                continue
 
         if special_options:
             parser.add_argument('--config', default=None, help=ub.codeblock(
@@ -1549,111 +1460,11 @@ class Config(ub.NiceRepr, DictLike):
 
         return parser
 
-    def __getattr__(self, key):
-        # Handle aliasing of old "default" and new "__default__"
-        if key == 'default' and hasattr(self, '__default__'):
-            return self.__default__
-        elif key == '__default__' and hasattr(self, 'default'):
-            return self.default
-        raise AttributeError(key)
-
-
-# class DataInterchange:
-#     """
-#     Seraializes / Loads / Dumps YAML or json
-
-#     UNUSED:
-#     """
-#     def __init__(self, mode=None, strict=None):
-#         self.mode = mode
-#         self.strict = strict
-
-#     def _rectify_mode(self, data):
-#         if self.mode is None:
-#             if isinstance(data, str):
-#                 if data.lower().endswith('.json'):
-#                     self.mode = 'json'
-#                 elif data.lower().endswith('.yml'):
-#                     self.mode = 'yml'
-#                 else:
-#                     if self.strict:
-#                         raise Exception('unknown mode')
-#         if self.mode is None:
-#             # Default to yaml
-#             if self.strict:
-#                 raise Exception('unknown mode')
-#             else:
-#                 self.mode = 'yaml'
-
-#     @classmethod
-#     def load(cls, fpath):
-#         self = cls()
-#         self._rectify_mode(fpath)
-#         if self.mode == 'yml':
-#             with open(fpath, 'r') as file:
-#                 data = yaml.load(file)
-#         elif self.mode == 'json':
-#             with open(fpath, 'r') as file:
-#                 data = json.load(file)
-#         return data
-
-#     @classmethod
-#     def cli(cls, data=None, default=None, argv=None, strict=False):
-#         """
-#         The underlying function used by parse_args and parse_known_args, which
-#         allows for extra specifiction of data and defaults.
-#         """
-#         if argv is None:
-#             cmdline = 1
-#         else:
-#             cmdline = argv
-#         return cls.load(cmdline=cmdline, data=data, default=default,
-#                         strict=strict)
-
-#     @classmethod
-#     def parse_args(cls, args=None, namespace=None):
-#         """
-#         Mimics argparse.ArgumentParser.parse_args
-#         """
-#         if namespace is not None:
-#             raise NotImplementedError(
-#                 'namespaces are not handled in scriptconfig')
-#         return self.load(argv=args, strict=True)
-
-#     @classmethod
-#     def parse_known_args(cls, args=None, namespace=None):
-#         """
-#         Mimics argparse.ArgumentParser.parse_known_args
-#         """
-#         if namespace is not None:
-#             raise NotImplementedError(
-#                 'namespaces are not handled in scriptconfig')
-#         return self.load(argv=args, strict=False)
-
-#     @classmethod
-#     def dumps(cls, data, mode='yml'):
-#         self = cls(mode=mode)
-#         if self.mode == 'yml':
-#             def order_rep(dumper, data):
-#                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
-#             yaml.add_representer(ub.odict, order_rep)
-#             stream = io.StringIO()
-#             yaml.safe_dump(dict(self.items()), stream)
-#             stream.seek(0)
-#             text = stream.read()
-#         elif self.mode == 'json':
-#             text = json.dumps(ub.odict(self.items()), indent=4)
-#         return text
-
 
 __notes__ = """
-
 export _ARC_DEBUG=1
 pip install argcomplete
 activate-global-python-argcomplete --dest=$HOME/.bash_completion.d --user
 eval "$(register-python-argcomplete xdev)"
 complete -r xdev
-
-
-
 """

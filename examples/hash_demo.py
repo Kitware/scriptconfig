@@ -44,7 +44,7 @@ class FileHashConfig(scfg.Config):
     """
     The docstring will be the description in the CLI help
     """
-    default = {
+    __default__ = {
         'fpath': scfg.Value(None, position=1, help=ub.paragraph(
             '''
             a path to a file to hash
@@ -57,7 +57,7 @@ class FileHashConfig(scfg.Config):
 
 
 def main(**kwargs):
-    config = FileHashConfig(default=kwargs, cmdline=True)
+    config = FileHashConfig(data=kwargs, cmdline=True)
     print('config = {!r}'.format(config))
     fpath = config['fpath']
     hasher = getattr(hashlib, config['hasher'])()
