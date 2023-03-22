@@ -177,31 +177,27 @@ class MetaConfig(type):
         if 'default' in namespace and '__default__' not in namespace:
             # Ensure the user updates to the newer "__default__" paradigm
             namespace['__default__'] = namespace['default']
-            warnings.warn(
-                ub.paragraph(
-                    f'''
-                    A scriptconfig class {name} was defined using the default
-                    class attribute. As of scriptconfig version 0.7.4, use the
-                    __default__ class attribute instead.
-                    '''))
+            ub.schedule_deprecation(
+                'scriptconfig', 'default', f'class attribute of {name}',
+                migration='Use __default__ instead',
+                deprecate='0.7.4', error='0.8.0', remove='0.9.0',
+            )
 
         if '__default__' in namespace and 'default' not in namespace:
-            # Backport to the older non-duner __default__
+            # Backport to the older non-dunder __default__
             namespace['default'] = namespace['__default__']
 
         if 'normalize' in namespace and '__post_init__' not in namespace:
             # Ensure the newer __post_init__ is specified
             namespace['__post_init__'] = namespace['normalize']
-            warnings.warn(
-                ub.paragraph(
-                    f'''
-                    A scriptconfig class {name} was defined using the default
-                    normalize method. As of scriptconfig version 0.7.4, use the
-                    __post_init__ method instead.
-                    '''))
+            ub.schedule_deprecation(
+                'scriptconfig', 'normalize', f'class attribute of {name}',
+                migration='Use __post_init__ instead',
+                deprecate='0.7.4', error='0.8.0', remove='0.9.0',
+            )
 
         if '__post_init__' in namespace and 'normalize' not in namespace:
-            # Backport to the older non-duner normalize
+            # Backport to the older non-dunder normalize
             namespace['normalize'] = namespace['__post_init__']
 
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
