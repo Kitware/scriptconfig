@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.5 - Unreleased
 
+### Changed
+* Both `Config` and `DataConfig` now support the `.cli` classmethod and should
+  now be the preferred way of creating a `sys.argv` aware instance.
+
+### Fixed
+* Issue when specifying `default` to `.cli` or `.load`.
+
 
 ## Version 0.7.4 - Released 2023-03-22
 
@@ -13,6 +20,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Reworked how the "port" functions work under the hood, and added a new one.
 * The `default` and `__default__` class variables are now treated as aliases in Config.
 * The `normalize` and `__post_init__` methods are now treated as aliases in Config and DataConfig.
+* Deprecated `default` class attribute use `__default__` instead.
+* Deprecated `normalize` method, use `__post_init__` instead.
 
 ### Fixed:
 * Dataconfigs can now be instantiated with aliased kwargs

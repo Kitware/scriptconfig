@@ -231,7 +231,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             self._default.update(self.__default__)
         argkeys = list(self._default.keys())[0:len(args)]
         new_defaults = ub.dzip(argkeys, args)
-        kwargs = self._normalize_alias(kwargs)
+        kwargs = self._normalize_alias_dict(kwargs)
         new_defaults.update(kwargs)
         unknown_args = ub.dict_diff(new_defaults, self._default)
         if unknown_args:
@@ -289,43 +289,6 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             default = {}
         self = cls(**default)
         self.load(data, cmdline=cmdline, default=default, strict=strict)
-        return self
-
-    @classmethod
-    def cli(cls, data=None, default=None, argv=None, strict=False,
-            cmdline=True, autocomplete=False):
-        """
-        The underlying function used by parse_args and parse_known_args, which
-        allows for extra specifiction of data and defaults.
-
-        Calls the original "load" way of creating non-dataclass config objects.
-        This may be refactored in the future.
-
-        Args:
-            data (dict | str | None):
-                Values to update the configuration with. This can be a
-                regular dictionary or a path to a yaml / json file.
-
-            default (dict | None):
-                Values to update the defaults with (not the actual
-                configuration). Note: anything passed to default will be deep
-                copied and can be updated by argv or data if it is specified.
-                Generally prefer to pass directly to data instead.
-
-            cmdline (bool):
-                Defaults to True, which creates and uses an argparse object to
-                interact with the command line. If set to False, then the
-                argument parser is bypassed (useful for invoking a CLI
-                programatically).
-        """
-        if cmdline and argv:
-            cmdline = argv
-        if default is None:
-            default = {}
-        self = cls()
-        # **default)
-        self.load(data, cmdline=cmdline, default=default, strict=strict,
-                  autocomplete=autocomplete)
         return self
 
     @classmethod
