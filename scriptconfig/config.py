@@ -180,7 +180,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'default', f'class attribute of {name}',
                 migration='Use __default__ instead',
-                deprecate='0.7.4', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.5', error='0.8.0', remove='0.9.0',
             )
 
         if '__default__' in namespace and 'default' not in namespace:
@@ -193,7 +193,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'normalize', f'class attribute of {name}',
                 migration='Use __post_init__ instead',
-                deprecate='0.7.4', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.5', error='0.8.0', remove='0.9.0',
             )
 
         if '__post_init__' in namespace and 'normalize' not in namespace:
@@ -296,6 +296,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     * special_options (bool): defaults to True
                     * autocomplete (bool): defaults to False
                 Defaults to False.
+
+        Note:
+            Avoid setting ``cmdline`` parameter here.  Instead prefer
+            to use the ``cli`` classmethod to create a command line
+            aware config instance..
         """
         # The _data attribute holds
         self._data = None
@@ -306,6 +311,51 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             self._default.update(cls_default)
         self._alias_map = None
         self.load(data, cmdline=cmdline, default=default)
+
+    @classmethod
+    def cli(cls, data=None, default=None, argv=None, strict=False,
+            cmdline=True, autocomplete=False):
+        """
+        Create a commandline aware config instance.
+
+        Calls the original "load" way of creating non-dataclass config objects.
+        This may be refactored in the future.
+
+        Args:
+            data (dict | str | None):
+                Values to update the configuration with. This can be a
+                regular dictionary or a path to a yaml / json file.
+
+            default (dict | None):
+                Values to update the defaults with (not the actual
+                configuration). Note: anything passed to default will be deep
+                copied and can be updated by argv or data if it is specified.
+                Generally prefer to pass directly to data instead.
+
+            cmdline (bool):
+                Defaults to True, which creates and uses an argparse object to
+                interact with the command line. If set to False, then the
+                argument parser is bypassed (useful for invoking a CLI
+                programatically with kwargs and ignoring sys.argv).
+
+            argv (List[str]):
+                if specified, ignore sys.argv and parse this instead.
+
+            strict (bool):
+                if True use ``parse_args`` otherwise use ``parse_known_args``.
+                Defaults to False, but this may change in the future.
+
+            autocomplete (bool):
+                if True try to enable argcomplete.
+        """
+        if cmdline and argv:
+            cmdline = argv
+        if default is None:
+            default = {}
+        self = cls()
+        self.load(data, cmdline=cmdline, default=default, strict=strict,
+                  autocomplete=autocomplete)
+        return self
 
     @classmethod
     def demo(cls):
@@ -409,7 +459,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             value = self._data[key]
         except KeyError:
             # Attempt alias
-            key = self._resolve_alias(key)
+            key = self._normalize_alias_key(key)
             value = self._data[key]
 
         if scfg_isinstance(value, Value):
@@ -425,7 +475,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             value (Any): the new value
         """
         if key not in self._data:
-            key = self._resolve_alias(key)
+            key = self._normalize_alias_key(key)
             if key not in self._data:
                 raise Exception('Cannot add keys to ScriptConfig objects')
         if scfg_isinstance(value, Value):
@@ -461,6 +511,18 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         Args:
             default (dict): new defaults
         """
+        default = self._normalize_alias_dict(default)
+
+        # The user might pass raw values in which case we should keep the
+        # metadata from the exsting wrapped Values and just update the .value
+        # attribute.
+        for k, v in default.items():
+            old_default = self._default[k]
+            if scfg_isinstance(old_default, Value) and not scfg_isinstance(v, Value):
+                new_default = copy.deepcopy(old_default)
+                new_default.value = v
+                default[k] = new_default
+
         self._default.update(default)
         self._alias_map = None
 
@@ -665,7 +727,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self.__post_init__()
         return self
 
-    def _resolve_alias(self, key):
+    def _normalize_alias_key(self, key):
         """
         normalizes a single aliased key
         """
@@ -673,7 +735,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             self._alias_map = self._build_alias_map()
         return self._alias_map[key]
 
-    def _normalize_alias(self, data):
+    def _normalize_alias_dict(self, data):
         """
         Args:
             data (dict): dictionary with keys that could be aliases
@@ -691,6 +753,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         for k, v in self._default.items():
             alias = getattr(v, 'alias', None)
             if alias:
+                if not ub.iterable(alias):
+                    alias = [alias]
                 for a in alias:
                     _alias_map[a] = k
         return _alias_map
