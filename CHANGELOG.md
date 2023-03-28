@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.6 - Unreleased
 
+### Changed
+
+* The `autocomplete` argument to `.cli` now default to auto
+
 
 ## Version 0.7.5 - Released 2023-03-25
 

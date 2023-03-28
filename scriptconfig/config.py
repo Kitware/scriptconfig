@@ -88,7 +88,6 @@ import ubelt as ub
 import yaml
 import copy
 import json
-import warnings
 import itertools as it
 from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
@@ -314,7 +313,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=False,
-            cmdline=True, autocomplete=False):
+            cmdline=True, autocomplete='auto'):
         """
         Create a commandline aware config instance.
 
@@ -852,12 +851,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         parser = self.argparse(special_options=special_options)
 
         if autocomplete:
-            # TODO: make this work
-            # print(f'autocomplete={autocomplete}')
             try:
                 import argcomplete
             except ImportError:
-                raise
+                if argcomplete != 'auto':
+                    raise
             else:
                 argcomplete.autocomplete(parser)
 
@@ -1136,7 +1134,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def port_click(cls, click_main, name='MyConfig', style='orig'):
+    def port_click(cls, click_main, name='MyConfig', style='dataconf'):
         """
         Example:
             @click.command()
@@ -1153,7 +1151,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         info_dict = click_main.to_info_dict(ctx)  # NOQA
 
     @classmethod
-    def port_argparse(cls, parser, name='MyConfig', style='orig'):
+    def port_argparse(cls, parser, name='MyConfig', style='dataconf'):
         """
         Generate the corresponding scriptconfig code from an existing argparse
         instance.
@@ -1162,7 +1160,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             parser (argparse.ArgumentParser):
                 existing argparse parser we want to port
             name (str): the name of the config class
-            style (str): either orig or dataconf
+            style (str): either 'orig' or 'dataconf'
 
         Returns:
             str :
