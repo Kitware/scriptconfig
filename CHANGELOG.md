@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+* Help no longer defaults to `<undocumented>`, instead it is just empty.
+* Unwrapped values now try to infer if they are a flag.
 * The `autocomplete` argument to `.cli` now default to auto
 
 

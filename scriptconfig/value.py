@@ -257,6 +257,10 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     """
     POC for a new simplified way for a value to add itself as an argument to a
     parser.
+
+    Args:
+        value (Any): the unwrapped default value
+        _value (Value): the value metadata
     """
     # import argparse
     from scriptconfig import argparse_ext
@@ -299,7 +303,8 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
             parent = mutex_group_lut[_value.mutex_group]
 
     if not argkw['help']:
-        argkw['help'] = '<undocumented>'
+        # argkw['help'] = '<undocumented>'
+        argkw['help'] = ''
 
     argkw['default'] = value
     argkw['action'] = _maker_smart_parse_action(self)
