@@ -851,12 +851,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         if autocomplete:
             try:
-                import argcomplete
+                import argcomplete as argcomplete_mod
             except ImportError:
-                if argcomplete != 'auto':
+                if autocomplete != 'auto':
                     raise
             else:
-                argcomplete.autocomplete(parser)
+                argcomplete_mod.autocomplete(parser)
 
         if strict:
             ns = parser.parse_args(argv).__dict__
