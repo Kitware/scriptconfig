@@ -180,7 +180,7 @@ class MetaDataConfig(MetaConfig):
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
         # Defining a new class that inherits from DataConfig
-        # print(f'Meta.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
+        # print(f'MetaDataConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         # Only do this for children of DataConfig, skip this for DataConfig
         # itself. This is a hacky way to do that.
@@ -192,19 +192,20 @@ class MetaDataConfig(MetaConfig):
             for k, v in namespace.items():
                 if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod):
                     attr_default[k] = v
-            default = attr_default.copy()
+            this_default = attr_default.copy()
             cls_default = namespace.get('__default__', None)
             if cls_default is None:
                 cls_default = {}
 
-            default.update(cls_default)
+            this_default.update(cls_default)
             # Helps make the class pickleable. Pretty hacky though.
             for k in attr_default:
                 namespace.pop(k)
-            namespace['__default__'] = default
+            namespace['__default__'] = this_default
+            # print(f'this_default={this_default}')
             namespace['__did_dataconfig_init__'] = True
 
-            for k, v in default.items():
+            for k, v in this_default.items():
                 if isinstance(v, tuple) and len(v) == 1 and isinstance(v[0], Value):
                     warnings.warn(ub.paragraph(
                         f'''

@@ -173,15 +173,35 @@ class MetaConfig(type):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        # print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         if 'default' in namespace and '__default__' not in namespace:
             # Ensure the user updates to the newer "__default__" paradigm
-            namespace['__default__'] = namespace['default']
+            this_default = namespace['__default__'] = namespace['default']
             ub.schedule_deprecation(
                 'scriptconfig', 'default', f'class attribute of {name}',
                 migration='Use __default__ instead',
                 deprecate='0.7.6', error='0.8.0', remove='0.9.0',
             )
+
+        HANDLE_INHERITENCE = 1
+        if HANDLE_INHERITENCE:
+            # Handle inheritence, add in defaults from base classes
+            # Not sure this is exactly correct. Experimental.
+            this_default = namespace.get('__default__', {})
+            if this_default is None:
+                this_default = {}
+            this_default = ub.udict(this_default)
+
+            inheritence_default = {}
+            for base in bases:
+                if hasattr(base, '__default__'):
+                    inheritence_default.update(base.__default__)
+                    # unseen = base.__default__ - this_default
+                    # this_default.update(unseen)
+            inheritence_default.update(this_default)
+            this_default = inheritence_default
+            namespace['__default__'] = namespace['default'] = this_default
 
         if '__default__' in namespace and 'default' not in namespace:
             # Backport to the older non-dunder __default__
@@ -200,6 +220,7 @@ class MetaConfig(type):
             # Backport to the older non-dunder normalize
             namespace['normalize'] = namespace['__post_init__']
 
+        # print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         return cls
 
@@ -275,6 +296,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         >>> config2 = MyConfig(default=dict(option1='baz'))
     """
     __scfg_class__ = 'Config'
+    __default__ = {}
 
     def __init__(self, data=None, default=None, cmdline=False):
         """
