@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.6 - Unreleased
 
+### Added
+* ubelt urepr registration
+
 ### Changed
 
 * Help no longer defaults to `<undocumented>`, instead it is just empty.

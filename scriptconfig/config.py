@@ -93,6 +93,7 @@ from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
+from scriptconfig import _ubelt_repr_extension
 
 __all__ = ['Config', 'define']
 
@@ -1545,3 +1546,5 @@ activate-global-python-argcomplete --dest=$HOME/.bash_completion.d --user
 eval "$(register-python-argcomplete xdev)"
 complete -r xdev
 """
+
+_ubelt_repr_extension._register_ubelt_repr_extensions()
