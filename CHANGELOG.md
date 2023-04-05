@@ -4,7 +4,19 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.5 - Unreleased
+## Version 0.7.6 - Unreleased
+
+### Added
+* ubelt urepr registration
+
+### Changed
+
+* Help no longer defaults to `<undocumented>`, instead it is just empty.
+* Unwrapped values now try to infer if they are a flag.
+* The `autocomplete` argument to `.cli` now default to auto
+
+
+## Version 0.7.5 - Released 2023-03-25
 
 ### Changed
 * Both `Config` and `DataConfig` now support the `.cli` classmethod and should

@@ -88,12 +88,12 @@ import ubelt as ub
 import yaml
 import copy
 import json
-import warnings
 import itertools as it
 from scriptconfig.dict_like import DictLike
 from scriptconfig import smartcast
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
+from scriptconfig import _ubelt_repr_extension
 
 __all__ = ['Config', 'define']
 
@@ -173,15 +173,35 @@ class MetaConfig(type):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        # print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         if 'default' in namespace and '__default__' not in namespace:
             # Ensure the user updates to the newer "__default__" paradigm
-            namespace['__default__'] = namespace['default']
+            this_default = namespace['__default__'] = namespace['default']
             ub.schedule_deprecation(
                 'scriptconfig', 'default', f'class attribute of {name}',
                 migration='Use __default__ instead',
-                deprecate='0.7.5', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
             )
+
+        HANDLE_INHERITENCE = 1
+        if HANDLE_INHERITENCE:
+            # Handle inheritence, add in defaults from base classes
+            # Not sure this is exactly correct. Experimental.
+            this_default = namespace.get('__default__', {})
+            if this_default is None:
+                this_default = {}
+            this_default = ub.udict(this_default)
+
+            inheritence_default = {}
+            for base in bases:
+                if hasattr(base, '__default__'):
+                    inheritence_default.update(base.__default__)
+                    # unseen = base.__default__ - this_default
+                    # this_default.update(unseen)
+            inheritence_default.update(this_default)
+            this_default = inheritence_default
+            namespace['__default__'] = namespace['default'] = this_default
 
         if '__default__' in namespace and 'default' not in namespace:
             # Backport to the older non-dunder __default__
@@ -193,13 +213,14 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'normalize', f'class attribute of {name}',
                 migration='Use __post_init__ instead',
-                deprecate='0.7.5', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
             )
 
         if '__post_init__' in namespace and 'normalize' not in namespace:
             # Backport to the older non-dunder normalize
             namespace['normalize'] = namespace['__post_init__']
 
+        # print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         return cls
 
@@ -262,10 +283,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             section to the help text.
 
     Example:
-        >>> # Inherit from `Config` and assign `default`
+        >>> # Inherit from `Config` and assign `__default__`
         >>> import scriptconfig as scfg
         >>> class MyConfig(scfg.Config):
-        >>>     default = {
+        >>>     __default__ = {
         >>>         'option1': scfg.Value((1, 2, 3), tuple),
         >>>         'option2': 'bar',
         >>>         'option3': None,
@@ -275,6 +296,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         >>> config2 = MyConfig(default=dict(option1='baz'))
     """
     __scfg_class__ = 'Config'
+    __default__ = {}
 
     def __init__(self, data=None, default=None, cmdline=False):
         """
@@ -314,7 +336,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=False,
-            cmdline=True, autocomplete=False):
+            cmdline=True, autocomplete='auto'):
         """
         Create a commandline aware config instance.
 
@@ -843,7 +865,6 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> self._read_argv(argv='p1 p2 p3!')
             >>> print('self = {}'.format(self))
         """
-        # print('---')
         if isinstance(argv, str):
             import shlex
             argv = shlex.split(argv)
@@ -852,24 +873,24 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         parser = self.argparse(special_options=special_options)
 
         if autocomplete:
-            # TODO: make this work
-            # print(f'autocomplete={autocomplete}')
             try:
-                import argcomplete
+                import argcomplete as argcomplete_mod
             except ImportError:
-                raise
+                if autocomplete != 'auto':
+                    raise
             else:
-                argcomplete.autocomplete(parser)
+                argcomplete_mod.autocomplete(parser)
 
         if strict:
             ns = parser.parse_args(argv).__dict__
         else:
             ns = parser.parse_known_args(argv)[0].__dict__
 
+        special_ns_keys = ['config', 'dump', 'dumps']
         if special_options:
-            config_fpath = ns.pop('config', None)
-            dump_fpath = ns.pop('dump', None)
-            do_dumps = ns.pop('dumps', None)
+            special_ns = {k: ns.pop(k, None) for k in special_ns_keys}
+        else:
+            special_ns = {}
 
         # We might remove code under this if using action casting proves to be
         # stable.
@@ -907,32 +928,36 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         # Then load config file defaults
         if special_options:
+            config_fpath = special_ns['config']
             if config_fpath is not None:
                 self.load(config_fpath, cmdline=False)
 
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
-            value = ns[key]
+            if key not in special_ns:
+                value = ns[key]
 
-            if not RELY_ON_ACTION_SMARTCAST:
-                # Old way that we did smartcast. Hopefully the action class
-                # takes care of this.
+                if not RELY_ON_ACTION_SMARTCAST:
+                    # Old way that we did smartcast. Hopefully the action class
+                    # takes care of this.
 
-                template = self.__default__[key]
+                    template = self.__default__[key]
 
-                # print('value = {!r}'.format(value))
-                # print('template = {!r}'.format(template))
-                if not isinstance(template, Value):
-                    # smartcast non-valued params from commandline
-                    value = smartcast.smartcast(value)
+                    # print('value = {!r}'.format(value))
+                    # print('template = {!r}'.format(template))
+                    if not isinstance(template, Value):
+                        # smartcast non-valued params from commandline
+                        value = smartcast.smartcast(value)
 
-            # if value is not None:
-            self[key] = value
+                # if value is not None:
+                self[key] = value
 
         self.__post_init__()
 
         if special_options:
             import sys
+            dump_fpath = special_ns['dump']
+            do_dumps = special_ns['dumps']
             if dump_fpath or do_dumps:
                 if dump_fpath:
                     # Infer config format from the extension
@@ -956,11 +981,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     def __post_init__(self):
         """ overloadable function called after each load """
-        pass
-
-    # def normalize(self):
-    #     """ overloadable function called after each load """
-    #     self.__post_init__()
+        ...
 
     def dump(self, stream=None, mode=None):
         """
@@ -1011,7 +1032,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if description is None:
             description = self.__class__.__doc__
         if description is None:
-            description = 'argparse CLI generated by scriptconfig'
+            import scriptconfig
+            description = f'argparse CLI generated by scriptconfig {scriptconfig.__version__}'
         if description is not None:
             description = ub.codeblock(description)
         return description
@@ -1081,6 +1103,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         if style == 'orig':
             recon_str = [
+                'import ubelt as ub',
                 'import scriptconfig as scfg',
                 '',
                 'class ' + name + '(scfg.Config):',
@@ -1091,6 +1114,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ]
         elif style == 'dataconf':
             recon_str = [
+                'import ubelt as ub',
                 'import scriptconfig as scfg',
                 '',
                 'class ' + name + '(scfg.DataConfig):',
@@ -1136,7 +1160,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def port_click(cls, click_main, name='MyConfig', style='orig'):
+    def port_click(cls, click_main, name='MyConfig', style='dataconf'):
         """
         Example:
             @click.command()
@@ -1153,7 +1177,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         info_dict = click_main.to_info_dict(ctx)  # NOQA
 
     @classmethod
-    def port_argparse(cls, parser, name='MyConfig', style='orig'):
+    def port_argparse(cls, parser, name='MyConfig', style='dataconf'):
         """
         Generate the corresponding scriptconfig code from an existing argparse
         instance.
@@ -1162,7 +1186,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             parser (argparse.ArgumentParser):
                 existing argparse parser we want to port
             name (str): the name of the config class
-            style (str): either orig or dataconf
+            style (str): either 'orig' or 'dataconf'
 
         Returns:
             str :
@@ -1479,7 +1503,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                       if v.position is not None}
         if _positions:
             if ub.find_duplicates(_positions.values()):
-                # TODO: make this a warning in 3.7+
+                # TODO: make this a warning in 3.7+ and ensure there is a good
+                # API for just indicating that a value is supposed to be
+                # positional, and using its order in the dictionary as that
+                # position. Need to account for inheritence though.
                 raise Exception('two values have the same position')
             _keyorder = ub.oset(ub.argsort(_positions))
             _keyorder |= (ub.oset(self._default) - _keyorder)
@@ -1488,22 +1515,31 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
 
+        # Need to clean this up, metadata probably isn't necessary.
         for key, value in self._data.items():
-            if 1:
-                if key in _metadata:
-                    # Use the metadata in the Value class to enhance argparse
-                    _value = _metadata[key]
+            if key in _metadata:
+                # Use the metadata in the Value class to enhance argparse
+                _value = _metadata[key]
+            else:
+                # _value = value if scfg_isinstance(value, Value) else None
+                if scfg_isinstance(value, Value):
+                    raise AssertionError
                 else:
-                    _value = value if scfg_isinstance(value, Value) else None
+                    # In this case the user did not wrap the default with a
+                    # Value, so we can only infer so much about it, but we can
+                    # make some educated guesses.
+                    _autokw = {
+                        'help': '',
+                    }
+                    if isinstance(value, bool) or isinstance(value, int) and value in {0, 1}:
+                        # In this case they probably wanted a boolean flag
+                        # In any case it restrict functionality to set isflag=1
+                        _autokw['isflag'] = True
+                    _value = Value(value, **_autokw)
 
-                # if not scfg_isinstance(value, Value):
-                #     _value = None
-                #     value = Value(value)
-                # else:
-                #     _value = value
-                from scriptconfig import value as value_mod
-                value_mod._value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
-                continue
+            from scriptconfig import value as value_mod
+            value_mod._value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
+            continue
 
         if special_options:
             parser.add_argument('--config', default=None, help=ub.codeblock(
@@ -1532,3 +1568,5 @@ activate-global-python-argcomplete --dest=$HOME/.bash_completion.d --user
 eval "$(register-python-argcomplete xdev)"
 complete -r xdev
 """
+
+_ubelt_repr_extension._register_ubelt_repr_extensions()
