@@ -181,7 +181,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'default', f'class attribute of {name}',
                 migration='Use __default__ instead',
-                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.7', error='0.8.0', remove='0.9.0',
             )
 
         HANDLE_INHERITENCE = 1
@@ -213,7 +213,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'normalize', f'class attribute of {name}',
                 migration='Use __post_init__ instead',
-                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.7', error='0.8.0', remove='0.9.0',
             )
 
         if '__post_init__' in namespace and 'normalize' not in namespace:
