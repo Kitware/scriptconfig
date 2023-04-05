@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * ubelt urepr registration
+* Config objects can now be inherited 
 
 ### Changed
 
