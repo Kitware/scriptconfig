@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.7 - Unreleased
 
+### Added
+* Convenience class: Flag
+
+### Changed
+* Help formatting no longer displays redundant fuzzy hyphen options 
+* Fuzzy hyphens now defaults to True
+
 
 ## Version 0.7.6 - Released 2023-04-04
 

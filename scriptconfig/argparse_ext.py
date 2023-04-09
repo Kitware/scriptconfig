@@ -163,7 +163,53 @@ class BooleanFlagOrKeyValAction(_Base):
 class RawDescriptionDefaultsHelpFormatter(
         argparse.RawDescriptionHelpFormatter,
         argparse.ArgumentDefaultsHelpFormatter):
-    ...
+
+    def _format_action_invocation(self, action):
+        """
+        Custom mixin to reduce clutter from accepting fuzzy hyphens
+        """
+        if not action.option_strings:
+            default = self._get_default_metavar_for_positional(action)
+            metavar, = self._metavar_formatter(action, default)(1)
+            return metavar
+
+        else:
+            parts = []
+
+            SCFG_MODIFICATIONS = True
+            if SCFG_MODIFICATIONS:
+                # When working with fuzzy hyphens only show one variant of each
+                # possibility.
+                display_option_strings = []
+                _seen = set()
+                for s in action.option_strings:
+                    _norm = s.replace('_', '-')
+                    if _norm not in _seen:
+                        _seen.add(_norm)
+                        display_option_strings.append(s)
+            else:
+                display_option_strings = action.option_strings
+
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                parts.extend(display_option_strings)
+
+            # if the Optional takes a value, format is:
+            #    -s ARGS, --long ARGS
+            else:
+                default = self._get_default_metavar_for_optional(action)
+                args_string = self._format_args(action, default)
+                for option_string in display_option_strings:
+                    if SCFG_MODIFICATIONS:
+                        if option_string.startswith('--no-'):
+                            parts.append('%s' % (option_string,))
+                        else:
+                            parts.append('%s %s' % (option_string, args_string))
+                    else:
+                        parts.append('%s %s' % (option_string, args_string))
+
+            return ', '.join(parts)
 
 
 class CompatArgumentParser(argparse.ArgumentParser):

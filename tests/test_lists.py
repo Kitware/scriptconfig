@@ -58,19 +58,20 @@ def test_list_parsing():
     # FIXME: We need make parsing lists a bit more intuitive
     # FIXME: Parsing lists is currently very fragile
 
-    class ExampleConfig(scfg.Config):
-        default = {
+    class ExampleConfig(scfg.DataConfig):
+        __default__ = {
             'item1': [],
             'item2': scfg.Value([], type=list),
             'item3': scfg.Value([]),
             'item4': scfg.Value([], nargs='*'),
         }
+
     config = ExampleConfig()
-    print('config._default = {}'.format(ub.repr2(config._default, nl=1)))
-    print('config._data = {}'.format(ub.repr2(config._data, nl=1)))
+    print('config._default = {}'.format(ub.urepr(config._default, nl=1)))
+    print('config._data = {}'.format(ub.urepr(config._data, nl=1)))
 
     parser = config.argparse()
-    print('parser._actions = {}'.format(ub.repr2(parser._actions, nl=1)))
+    print('parser._actions = {}'.format(ub.urepr(parser._actions, nl=1)))
 
     # IDEALLY BOTH CASES SHOULD WORK
     config.load(cmdline=[
@@ -79,7 +80,7 @@ def test_list_parsing():
         '--item3', 'spam', 'eggs',
         '--item4', 'spam', 'eggs',
     ])
-    print('loaded = ' + ub.repr2(config.asdict(), nl=1))
+    print('loaded = ' + ub.urepr(config.asdict(), nl=1))
     # ub.map_vals(len, config)
 
     config.load(cmdline=[
@@ -88,4 +89,4 @@ def test_list_parsing():
         '--item3=spam,eggs',
         '--item4=spam,eggs',
     ])
-    print('loaded = ' + ub.repr2(config.asdict(), nl=1))
+    print('loaded = ' + ub.urepr(config.asdict(), nl=1))
