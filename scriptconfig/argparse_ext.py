@@ -222,6 +222,10 @@ class RawDescriptionDefaultsHelpFormatter(
                 for option_string in display_option_strings:
                     if SCFG_MODIFICATIONS:
                         if option_string.startswith('--no-'):
+                            if isinstance(action.default, int) and action.default == 0:
+                                # Dont bother telling the user they can turn
+                                # something off when that is the default.
+                                continue
                             parts.append('%s' % (option_string,))
                         else:
                             parts.append('%s %s' % (option_string, args_string))
@@ -230,6 +234,9 @@ class RawDescriptionDefaultsHelpFormatter(
             return ', '.join(parts)
 
     def _rich_format_action_invocation(self, action):
+        """
+        Mirrors _format_action_invocation but for rich-argparse
+        """
         from rich.text import Text
 
         if not action.option_strings:
@@ -254,6 +261,10 @@ class RawDescriptionDefaultsHelpFormatter(
                 args_string = self._format_args(action, default)
                 for option_string in display_option_strings:
                     if option_string.startswith('--no-'):
+                        if isinstance(action.default, int) and action.default == 0:
+                            # Dont bother telling the user they can turn
+                            # something off when that is the default.
+                            continue
                         part = Text(option_string, 'argparse.args')
                     else:
                         part = Text(" ").join([Text(option_string, 'argparse.args'), Text(args_string, 'argparse.metavar')])
