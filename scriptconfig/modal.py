@@ -2,12 +2,6 @@ import argparse as argparse_mod
 import ubelt as ub
 
 
-class RawDescriptionDefaultsHelpFormatter(
-        argparse_mod.RawDescriptionHelpFormatter,
-        argparse_mod.ArgumentDefaultsHelpFormatter):
-    pass
-
-
 class ModalCLI(object):
     """
     Contains multiple scriptconfig.Config items with corresponding `main`
@@ -115,6 +109,7 @@ class ModalCLI(object):
         return cmdinfo_list
 
     def argparse(self):
+        from scriptconfig.argparse_ext import RawDescriptionDefaultsHelpFormatter
         parser = argparse_mod.ArgumentParser(
             description=self.description,
             formatter_class=RawDescriptionDefaultsHelpFormatter,
