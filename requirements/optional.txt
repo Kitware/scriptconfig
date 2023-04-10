@@ -11,3 +11,6 @@ numpy>=1.11.1  ; python_version < '3.5'  and python_version >= '3.4'   # Python 
 numpy>=1.11.1  ; python_version < '3.4'  and python_version >= '2.7'   # Python 2.7
 
 omegaconf>=2.2.2     ;                            python_version >= '3.6'    # Python 3.6+
+
+rich_argparse>=1.1.0; python_version >= '3.7'
+argcomplete>=3.0.5

@@ -209,6 +209,16 @@ class Value(ub.NiceRepr):
         return value
 
 
+class Flag(Value):
+    """
+    Exactly the same as a Value except isflag default to True
+    """
+    def __init__(self, value=False, **kwargs):
+        assert 'isflag' not in kwargs
+        kwargs['isflag'] = True
+        super().__init__(value=value, **kwargs)
+
+
 class Path(Value):
     """
     Note this is mean to be used only with scriptconfig.Config.
@@ -326,9 +336,8 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
         argkw['dest'] = name
 
         argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
-        parent.add_argument(*option_strings, required=required, **argkw)
-    else:
-        parent.add_argument(*option_strings, required=required, **argkw)
+
+    parent.add_argument(*option_strings, required=required, **argkw)
 
 
 def _resolve_alias(name, _value, fuzzy_hyphens):

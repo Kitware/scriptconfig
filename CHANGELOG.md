@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.6 - Unreleased
+## Version 0.7.7 - Unreleased
+
+### Added
+* Convenience class: Flag
+
+### Changed
+* Help formatting no longer displays redundant fuzzy hyphen options 
+* Fuzzy hyphens now defaults to True
+
+
+## Version 0.7.6 - Released 2023-04-04
 
 ### Added
 * ubelt urepr registration

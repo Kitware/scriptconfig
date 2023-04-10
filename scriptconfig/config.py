@@ -75,9 +75,9 @@ Ignore:
     >>> config = ExampleConfig()
     >>> # IDEALLY BOTH CASES SHOULD WORK
     >>> config.load(cmdline=['--item1', 'spam', 'eggs', '--item2', 'spam', 'eggs', '--item3', 'spam', 'eggs'])
-    >>> print(ub.repr2(config.asdict(), nl=1))
+    >>> print(ub.urepr(config, nl=1))
     >>> config.load(cmdline=['--item1=spam,eggs', '--item2=spam,eggs', '--item3=spam,eggs'])
-    >>> print(ub.repr2(config.asdict(), nl=1))
+    >>> print(ub.urepr(config, nl=1))
 
 TODO:
     - [ ] Handle Nested Configs?
@@ -396,7 +396,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> self.argparse().print_help()
             >>> # xdoc: +REQUIRES(--cli)
             >>> self.load(cmdline=True)
-            >>> print(ub.repr2(dict(self), nl=1))
+            >>> print(ub.urepr(self, nl=1))
         """
         import scriptconfig as scfg
         class DemoConfig(scfg.Config):
@@ -1234,7 +1234,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> cls = vals['PortedConfig']
             >>> self = cls(**{'true_dataset': 1, 'pred_dataset': 1})
             >>> recon = self.argparse()
-            >>> print('recon._actions = {}'.format(ub.repr2(recon._actions, nl=1)))
+            >>> print('recon._actions = {}'.format(ub.urepr(recon._actions, nl=1)))
         """
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
@@ -1513,7 +1513,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         else:
             _keyorder = list(self._default.keys())
 
-        FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 0)
+        FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 1)
 
         # Need to clean this up, metadata probably isn't necessary.
         for key, value in self._data.items():
@@ -1538,25 +1538,30 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     _value = Value(value, **_autokw)
 
             from scriptconfig import value as value_mod
-            value_mod._value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
+            value_mod._value_add_argument_to_parser(
+                value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
             continue
 
         if special_options:
-            parser.add_argument('--config', default=None, help=ub.codeblock(
+            special_group = parser.add_argument_group(
+                'scriptconfig options')
+            special_group.add_argument('--config', default=None, help=ub.codeblock(
                 '''
                 special scriptconfig option that accepts the path to a on-disk
                 configuration file, and loads that into this {!r} object.
                 ''').format(self.__class__.__name__))
 
-            parser.add_argument('--dump', default=None, help=ub.codeblock(
+            special_group.add_argument('--dump', default=None, help=ub.codeblock(
                 '''
                 If specified, dump this config to disk.
                 ''').format(self.__class__.__name__))
 
-            parser.add_argument('--dumps', action=argparse_ext.BooleanFlagOrKeyValAction, help=ub.codeblock(
-                '''
-                If specified, dump this config stdout
-                ''').format(self.__class__.__name__))
+            special_group.add_argument(
+                '--dumps', action=argparse_ext.BooleanFlagOrKeyValAction,
+                help=ub.codeblock(
+                    '''
+                    If specified, dump this config stdout
+                    ''').format(self.__class__.__name__))
 
         return parser
 

@@ -3,6 +3,21 @@ Argparse Extensions
 """
 import argparse
 
+import os
+_FALSY = {'0', 'false', 'f', 'no', ''}
+SCRIPTCONFIG_NORICH = os.environ.get('SCRIPTCONFIG_NORICH', '').lower() not in _FALSY
+
+try:
+    import rich_argparse
+    if SCRIPTCONFIG_NORICH:
+        raise ImportError
+except ImportError:
+    _RawDescriptionHelpFormatter = argparse.RawDescriptionHelpFormatter
+    _ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
+else:
+    _RawDescriptionHelpFormatter = rich_argparse.RawDescriptionRichHelpFormatter
+    _ArgumentDefaultsHelpFormatter = rich_argparse.ArgumentDefaultsRichHelpFormatter
+
 
 __docstubs__ = """
 import argparse
@@ -161,9 +176,102 @@ class BooleanFlagOrKeyValAction(_Base):
 
 
 class RawDescriptionDefaultsHelpFormatter(
-        argparse.RawDescriptionHelpFormatter,
-        argparse.ArgumentDefaultsHelpFormatter):
-    ...
+        _RawDescriptionHelpFormatter,
+        _ArgumentDefaultsHelpFormatter):
+
+    group_name_formatter = str  # revert rich-argparse title change
+
+    def _concise_option_strings(self, action):
+        # When working with fuzzy hyphens only show one variant of each
+        # possibility.
+        display_option_strings = []
+        _seen = set()
+        for s in action.option_strings:
+            _norm = s.replace('_', '-')
+            if _norm not in _seen:
+                _seen.add(_norm)
+                display_option_strings.append(s)
+        return display_option_strings
+
+    def _format_action_invocation(self, action):
+        """
+        Custom mixin to reduce clutter from accepting fuzzy hyphens
+        """
+        if not action.option_strings:
+            default = self._get_default_metavar_for_positional(action)
+            metavar, = self._metavar_formatter(action, default)(1)
+            return metavar
+
+        else:
+            parts = []
+
+            SCFG_MODIFICATIONS = True
+            if SCFG_MODIFICATIONS:
+                display_option_strings = self._concise_option_strings(action)
+            else:
+                display_option_strings = action.option_strings
+
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                parts.extend(display_option_strings)
+
+            # if the Optional takes a value, format is:
+            #    -s ARGS, --long ARGS
+            else:
+                default = self._get_default_metavar_for_optional(action)
+                args_string = self._format_args(action, default)
+                for option_string in display_option_strings:
+                    if SCFG_MODIFICATIONS:
+                        if option_string.startswith('--no-'):
+                            if isinstance(action.default, int) and action.default == 0:
+                                # Dont bother telling the user they can turn
+                                # something off when that is the default.
+                                continue
+                            parts.append('%s' % (option_string,))
+                        else:
+                            parts.append('%s %s' % (option_string, args_string))
+                    else:
+                        parts.append('%s %s' % (option_string, args_string))
+            return ', '.join(parts)
+
+    def _rich_format_action_invocation(self, action):
+        """
+        Mirrors _format_action_invocation but for rich-argparse
+        """
+        from rich.text import Text
+
+        if not action.option_strings:
+            return Text().append(self._format_action_invocation(action), style="argparse.args")
+        else:
+            parts = []
+            SCFG_MODIFICATIONS = True
+            if SCFG_MODIFICATIONS:
+                display_option_strings = self._concise_option_strings(action)
+            else:
+                display_option_strings = action.option_strings
+
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                parts.extend([Text(o, 'argparse.args') for o in display_option_strings])
+
+            # if the Optional takes a value, format is:
+            #    -s ARGS, --long ARGS
+            else:
+                default = self._get_default_metavar_for_optional(action)
+                args_string = self._format_args(action, default)
+                for option_string in display_option_strings:
+                    if option_string.startswith('--no-'):
+                        if isinstance(action.default, int) and action.default == 0:
+                            # Dont bother telling the user they can turn
+                            # something off when that is the default.
+                            continue
+                        part = Text(option_string, 'argparse.args')
+                    else:
+                        part = Text(" ").join([Text(option_string, 'argparse.args'), Text(args_string, 'argparse.metavar')])
+                    parts.append(part)
+            return Text(", ").join(parts)
 
 
 class CompatArgumentParser(argparse.ArgumentParser):

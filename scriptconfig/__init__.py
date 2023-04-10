@@ -141,7 +141,7 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.7.6'
+__version__ = '0.7.7'
 
 __submodules__ = {
     'config': None,
@@ -151,9 +151,9 @@ __submodules__ = {
 }
 
 from .config import (Config, define,)
-from .value import (Path, PathList, Value,)
+from .value import (Path, PathList, Value, Flag)
 from .cli import (quick_cli,)
 from .dataconfig import (DataConfig, dataconf,)
 
 __all__ = ['Config', 'DataConfig', 'Path', 'PathList', 'Value', 'dataconf',
-           'define', 'quick_cli']
+           'define', 'quick_cli', 'Flag']
