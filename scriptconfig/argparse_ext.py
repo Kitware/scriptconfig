@@ -179,6 +179,8 @@ class RawDescriptionDefaultsHelpFormatter(
         _RawDescriptionHelpFormatter,
         _ArgumentDefaultsHelpFormatter):
 
+    group_name_formatter = str  # revert rich-argparse title change
+
     def _concise_option_strings(self, action):
         # When working with fuzzy hyphens only show one variant of each
         # possibility.
