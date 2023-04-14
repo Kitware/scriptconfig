@@ -360,7 +360,7 @@ the problem of nested configurations and I would like to inherit from that.
 Keep an eye out for this feature in future work.
 
 
-Hydra - https://hydra.cc/docs/intro/#
+Hydra - https://hydra.cc/docs/intro/
 
 OmegaConf - https://omegaconf.readthedocs.io/en/latest/index.html
 
