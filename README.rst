@@ -285,6 +285,8 @@ Features
       - Automatically add ``--config``, ``--dumps``, and ``--dump`` CLI options
         when reading cmdline via ``load``.
 
+- Inheritence unions configs.
+
 
 Gotchas
 -------
