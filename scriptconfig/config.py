@@ -370,7 +370,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             autocomplete (bool):
                 if True try to enable argcomplete.
         """
-        if cmdline and argv:
+        if cmdline and argv is not None:
             cmdline = argv
         if default is None:
             default = {}

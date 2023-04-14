@@ -1,10 +1,10 @@
 ScriptConfig
 ============
 
-.. # TODO Get CI services running on gitlab 
+.. # TODO Get CI services running on gitlab
 .. #|CircleCI| |Travis| |Codecov| |ReadTheDocs|
 
-|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads| 
+|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads|
 
 
 +------------------+--------------------------------------------------+
@@ -158,7 +158,7 @@ The equivalent version of the above code is:
     if __name__ == '__main__':
         main()
 
-    
+
 This can be invoked from the examples folder similarly to the above script
 (replace ``hash_data.py`` with ``hash_data_datconfig.py``.)
 
@@ -274,10 +274,10 @@ Features
 
 - Can create command line interfaces
 
-  - Can directly create an independent argparse object 
+  - Can directly create an independent argparse object
 
   - Can use special command line loading using ``self.load(cmdline=True)``. This extends the basic argparse interface with:
-   
+
       - Can specify options as either ``--option value`` or ``--option=value``
 
       - Default config options allow for "smartcasting" values like lists and paths
@@ -289,23 +289,41 @@ Features
 Gotchas
 -------
 
-CLI Values with commas:
+**CLI Values with commas:**
 
-    When using ``scriptconfig`` to generate a command line interface, it uses a
-    function called ``smartcast`` to try to determine input type when it is not
-    explicitly given. If you've ever used a program that tries to be "smart" you'll
-    know this can end up with some weird behavior. The case where that happens here
-    is when you pass a value that contains commas on the command line. If you don't
-    specify the default value as a ``scriptconfig.Value`` with a specified
-    ``type``, if will interpret your input as a list of values. In the future we
-    may change the behavior of ``smartcast``, or prevent it from being used as a
-    default.
+When using ``scriptconfig`` to generate a command line interface, it uses a
+function called ``smartcast`` to try to determine input type when it is not
+explicitly given. If you've ever used a program that tries to be "smart" you'll
+know this can end up with some weird behavior. The case where that happens here
+is when you pass a value that contains commas on the command line. If you don't
+specify the default value as a ``scriptconfig.Value`` with a specified
+``type``, if will interpret your input as a list of values. In the future we
+may change the behavior of ``smartcast``, or prevent it from being used as a
+default.
 
-Boolean flags:
-    
-    ``scriptconfig`` is currently strictly key-value. It does not support
-    boolean flags (e.g. ``--flag``), you must set it to a value (e.g.
-    ``--flag=True``).
+**Boolean flags and positional arguments:**
+
+``scriptconfig`` always provides a key/value way to express arguments. However, it also
+recognizes that sometimes you want to just type ``--flag`` and not ``--flag=1``.
+We allow for this for ``Values`` with ``isflag=1``, but this causes a
+corner-case ambituity with positional arguments. For the following example:
+
+
+.. code:: python
+
+    class MyConfig(scfg.DataConfig):
+        arg1 = scfg.Value(None, position=1)
+        flag1 = scfg.Value(False, isflag=True, position=1)
+
+
+For ``--flag 1`` We cannot determine if you wanted
+``{'arg1': 1, 'flag1': False}`` or ``{'arg1': None, 'flag1': True}``.
+
+This is fixable by either using strict key/value arguments, expressing all
+positional arguments before using flag arguments, or using the `` -- ``
+construct and putting all positional arguments at the end. In the future we may
+raise an AmbiguityError when specifying arguments like this, but for now we
+leave the behavior undefined.
 
 
 FAQ
@@ -313,7 +331,7 @@ FAQ
 
 Question: How do I override the default values for a scriptconfig object using json file?
 
-Answer:  This depends if you want to pass the path to that json file via the command line or if you have that file in memory already.  There are ways to do either. In the first case you can pass ``--config=<path-to-your-file>`` (assuming you have set the ``cmdline=True`` keyword arg when creating your config object e.g.: ``config = MyConfig(cmdline=True)``. In the second case when you create an instance of the scriptconfig object pass the ``default=<your dict>`` when creating the object: e.g. ``config = MyConfig(default=json.load(open(fpath, 'r')))``.  But the special ``--config`` ``--dump`` and ``--dumps`` CLI arg is baked into script config to make this easier.  
+Answer:  This depends if you want to pass the path to that json file via the command line or if you have that file in memory already.  There are ways to do either. In the first case you can pass ``--config=<path-to-your-file>`` (assuming you have set the ``cmdline=True`` keyword arg when creating your config object e.g.: ``config = MyConfig(cmdline=True)``. In the second case when you create an instance of the scriptconfig object pass the ``default=<your dict>`` when creating the object: e.g. ``config = MyConfig(default=json.load(open(fpath, 'r')))``.  But the special ``--config`` ``--dump`` and ``--dumps`` CLI arg is baked into script config to make this easier.
 
 
 Related Software
@@ -327,7 +345,7 @@ you ever go to deploy the program in the real world.
 The builtin argparse in Python is pretty good, but I with it was easier to do
 things like allowing arguments to be flags or key/value pairs. This library
 uses argparse under the hood because of its stable and standard backend, but
-that does mean we inherit some of its quirks. 
+that does mean we inherit some of its quirks.
 
 The configargparse library - like this one - augments argparse with the ability
 to read defaults from config files, but it has some major usage limitations due

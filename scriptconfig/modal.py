@@ -2,6 +2,9 @@ import argparse as argparse_mod
 import ubelt as ub
 
 
+DEFAULT_GROUP = 'commands'
+
+
 class ModalCLI(object):
     """
     Contains multiple scriptconfig.Config items with corresponding `main`
@@ -70,8 +73,8 @@ class ModalCLI(object):
     def register(self, cli_cls):
         # Note: the order or registration is how it will appear in the CLI help
         # Hack for older scriptconfig
-        if not hasattr(cli_cls, 'default'):
-            cli_cls.default = cli_cls.__default__
+        # if not hasattr(cli_cls, 'default'):
+        #     cli_cls.default = cli_cls.__default__
         self.sub_clis.append(cli_cls)
         return cli_cls
 
@@ -85,13 +88,7 @@ class ModalCLI(object):
                     The ModalCLI expects that registered subconfigs have a
                     ``__command__: str`` attribute, but {cli_cls} is missing one.
                 '''))
-            subconfig = cli_cls()
-            parserkw = {}
-            __alias__ = getattr(cli_cls, '__alias__', [])
-            if __alias__:
-                parserkw['aliases']  = __alias__
-            parserkw.update(subconfig._parserkw())
-            parserkw['help'] = parserkw['description'].split('\n')[0]
+
             if not hasattr(cli_cls, 'main'):
                 raise ValueError(ub.paragraph(
                     f'''
@@ -100,20 +97,47 @@ class ModalCLI(object):
                     ``main(cls, cmdline: bool, **kwargs)``,
                     but {cli_cls} is missing one.
                 '''))
-            cmdinfo_list.append({
-                'cmdname': cmdname,
-                'parserkw': parserkw,
-                'main_func': cli_cls.main,
-                'subconfig': subconfig,
-            })
+
+            parserkw = {}
+            __alias__ = getattr(cli_cls, '__alias__', [])
+            if __alias__:
+                parserkw['aliases']  = __alias__
+
+            group = getattr(cli_cls, '__group__', DEFAULT_GROUP)
+            # group = 'FOO'
+
+            if isinstance(cli_cls, ModalCLI):
+                # Another modal layer
+                modal = cli_cls
+                cmdinfo_list.append({
+                    'cmdname': cmdname,
+                    'parserkw': parserkw,
+                    'main_func': cli_cls.main,
+                    'subconfig': modal,
+                    'group': group,
+                })
+            else:
+                # A leaf Config CLI
+                subconfig = cli_cls()
+                parserkw.update(subconfig._parserkw())
+                parserkw['help'] = parserkw['description'].split('\n')[0]
+                cmdinfo_list.append({
+                    'cmdname': cmdname,
+                    'parserkw': parserkw,
+                    'main_func': cli_cls.main,
+                    'subconfig': subconfig,
+                    'group': group,
+                })
         return cmdinfo_list
 
-    def argparse(self):
+    def argparse(self, parser=None, special_options=...):
+
         from scriptconfig.argparse_ext import RawDescriptionDefaultsHelpFormatter
-        parser = argparse_mod.ArgumentParser(
-            description=self.description,
-            formatter_class=RawDescriptionDefaultsHelpFormatter,
-        )
+        if parser is None:
+            parser = argparse_mod.ArgumentParser(
+                description=self.description,
+                formatter_class=RawDescriptionDefaultsHelpFormatter,
+            )
 
         if self.version is not None:
             parser.add_argument('--version', action='store_true',
@@ -125,17 +149,27 @@ class ModalCLI(object):
         # Build a list of primary command names to display as the valid options
         # for subparsers. This avoids cluttering the screen with all aliases
         # which happens by default.
-        command_choices = [d['cmdname'] for d in cmdinfo_list]
-        metavar = '{' + ','.join(command_choices) + '}'
 
         # The subparser is what enables the modal CLI. It will redirect a
         # command to a chosen subparser.
-        subparser_group = parser.add_subparsers(
-            title='commands', help='specify a command to run', metavar=metavar)
+        # group_to_cmdinfos = ub.group_items(cmdinfo_list, key=lambda x: x['group'])
+
+        # TODO: groups?
+        # https://stackoverflow.com/questions/32017020/grouping-argparse-subparser-arguments
+
+        _command_choices = [d['cmdname'] for d in cmdinfo_list]
+        _metavar = '{' + ','.join(_command_choices) + '}'
+        command_subparsers = parser.add_subparsers(
+            title='commands', help='specify a command to run', metavar=_metavar)
+
+        # group_to_subparser = {}
+        # for group, cmdinfos in group_to_cmdinfos.items():
+        #     ...
 
         for cmdinfo in cmdinfo_list:
+            # group = cmdinfo['group']
             # Add a new command to subparser_group
-            subparser = subparser_group.add_parser(
+            subparser = command_subparsers.add_parser(
                 cmdinfo['cmdname'], **cmdinfo['parserkw'])
             subparser = cmdinfo['subconfig'].argparse(subparser)
             subparser.set_defaults(main=cmdinfo['main_func'])
