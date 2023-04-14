@@ -378,17 +378,23 @@ ConfigArgparse - https://pypi.org/project/ConfigArgParse/
 TODO
 ----
 
-- [ ] Policy on nested heirachies (currently disallowed) - jsonargparse will be the solution here.
+- [ ] Nested Modal CLI's
+
+- [X] Policy on nested heirachies (currently disallowed) - jsonargparse will be the solution here.
+
+  - [ ] How to best integrate with jsonargparse
 
 - [ ] Policy on smartcast (currently enabled)
 
-- [ ] Policy on positional arguments (currently experimental) - may need a new API.
+  - [ ] Find a way to gracefully way to make smartcast do less. (e.g. no list parsing, but int is ok, we may think about accepting YAML)
 
-    - [ ] Fixed length
+- [X] Policy on positional arguments (currently experimental) - we have implemented them permissively with one undefined corner case.
 
-    - [ ] Variable length
+    - [X] Fixed length - nope
 
-    - [ ] Can argparse be modified to always allow for them to appear at the beginning or end?
+    - [X] Variable length
+
+    - [X] Can argparse be modified to always allow for them to appear at the beginning or end? - Probably not.
 
     - [x] Can we get argparse to allow a positional arg change the value of a prefixed arg and still have a sane help menu?
 
