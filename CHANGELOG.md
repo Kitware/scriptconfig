@@ -6,6 +6,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.8 - Unreleased
 
+### Changed
+
+* Autogenerate DataConfig `__init__` docstrings
+
+* Added `__dir__` to DataConfig.
+
+* DataConfig `__setattr__` only forwards to the config for keys that are not
+  prefixed with underscores. (i.e. the user can now use underscore prefixed
+  attributes on DataConfig instances without modifying the config dictionary
+  itself).
+
 
 ## Version 0.7.7 - Released 2023-04-10
 
