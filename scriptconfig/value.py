@@ -68,6 +68,13 @@ class Value(ub.NiceRepr):
             Indicates that only one of the values in a group should be given on
             the command line. This has no impact on python usage.
 
+        tags (Any):
+            for external program use
+
+    CommandLine:
+        xdoctest -m /home/joncrall/code/scriptconfig/scriptconfig/value.py Value
+        xdoctest -m scriptconfig.value Value
+
     Example:
         >>> self = Value(None, type=float)
         >>> print('self.value = {!r}'.format(self.value))
@@ -83,7 +90,7 @@ class Value(ub.NiceRepr):
     def __init__(self, value=None, type=None, help=None, choices=None,
                  position=None, isflag=False, nargs=None, alias=None,
                  required=False, short_alias=None, group=None,
-                 mutex_group=None):
+                 mutex_group=None, tags=None):
         self.value = None
         self.type = type
         self.alias = alias
@@ -99,10 +106,12 @@ class Value(ub.NiceRepr):
         self.mutex_group = mutex_group
         self.required = required
         self.short_alias = short_alias
+        self.tags = tags
         self.update(value)
 
     def __nice__(self):
-        return '{!r}: {!r}'.format(self.type, self.value)
+        # return '{!r}: {!r}'.format(self.type, self.value)
+        return f'{self.value!r}'
 
     def update(self, value):
         self.value = self.cast(value)

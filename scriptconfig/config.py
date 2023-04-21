@@ -335,7 +335,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self.load(data, cmdline=cmdline, default=default)
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None, strict=False,
+    def cli(cls, data=None, default=None, argv=None, strict=True,
             cmdline=True, autocomplete='auto'):
         """
         Create a commandline aware config instance.
@@ -365,7 +365,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
             strict (bool):
                 if True use ``parse_args`` otherwise use ``parse_known_args``.
-                Defaults to False, but this may change in the future.
+                Defaults to True.
 
             autocomplete (bool):
                 if True try to enable argcomplete.

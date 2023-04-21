@@ -25,7 +25,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Help formatting no longer displays redundant fuzzy hyphen options 
-* Fuzzy hyphens now defaults to True
+* `Config.__fuzzy_hyphens__` now defaults to True
+* `Config.cli` now defaults to `strict=True`.
+* Add `tag` field to `Value`.
 
 
 ## Version 0.7.6 - Released 2023-04-04
