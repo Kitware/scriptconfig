@@ -335,7 +335,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self.load(data, cmdline=cmdline, default=default)
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None, strict=False,
+    def cli(cls, data=None, default=None, argv=None, strict=True,
             cmdline=True, autocomplete='auto'):
         """
         Create a commandline aware config instance.
@@ -365,12 +365,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
             strict (bool):
                 if True use ``parse_args`` otherwise use ``parse_known_args``.
-                Defaults to False, but this may change in the future.
+                Defaults to True.
 
             autocomplete (bool):
                 if True try to enable argcomplete.
         """
-        if cmdline and argv:
+        if cmdline and argv is not None:
             cmdline = argv
         if default is None:
             default = {}
@@ -1523,7 +1523,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             else:
                 # _value = value if scfg_isinstance(value, Value) else None
                 if scfg_isinstance(value, Value):
-                    raise AssertionError
+                    raise AssertionError('Did not expect {value=} to be a Value')
                 else:
                     # In this case the user did not wrap the default with a
                     # Value, so we can only infer so much about it, but we can

@@ -59,3 +59,83 @@ def test_inheritence():
             'arg6': 6,
         })
         ''')
+
+
+def test_multiple_inheritence():
+    from scriptconfig import DataConfig
+
+    class Fooable(DataConfig):
+        foo_arg1 = 1
+        foo_arg2 = 2
+        foobarg1 = 3
+        foobarg2 = 4
+
+    class Barable(DataConfig):
+        bar_arg1 = 'a'
+        bar_arg2 = 'b'
+        foobarg1 = 'c'
+        foobarg2 = 'd'
+
+    class Foobarable(Fooable, Barable):
+        foo_arg2 = ...
+        bar_arg2 = ...
+        foobarg2 = ...
+
+    config = Foobarable()
+    import ubelt as ub
+    text = ub.urepr(config, nl=1)
+    print(text)
+    assert text == ub.codeblock(
+        '''
+        Foobarable({
+            'foo_arg1': 1,
+            'foo_arg2': Ellipsis,
+            'foobarg1': 'c',
+            'foobarg2': Ellipsis,
+            'bar_arg1': 'a',
+            'bar_arg2': Ellipsis,
+        })
+        ''')
+
+
+def test_multiple_inheritence_diag():
+    from scriptconfig import DataConfig
+
+    class Base(DataConfig):
+        base_arg1 = 'B1'
+        base_arg2 = 'B2'
+        base_arg3 = 'B3'
+        base_arg4 = 'B4'
+
+    class Left(Base):
+        left_arg1 = 'L1'
+        left_arg2 = 'L2'
+        base_arg2 = 'L_B2'
+
+    class Right(Base):
+        right_arg1 = 'R1'
+        right_arg2 = 'R2'
+        base_arg3 = 'R_B3'
+
+    class Joined(Left, Right):
+        left_arg2 = 'J1'
+        right_arg2 = 'J2'
+        base_arg4 = 'J3'
+
+    config = Joined()
+    import ubelt as ub
+    text = ub.urepr(config, nl=1)
+    print(text)
+    assert text == ub.codeblock(
+        '''
+        Joined({
+            'base_arg1': 'B1',
+            'base_arg2': 'B2',
+            'base_arg3': 'R_B3',
+            'base_arg4': 'J3',
+            'left_arg1': 'L1',
+            'left_arg2': 'J1',
+            'right_arg1': 'R1',
+            'right_arg2': 'J2',
+        })
+        ''')

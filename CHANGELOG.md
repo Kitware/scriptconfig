@@ -4,14 +4,35 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.7 - Unreleased
+## Version 0.7.8 - Unreleased
+
+### Changed
+
+* Autogenerate DataConfig `__init__` docstrings
+
+* Added `__dir__` to DataConfig.
+
+* DataConfig `__setattr__` only forwards to the config for keys that are not
+  prefixed with underscores. (i.e. the user can now use underscore prefixed
+  attributes on DataConfig instances without modifying the config dictionary
+  itself).
+
+
+### Fixed
+
+* Issue on Python 3.9 where staticmethods would be added to the DataConfig defaults.
+
+
+## Version 0.7.7 - Released 2023-04-10
 
 ### Added
 * Convenience class: Flag
 
 ### Changed
 * Help formatting no longer displays redundant fuzzy hyphen options 
-* Fuzzy hyphens now defaults to True
+* `Config.__fuzzy_hyphens__` now defaults to True
+* `Config.cli` now defaults to `strict=True`.
+* Add `tag` field to `Value`.
 
 
 ## Version 0.7.6 - Released 2023-04-04

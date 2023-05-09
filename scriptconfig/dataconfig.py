@@ -142,7 +142,7 @@ def dataconf(cls):
 
     attr_default = {}
     for k, v in vars(cls).items():
-        if not k.startswith('_') and not callable(v):
+        if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
             attr_default[k] = v
     default = attr_default.copy()
     cls_default = getattr(cls, '__default__', None)
@@ -190,7 +190,7 @@ class MetaDataConfig(MetaConfig):
             # too, which is slightly cleaner.
             attr_default = {}
             for k, v in namespace.items():
-                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod):
+                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
                     attr_default[k] = v
             this_default = attr_default.copy()
             cls_default = namespace.get('__default__', None)
@@ -215,7 +215,18 @@ class MetaDataConfig(MetaConfig):
                         a Value.
                         '''), UserWarning)
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
-        # print(f'Meta.__new__ returns: {cls=}')
+
+        # Modify the docstring to include information about the defaults
+        if cls.__init__.__doc__ == '__autogenerateme__':
+            valid_keys = list(cls.__default__.keys())
+            cls.__init__.__doc__ = ub.codeblock(
+                f'''
+                Valid options: {valid_keys}
+
+                Args:
+                    *args: positional arguments for this data config
+                    **kwargs: keyword arguments for this data config
+                ''')
         return cls
 
 
@@ -225,6 +236,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     __epilog__ = None
 
     def __init__(self, *args, **kwargs):
+        "__autogenerateme__"
         self._data = None
         self._default = ub.odict()
         if getattr(self, '__default__', None):
@@ -245,11 +257,11 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         self.__post_init__()
 
     def __getattr__(self, key):
-        # Note: attributes that mirror the public API will be supressed
-        # It is gennerally better to use the dictionary interface instead
+        # Note: attributes that mirror the public API will be suppressed
+        # It is generally better to use the dictionary interface instead
         # But we want this to be data-classy, so...
         if key.startswith('_'):
-            # config vars cant start with '_'. Thats only for us
+            # config vars must not start with '_'. That is only for us
             raise AttributeError(key)
         if key in self:
             try:
@@ -258,12 +270,16 @@ class DataConfig(Config, metaclass=MetaDataConfig):
                 raise AttributeError(key)
         raise AttributeError(key)
 
+    def __dir__(self):
+        initial = super().__dir__()
+        return initial + list(self.keys())
+
     def __setattr__(self, key, value):
         """
         Forwards setattrs in the configuration to the dictionary interface,
         otherwise passes it through.
         """
-        if getattr(self, '_enable_setattr', False) and key in self:
+        if not key.startswith('_') and getattr(self, '_enable_setattr', False) and key in self:
             # After object initialization allow the user to use setattr on any
             # value in the underlying dictionary. Everything else uses the
             # normal mechanism.
@@ -314,6 +330,12 @@ class DataConfig(Config, metaclass=MetaDataConfig):
 
     @property
     def default(self):
+        import ubelt as ub
+        ub.schedule_deprecation(
+            'scriptconfig', 'default', 'attribute',
+            migration='use the __default__ instead.',
+            deprecate='0.7.7', error='1.0.0', remove='1.0.1',
+        )
         return self.__default__
 
 
