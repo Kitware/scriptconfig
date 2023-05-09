@@ -95,7 +95,7 @@ def test_dataconfig_setattr_combos():
         assert key not in self.__dict__
 
 
-class test_dataconfig_warning():
+def test_dataconfig_warning():
     """
     Test that the user gets a warning if they make this common mistake
     """
@@ -104,3 +104,34 @@ class test_dataconfig_warning():
     with pytest.warns(UserWarning):
         class ExampleDataConfig(scfg.DataConfig):
             x = scfg.Value(None),
+
+
+def test_dataconfig_with_funcs():
+    import scriptconfig as scfg
+
+    class MyConfig(scfg.DataConfig):
+        __default__ = {
+            'a': 1,
+            'b': 1,
+        }
+
+        def c(self):
+            ...
+
+        @staticmethod
+        def d():
+            ...
+
+        @classmethod
+        def e(cls):
+            ...
+
+        f = lambda x: None  # NOQA
+
+    assert callable(MyConfig.c)
+    assert callable(MyConfig.f)
+    assert callable(MyConfig.e)
+    assert callable(MyConfig.d)
+    assert not hasattr(MyConfig, 'a')
+    assert not hasattr(MyConfig, 'b')
+    assert 'e' not in MyConfig.__default__

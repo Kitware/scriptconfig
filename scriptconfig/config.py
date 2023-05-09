@@ -1523,7 +1523,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             else:
                 # _value = value if scfg_isinstance(value, Value) else None
                 if scfg_isinstance(value, Value):
-                    raise AssertionError
+                    raise AssertionError('Did not expect {value=} to be a Value')
                 else:
                     # In this case the user did not wrap the default with a
                     # Value, so we can only infer so much about it, but we can

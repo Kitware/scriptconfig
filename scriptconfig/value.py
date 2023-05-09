@@ -1,7 +1,7 @@
 import glob
 import ubelt as ub
 import copy
-from . import smartcast
+from . import smartcast as smartcast_mod
 import re
 
 
@@ -119,7 +119,7 @@ class Value(ub.NiceRepr):
 
     def cast(self, value):
         if isinstance(value, str):
-            value = smartcast.smartcast(value, self.type)
+            value = smartcast_mod.smartcast(value, self.type)
         return value
 
     def copy(self):
@@ -264,7 +264,7 @@ class PathList(Value):
     def cast(self, value=None):
         if isinstance(value, str):
             paths1 = sorted(glob.glob(ub.expandpath(value)))
-            paths2 = smartcast.smartcast(value)
+            paths2 = smartcast_mod.smartcast(value)
             if paths1:
                 value = paths1
             else:
@@ -421,7 +421,7 @@ def _maker_smart_parse_action(self):
                     template = scfg_object.default[key]
                     if not isinstance(template, Value):
                         # smartcast non-valued params from commandline
-                        value = smartcast.smartcast(value)
+                        value = smartcast_mod.smartcast(value)
                     else:
                         value = template.cast(value)
                     return value

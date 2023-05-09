@@ -142,7 +142,7 @@ def dataconf(cls):
 
     attr_default = {}
     for k, v in vars(cls).items():
-        if not k.startswith('_') and not callable(v):
+        if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
             attr_default[k] = v
     default = attr_default.copy()
     cls_default = getattr(cls, '__default__', None)
@@ -190,7 +190,7 @@ class MetaDataConfig(MetaConfig):
             # too, which is slightly cleaner.
             attr_default = {}
             for k, v in namespace.items():
-                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod):
+                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
                     attr_default[k] = v
             this_default = attr_default.copy()
             cls_default = namespace.get('__default__', None)

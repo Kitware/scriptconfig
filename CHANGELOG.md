@@ -18,6 +18,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   itself).
 
 
+### Fixed
+
+* Issue on Python 3.9 where staticmethods would be added to the DataConfig defaults.
+
+
 ## Version 0.7.7 - Released 2023-04-10
 
 ### Added

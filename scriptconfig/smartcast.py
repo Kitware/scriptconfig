@@ -87,6 +87,9 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
         >>> check_typed_value(1.0, 1.0)
         >>> check_typed_value([1.0], (1.0,), 'tuple')
     """
+    if callable(astype) and getattr(astype, '__name__', '') in {'smartcast', '_smart_type'}:
+        astype = None
+
     if isinstance(item, str):
         if astype is None:
             type_list = [int, float, complex, bool, NoneType]
