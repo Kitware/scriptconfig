@@ -231,9 +231,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     A configuration that can be specified by commandline args, a yaml config
     file, and / or a in-code dictionary. To use, define a class variable named
-    "__default__" and passing it to a dict of default values. You can also use
-    special `Value` classes to denote types. You can also define a method
-    `__post_init__`, to postprocess the arguments after this class receives them.
+    ``__default__`` and passing it to a dict of default values. You can also
+    use special ``Value`` classes to denote types. You can also define a method
+    ``__post_init__``, to postprocess the arguments after this class receives
+    them.
 
     Basic usage is as follows.
 

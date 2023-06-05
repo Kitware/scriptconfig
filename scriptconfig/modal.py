@@ -8,7 +8,7 @@ DEFAULT_GROUP = 'commands'
 
 class class_or_instancemethod(classmethod):
     """
-    Allows a method to behave as a class or instance method.
+    Allows a method to behave as a class or instance method [SO28237955]_.
 
     References:
         .. [SO28237955] https://stackoverflow.com/questions/28237955/same-name-for-classmethod-and-instancemethod
