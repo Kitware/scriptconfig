@@ -1,11 +1,65 @@
 import argparse as argparse_mod
 import ubelt as ub
+# from scriptconfig.config import MetaConfig
 
 
 DEFAULT_GROUP = 'commands'
 
 
-class ModalCLI(object):
+class class_or_instancemethod(classmethod):
+    """
+    Allows a method to behave as a class or instance method.
+
+    References:
+        .. [SO28237955] https://stackoverflow.com/questions/28237955/same-name-for-classmethod-and-instancemethod
+
+    Example:
+        >>> class X:
+        ...     @class_or_instancemethod
+        ...     def foo(self_or_cls):
+        ...         if isinstance(self_or_cls, type):
+        ...             return f"bound to the class"
+        ...         else:
+        ...             return f"bound to the instance"
+        >>> print(X.foo())
+        bound to the class
+        >>> print(X().foo())
+        bound to the instance
+    """
+    def __get__(self, instance, type_):
+        descr_get = super().__get__ if instance is None else self.__func__.__get__
+        return descr_get(instance, type_)
+
+
+class MetaModalCLI(type):
+    """
+    A metaclass to help minimize boilerplate when defining a ModalCLI
+    """
+
+    @staticmethod
+    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+
+        # Iterate over class attributes and register any Configs in the
+        # __subconfigs__ dictionary.
+        attr_subconfigs = {}
+        for k, v in namespace.items():
+            if not k.startswith('_') and isinstance(v, type):
+                attr_subconfigs[k] = v
+
+        final_subconfigs = list(attr_subconfigs.values())
+        cls_subconfigs = namespace.get('__subconfigs__', [])
+        final_subconfigs.extend(cls_subconfigs)
+
+        # Helps make the class pickleable. Pretty hacky though.
+        for k in attr_subconfigs:
+            namespace.pop(k)
+        namespace['__subconfigs__'] = final_subconfigs
+
+        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
+        return cls
+
+
+class ModalCLI(metaclass=MetaModalCLI):
     """
     Contains multiple scriptconfig.Config items with corresponding `main`
     functions.
@@ -57,25 +111,103 @@ class ModalCLI(object):
             'foo': 'eggs',
             'baz': 'buz',
         }
+
+    CommandLine:
+        xdoctest -m scriptconfig.modal ModalCLI:1
+
+    Example:
+        >>> # Declarative modal CLI (new in 0.7.9)
+        >>> import scriptconfig as scfg
+        >>> class MyModalCLI(scfg.ModalCLI):
+        >>>     #
+        >>>     class Command1(scfg.DataConfig):
+        >>>         __command__ = 'command1'
+        >>>         foo = scfg.Value('spam', help='spam spam spam spam')
+        >>>         @classmethod
+        >>>         def main(cls, cmdline=1, **kwargs):
+        >>>             config = cls.cli(cmdline=cmdline, data=kwargs)
+        >>>             print('config1 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>>     #
+        >>>     class Command2(scfg.DataConfig):
+        >>>         __command__ = 'command2'
+        >>>         foo = 'eggs'
+        >>>         baz = 'biz'
+        >>>         @classmethod
+        >>>         def main(cls, cmdline=1, **kwargs):
+        >>>             config = cls.cli(cmdline=cmdline, data=kwargs)
+        >>>             print('config2 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>> #
+        >>> MyModalCLI.main(argv=['command1'])
+        >>> MyModalCLI.main(argv=['command2', '--baz=buz'])
+
+    Example:
+        >>> # Declarative modal CLI (new in 0.7.9)
+        >>> import scriptconfig as scfg
+        >>> class MyModalCLI(scfg.ModalCLI):
+        >>>     ...
+        >>> #
+        >>> @MyModalCLI.register
+        >>> class Command1(scfg.DataConfig):
+        >>>     __command__ = 'command1'
+        >>>     foo = scfg.Value('spam', help='spam spam spam spam')
+        >>>     @classmethod
+        >>>     def main(cls, cmdline=1, **kwargs):
+        >>>         config = cls.cli(cmdline=cmdline, data=kwargs)
+        >>>         print('config1 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>> #
+        >>> @MyModalCLI.register
+        >>> class Command2(scfg.DataConfig):
+        >>>     __command__ = 'command2'
+        >>>     foo = 'eggs'
+        >>>     baz = 'biz'
+        >>>     @classmethod
+        >>>     def main(cls, cmdline=1, **kwargs):
+        >>>         config = cls.cli(cmdline=cmdline, data=kwargs)
+        >>>         print('config2 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>> #
+        >>> MyModalCLI.main(argv=['command1'])
+        >>> MyModalCLI.main(argv=['command2', '--baz=buz'])
     """
+    __subconfigs__ = []
 
     def __init__(self, description='', sub_clis=None, version=None):
         if sub_clis is None:
             sub_clis = []
-        self.description = description
-        self.sub_clis = sub_clis
+
+        if self.__class__.__name__ != 'ModalCLI':
+            self.description = description or ub.codeblock(self.__doc__ or '')
+        else:
+            self.description = description
+
+        self._instance_subconfigs = sub_clis + self.__subconfigs__
         self.version = version
 
     def __call__(self, cli_cls):
         """ alias of register """
         return self.register(cli_cls)
 
-    def register(self, cli_cls):
+    @property
+    def sub_clis(self):
+        # backwards compat
+        return self._instance_subconfigs
+
+    @class_or_instancemethod
+    def register(cls_or_self, cli_cls):
+        """
+        Args:
+            cli_cli (scriptconfig.Config):
+                A CLI-aware config object to register as a sub CLI
+        """
         # Note: the order or registration is how it will appear in the CLI help
         # Hack for older scriptconfig
         # if not hasattr(cli_cls, 'default'):
         #     cli_cls.default = cli_cls.__default__
-        self.sub_clis.append(cli_cls)
+        if isinstance(cls_or_self, type):
+            # Called as a class method
+            cls_or_self.__subconfigs__.append(cli_cls)
+        else:
+            # Called as an instance method
+            cls_or_self._instance_subconfigs.append(cli_cls)
         return cli_cls
 
     def _build_subcmd_infos(self):
@@ -177,7 +309,14 @@ class ModalCLI(object):
 
     build_parser = argparse
 
-    def run(self, argv=None, strict=True):
+    @class_or_instancemethod
+    def main(self, argv=None, strict=True):
+        """
+        Execute the modal CLI as the main script
+        """
+        if isinstance(self, type):
+            self = self()
+
         parser = self.argparse()
 
         try:
@@ -219,3 +358,5 @@ class ModalCLI(object):
             if ret is None:
                 ret = 0
             return ret
+
+    run = main  # alias for backwards compatiability

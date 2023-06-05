@@ -144,16 +144,18 @@ Ignore:
 __version__ = '0.7.9'
 
 __submodules__ = {
+    'modal': None,
     'config': None,
     'value': None,
     'cli': None,
     'dataconfig': None,
 }
 
+from .modal import (ModalCLI,)
 from .config import (Config, define,)
 from .value import (Path, PathList, Value, Flag)
 from .cli import (quick_cli,)
 from .dataconfig import (DataConfig, dataconf,)
 
 __all__ = ['Config', 'DataConfig', 'Path', 'PathList', 'Value', 'dataconf',
-           'define', 'quick_cli', 'Flag']
+           'define', 'quick_cli', 'Flag', 'ModalCLI']

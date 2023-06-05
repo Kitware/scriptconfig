@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.9 - Unreleased
 
+### Added
+* New alternate (more concise) syntax for declaring Modal CLIs
+
+
+### Changed
+* Change `ModalCLI.run` to `ModalCLI.main`
+
 
 ## Version 0.7.8 - Released 2023-05-08
 
