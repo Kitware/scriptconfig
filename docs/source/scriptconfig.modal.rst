@@ -1,7 +1,7 @@
-scriptconfig.value module
+scriptconfig.modal module
 =========================
 
-.. automodule:: scriptconfig.value
+.. automodule:: scriptconfig.modal
    :members:
    :undoc-members:
    :show-inheritance:
