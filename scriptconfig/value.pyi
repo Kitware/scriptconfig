@@ -1,22 +1,32 @@
 from typing import Any
-from typing import Union
 from typing import List
 import ubelt as ub
 from _typeshed import Incomplete
 from typing import Any
 
+long_prefix_pat: Incomplete
+short_prefix_pat: Incomplete
+
+
+def normalize_option_str(s):
+    ...
+
+
+__note__: str
+
 
 class Value(ub.NiceRepr):
     __scfg_class__: str
     value: Any
-    type: Union[type, None]
+    type: type | None
     parsekw: dict
-    position: Union[None, int]
+    position: None | int
     isflag: bool
-    alias: Union[List[str], None]
-    short_alias: Union[List[str], None]
-    group: Union[str, None]
-    mutex_group: Union[str, None]
+    alias: List[str] | None
+    short_alias: List[str] | None
+    group: str | None
+    mutex_group: str | None
+    tags: Any
     required: Incomplete
 
     def __init__(self,
@@ -31,7 +41,8 @@ class Value(ub.NiceRepr):
                  required: bool = ...,
                  short_alias: Incomplete | None = ...,
                  group: Incomplete | None = ...,
-                 mutex_group: Incomplete | None = ...) -> None:
+                 mutex_group: Incomplete | None = ...,
+                 tags: Incomplete | None = ...) -> None:
         ...
 
     def __nice__(self):
@@ -44,6 +55,12 @@ class Value(ub.NiceRepr):
         ...
 
     def copy(self):
+        ...
+
+
+class Flag(Value):
+
+    def __init__(self, value: bool = ..., **kwargs) -> None:
         ...
 
 
@@ -63,3 +80,7 @@ class PathList(Value):
 
     def cast(self, value: Incomplete | None = ...):
         ...
+
+
+def scfg_isinstance(item: object, cls: type) -> bool:
+    ...

@@ -367,7 +367,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 if True use ``parse_args`` otherwise use ``parse_known_args``.
                 Defaults to True.
 
-            autocomplete (bool):
+            autocomplete (bool | str):
                 if True try to enable argcomplete.
         """
         if cmdline and argv is not None:
