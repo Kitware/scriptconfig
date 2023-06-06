@@ -397,30 +397,6 @@ class GoogleStyleDocstringProcessor:
 
     def process(self, lines):
         """
-        Example:
-            >>> import ubelt as ub
-            >>> self = GoogleStyleDocstringProcessor()
-            >>> lines = ['Hello world',
-            >>>              '',
-            >>>              'CommandLine:',
-            >>>              '    hi',
-            >>>              '',
-            >>>              'CommandLine:',
-            >>>              '',
-            >>>              '    bye',
-            >>>              '',
-            >>>              'TextArt:',
-            >>>              '',
-            >>>              '    1',
-            >>>              '    2',
-            >>>              '',
-            >>>              '    345',
-            >>>              '',
-            >>>              'Foobar:',
-            >>>              '',
-            >>>              'TextArt:']
-            >>> new_lines = self.process(lines[:])
-            >>> print(chr(10).join(new_lines))
         """
         orig_lines = lines[:]
         new_lines = []
