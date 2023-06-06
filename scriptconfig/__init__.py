@@ -132,7 +132,7 @@ key/value pairs --- i.e. a dictionary.
 
 
 See the :mod:`scriptconfig.config` module docs for details and examples on
-getting started.
+getting started as well as :doc:`getting_started docs <getting_started>`
 """
 
 __autogen__ = """
@@ -141,19 +141,21 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.7.8'
+__version__ = '0.7.9'
 
 __submodules__ = {
+    'modal': None,
     'config': None,
     'value': None,
     'cli': None,
     'dataconfig': None,
 }
 
+from .modal import (ModalCLI,)
 from .config import (Config, define,)
 from .value import (Path, PathList, Value, Flag)
 from .cli import (quick_cli,)
 from .dataconfig import (DataConfig, dataconf,)
 
 __all__ = ['Config', 'DataConfig', 'Path', 'PathList', 'Value', 'dataconf',
-           'define', 'quick_cli', 'Flag']
+           'define', 'quick_cli', 'Flag', 'ModalCLI']

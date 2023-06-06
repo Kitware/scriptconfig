@@ -4,6 +4,10 @@ from _typeshed import Incomplete
 import argparse
 
 _Base = argparse._StoreAction
+
+_RawDescriptionHelpFormatter = argparse.RawDescriptionHelpFormatter
+_ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
+SCRIPTCONFIG_NORICH: Incomplete
 __docstubs__: str
 
 
@@ -28,10 +32,9 @@ class BooleanFlagOrKeyValAction(_Base):
         ...
 
 
-class RawDescriptionDefaultsHelpFormatter(
-        argparse.RawDescriptionHelpFormatter,
-        argparse.ArgumentDefaultsHelpFormatter):
-    ...
+class RawDescriptionDefaultsHelpFormatter(_RawDescriptionHelpFormatter,
+                                          _ArgumentDefaultsHelpFormatter):
+    group_name_formatter = str
 
 
 class CompatArgumentParser(argparse.ArgumentParser):

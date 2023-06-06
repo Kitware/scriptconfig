@@ -5,3 +5,4 @@ scriptconfig.file\_like module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

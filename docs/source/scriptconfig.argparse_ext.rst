@@ -5,3 +5,4 @@ scriptconfig.argparse\_ext module
    :members:
    :undoc-members:
    :show-inheritance:
+   :private-members:

@@ -7,6 +7,15 @@ import os
 _FALSY = {'0', 'false', 'f', 'no', ''}
 SCRIPTCONFIG_NORICH = os.environ.get('SCRIPTCONFIG_NORICH', '').lower() not in _FALSY
 
+
+__docstubs__ = """
+import argparse
+_Base = argparse._StoreAction
+
+_RawDescriptionHelpFormatter = argparse.RawDescriptionHelpFormatter
+_ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
+"""
+
 try:
     import rich_argparse
     if SCRIPTCONFIG_NORICH:
@@ -17,12 +26,6 @@ except ImportError:
 else:
     _RawDescriptionHelpFormatter = rich_argparse.RawDescriptionRichHelpFormatter
     _ArgumentDefaultsHelpFormatter = rich_argparse.ArgumentDefaultsRichHelpFormatter
-
-
-__docstubs__ = """
-import argparse
-_Base = argparse._StoreAction
-"""
 
 # Inherit from StoreAction to make configargparse happy.  Hopefully python
 # doesn't change the behavior of this private class.

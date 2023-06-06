@@ -1,13 +1,12 @@
-from typing import Union
 from _typeshed import Incomplete
-from scriptconfig.config import Config
+from scriptconfig.config import Config, MetaConfig
 
 
 def dataconf(cls):
     ...
 
 
-class MetaDataConfig(type):
+class MetaDataConfig(MetaConfig):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
@@ -25,6 +24,9 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     def __getattr__(self, key):
         ...
 
+    def __dir__(self):
+        ...
+
     def __setattr__(self, key, value) -> None:
         ...
 
@@ -34,15 +36,6 @@ class DataConfig(Config, metaclass=MetaDataConfig):
                data: Incomplete | None = ...,
                default: Incomplete | None = ...,
                strict: bool = ...):
-        ...
-
-    @classmethod
-    def cli(cls,
-            data: Union[dict, str, None] = None,
-            default: Union[dict, None] = None,
-            argv: Incomplete | None = ...,
-            strict: bool = ...,
-            cmdline: bool = True):
         ...
 
     @classmethod

@@ -1,7 +1,6 @@
-from typing import Union
+from typing import List
 from typing import Any
 from os import PathLike
-from typing import List
 import argparse
 import ubelt as ub
 from _typeshed import Incomplete
@@ -26,14 +25,32 @@ def define(default=..., name: Incomplete | None = ...):
     ...
 
 
-class Config(ub.NiceRepr, DictLike):
+class MetaConfig(type):
+
+    @staticmethod
+    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        ...
+
+
+class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     __scfg_class__: str
+    __default__: Incomplete
     epilog: str
 
     def __init__(self,
-                 data: Union[object, None] = None,
-                 default: Union[dict, None] = None,
+                 data: object | None = None,
+                 default: dict | None = None,
                  cmdline: bool = ...) -> None:
+        ...
+
+    @classmethod
+    def cli(cls,
+            data: dict | str | None = None,
+            default: dict | None = None,
+            argv: List[str] | None = None,
+            strict: bool = True,
+            cmdline: bool = True,
+            autocomplete: bool | str = 'auto'):
         ...
 
     @classmethod
@@ -62,29 +79,38 @@ class Config(ub.NiceRepr, DictLike):
         ...
 
     def load(self,
-             data: Union[PathLike, dict, None] = None,
-             cmdline: Union[bool, List[str], str] = False,
-             mode: Union[str, None] = None,
-             default: Union[dict, None] = None,
-             strict: bool = False):
+             data: PathLike | dict | None = None,
+             cmdline: bool | List[str] | str = False,
+             mode: str | None = None,
+             default: dict | None = None,
+             strict: bool = False,
+             autocomplete: bool = False):
         ...
 
-    def normalize(self) -> None:
+    def __post_init__(self) -> None:
         ...
 
-    def dump(self,
-             stream: Union[FileLike, None] = None,
-             mode: Union[str, None] = None):
+    def dump(self, stream: FileLike | None = None, mode: str | None = None):
         ...
 
-    def dumps(self, mode: Union[str, None] = None):
+    def dumps(self, mode: str | None = None):
+        ...
+
+    def __getattr__(self, key):
+        ...
+
+    def port_to_dataconf(self):
+        ...
+
+    @classmethod
+    def port_click(cls, click_main, name: str = ..., style: str = ...) -> None:
         ...
 
     @classmethod
     def port_argparse(cls,
                       parser: argparse.ArgumentParser,
                       name: str = 'MyConfig',
-                      style: str = 'orig') -> str:
+                      style: str = 'dataconf') -> str:
         ...
 
     @property
@@ -94,15 +120,9 @@ class Config(ub.NiceRepr, DictLike):
     def to_omegaconf(self) -> omegaconf.OmegaConf:
         ...
 
-    required: bool
-    type: Incomplete
-
     def argparse(self,
-                 parser: Union[None, argparse.ArgumentParser] = None,
+                 parser: None | argparse.ArgumentParser = None,
                  special_options: bool = False) -> argparse.ArgumentParser:
-        ...
-
-    def __getattr__(self, key):
         ...
 
 
