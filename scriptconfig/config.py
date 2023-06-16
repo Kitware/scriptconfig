@@ -1471,7 +1471,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> import argparse
             >>> with pytest.raises(SystemExit):
             >>>     self._read_argv(argv=['--arg6', '42', '--arg5', '32'])
-            >>> # self._read_argv(argv=['--arg6', '42', '--arg5']) Strange, this does not cause an mutex error
+            >>> # self._read_argv(argv=['--arg6', '42', '--arg5']) # Strange, this does not cause an mutex error
             >>> self._read_argv(argv=['--arg6', '42'])
             >>> self._read_argv(argv=['--arg5'])
             >>> self._read_argv(argv=[])
@@ -1541,7 +1541,6 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             from scriptconfig import value as value_mod
             value_mod._value_add_argument_to_parser(
                 value, _value, self, parser, key, fuzzy_hyphens=FUZZY_HYPHENS)
-            continue
 
         if special_options:
             special_group = parser.add_argument_group(

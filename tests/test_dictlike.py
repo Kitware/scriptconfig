@@ -2,7 +2,7 @@ import scriptconfig as scfg
 
 
 class DemoConfig(scfg.Config):
-    default = {
+    __default__ = {
         'num': 1,
         'mode': 'bar',
         'mode2': scfg.Value('bar', str),

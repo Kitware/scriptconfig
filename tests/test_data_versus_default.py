@@ -29,12 +29,13 @@ def generate_dataconfig_instance_variants():
     config = ExampleConfig2()
     yield config, 'orig-dunder-default'
 
-    class ExampleConfig3(scfg.Config):
-        default = dict(
-            num=1,
-            mode='bar',
-            ignore=['baz', 'biz'],
-        )
+    with pytest.warns():
+        class ExampleConfig3(scfg.Config):
+            default = dict(
+                num=1,
+                mode='bar',
+                ignore=['baz', 'biz'],
+            )
     config = ExampleConfig3()
     yield config, 'orig-default'
 
