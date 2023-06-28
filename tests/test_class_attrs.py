@@ -18,7 +18,7 @@ def test_class_inst_default_attr():
     import scriptconfig as scfg
     import pytest
 
-    with pytest.warns():
+    with pytest.warns(Warning):
         class Config1(scfg.Config):
             default = {
                 'option1': scfg.Value((1, 2, 3), tuple, alias='a'),
@@ -97,7 +97,7 @@ def test_class_inst_normalize_attr():
         'opt2': scfg.Value(None, alias=['option2', 'old_name']),
     }
 
-    with pytest.warns():
+    with pytest.warns(Warning):
         @config_classes.append
         class Config1A(scfg.Config):
             __default__ = common_default
@@ -124,7 +124,7 @@ def test_class_inst_normalize_attr():
             test_state[self.__class__.__name__ + '.normalize'] += 1
             self['opt1'] = 'normalized'
 
-    with pytest.warns():
+    with pytest.warns(Warning):
         @config_classes.append
         class DataConfig2A(scfg.DataConfig):
             __default__ = common_default

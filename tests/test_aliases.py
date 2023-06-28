@@ -12,7 +12,7 @@ def test_config_aliases():
     class Config1(scfg.Config):
         __default__ = __common_default__
 
-    with pytest.warns():
+    with pytest.warns(Warning):
         class Config2(scfg.Config):
             default = __common_default__
 
