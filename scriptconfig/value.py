@@ -109,6 +109,12 @@ class Value(ub.NiceRepr):
         self.tags = tags
         self.update(value)
 
+        # TODO: opposite
+        # for use with flags, this indicates that there is another variable
+        # that should always be the opposite of this one.
+        # i.e. force / dry
+        # i.e. verbose / quiet
+
     def __nice__(self):
         # return '{!r}: {!r}'.format(self.type, self.value)
         return f'{self.value!r}'

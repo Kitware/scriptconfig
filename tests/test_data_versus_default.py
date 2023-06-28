@@ -29,7 +29,7 @@ def generate_dataconfig_instance_variants():
     config = ExampleConfig2()
     yield config, 'orig-dunder-default'
 
-    with pytest.warns():
+    with pytest.warns(Warning):
         class ExampleConfig3(scfg.Config):
             default = dict(
                 num=1,
