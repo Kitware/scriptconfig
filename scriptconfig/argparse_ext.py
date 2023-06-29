@@ -2,7 +2,6 @@
 Argparse Extensions
 """
 import argparse
-
 import os
 _FALSY = {'0', 'false', 'f', 'no', ''}
 SCRIPTCONFIG_NORICH = os.environ.get('SCRIPTCONFIG_NORICH', '').lower() not in _FALSY
@@ -17,9 +16,9 @@ _ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
 """
 
 try:
-    import rich_argparse
     if SCRIPTCONFIG_NORICH:
         raise ImportError
+    import rich_argparse
 except ImportError:
     _RawDescriptionHelpFormatter = argparse.RawDescriptionHelpFormatter
     _ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter

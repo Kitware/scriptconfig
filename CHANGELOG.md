@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.10 - Unreleased
 
+### Changed
+* Reduced import time
+
 
 ## Version 0.7.9 - Released 2023-06-05
 

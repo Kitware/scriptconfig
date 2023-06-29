@@ -1,4 +1,3 @@
-import argparse as argparse_mod
 import ubelt as ub
 # from scriptconfig.config import MetaConfig
 
@@ -38,20 +37,23 @@ class MetaModalCLI(type):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        # Note: this code has an impact on startuptime efficiency.
+        # optimizations here can help.
 
         # Iterate over class attributes and register any Configs in the
         # __subconfigs__ dictionary.
-        attr_subconfigs = {}
-        for k, v in namespace.items():
-            if not k.startswith('_') and isinstance(v, type):
-                attr_subconfigs[k] = v
+        attr_subconfigs = {
+            k: v for k, v in namespace.items()
+            if not k.startswith('_') and isinstance(v, type)
+        }
 
         final_subconfigs = list(attr_subconfigs.values())
         cls_subconfigs = namespace.get('__subconfigs__', [])
-        final_subconfigs.extend(cls_subconfigs)
+        if cls_subconfigs:
+            final_subconfigs.extend(cls_subconfigs)
 
         # Helps make the class pickleable. Pretty hacky though.
-        for k in attr_subconfigs:
+        for k in attr_subconfigs.keys():
             namespace.pop(k)
         namespace['__subconfigs__'] = final_subconfigs
 
@@ -266,6 +268,7 @@ class ModalCLI(metaclass=MetaModalCLI):
 
         from scriptconfig.argparse_ext import RawDescriptionDefaultsHelpFormatter
         if parser is None:
+            import argparse as argparse_mod
             parser = argparse_mod.ArgumentParser(
                 description=self.description,
                 formatter_class=RawDescriptionDefaultsHelpFormatter,

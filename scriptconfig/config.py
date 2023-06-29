@@ -85,15 +85,12 @@ TODO:
     - [x] Dataclass support - See DataConfig
 """
 import ubelt as ub
-import yaml
-import copy
-import json
 import itertools as it
-from scriptconfig.dict_like import DictLike
+from scriptconfig import _ubelt_repr_extension
 from scriptconfig import smartcast
+from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
-from scriptconfig import _ubelt_repr_extension
 
 __all__ = ['Config', 'define']
 
@@ -534,6 +531,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         Args:
             default (dict): new defaults
         """
+        import copy
         default = self._normalize_alias_dict(default)
 
         # The user might pass raw values in which case we should keep the
@@ -674,6 +672,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             self.update_defaults(default)
 
         # Maybe this shouldn't be a deep copy?
+        import copy
         _default = copy.deepcopy(self._default)
 
         if mode is None:
@@ -687,6 +686,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if data is None:
             user_config = {}
         elif isinstance(data, str) or hasattr(data, 'readable'):
+            import yaml
             with FileLike(data, 'r') as file:
                 user_config = yaml.load(file, Loader=yaml.SafeLoader)
             user_config.pop('__heredoc__', None)  # ignore special heredoc key
@@ -995,16 +995,17 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if mode is None:
             mode = 'yaml'
         if mode == 'yaml':
+            import yaml
             def order_rep(dumper, data):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
             yaml.add_representer(ub.odict, order_rep)
             return yaml.safe_dump(dict(self.items()), stream)
         elif mode == 'json':
-            json_text = json.dumps(ub.odict(self.items()), indent=4)  # NOQA
+            import json
+            json_text = json.dumps(ub.odict(self.items()), indent=4)
             return json_text
         else:
             raise KeyError(mode)
-            return yaml.safe_dump(dict(self.items()), stream)
 
     def dumps(self, mode=None):
         """
