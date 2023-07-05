@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Reduced import time
+* Better handling of nested modal CLIs
 
 
 ## Version 0.7.9 - Released 2023-06-05
