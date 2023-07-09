@@ -16,13 +16,15 @@ def test_class_inst_default_attr():
     _default : instance attribute
     """
     import scriptconfig as scfg
+    import pytest
 
-    class Config1(scfg.Config):
-        default = {
-            'option1': scfg.Value((1, 2, 3), tuple, alias='a'),
-            'option2': 'bar',
-            'option3': None,
-        }
+    with pytest.warns(Warning):
+        class Config1(scfg.Config):
+            default = {
+                'option1': scfg.Value((1, 2, 3), tuple, alias='a'),
+                'option2': 'bar',
+                'option3': None,
+            }
 
     class Config2(scfg.Config):
         __default__ = {
@@ -84,6 +86,7 @@ def test_class_inst_normalize_attr():
     """
     import scriptconfig as scfg
     import ubelt as ub
+    import pytest
 
     test_state = ub.ddict(lambda: 0)
 
@@ -94,12 +97,13 @@ def test_class_inst_normalize_attr():
         'opt2': scfg.Value(None, alias=['option2', 'old_name']),
     }
 
-    @config_classes.append
-    class Config1A(scfg.Config):
-        __default__ = common_default
-        def normalize(self):
-            test_state[self.__class__.__name__ + '.normalize'] += 1
-            self['opt1'] = 'normalized'
+    with pytest.warns(Warning):
+        @config_classes.append
+        class Config1A(scfg.Config):
+            __default__ = common_default
+            def normalize(self):
+                test_state[self.__class__.__name__ + '.normalize'] += 1
+                self['opt1'] = 'normalized'
 
     @config_classes.append
     class Config1B(scfg.Config):
@@ -120,12 +124,13 @@ def test_class_inst_normalize_attr():
             test_state[self.__class__.__name__ + '.normalize'] += 1
             self['opt1'] = 'normalized'
 
-    @config_classes.append
-    class DataConfig2A(scfg.DataConfig):
-        __default__ = common_default
-        def normalize(self):
-            test_state[self.__class__.__name__ + '.normalize'] += 1
-            self['opt1'] = 'normalized'
+    with pytest.warns(Warning):
+        @config_classes.append
+        class DataConfig2A(scfg.DataConfig):
+            __default__ = common_default
+            def normalize(self):
+                test_state[self.__class__.__name__ + '.normalize'] += 1
+                self['opt1'] = 'normalized'
 
     @config_classes.append
     class DataConfig2B(scfg.DataConfig):

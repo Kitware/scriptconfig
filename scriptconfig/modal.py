@@ -1,4 +1,3 @@
-import argparse as argparse_mod
 import ubelt as ub
 # from scriptconfig.config import MetaConfig
 
@@ -38,21 +37,24 @@ class MetaModalCLI(type):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        # Note: this code has an impact on startuptime efficiency.
+        # optimizations here can help.
 
         # Iterate over class attributes and register any Configs in the
         # __subconfigs__ dictionary.
-        attr_subconfigs = {}
-        for k, v in namespace.items():
-            if not k.startswith('_') and isinstance(v, type):
-                attr_subconfigs[k] = v
+        attr_subconfigs = {
+            k: v for k, v in namespace.items()
+            if not k.startswith('_') and isinstance(v, type)
+        }
 
         final_subconfigs = list(attr_subconfigs.values())
         cls_subconfigs = namespace.get('__subconfigs__', [])
-        final_subconfigs.extend(cls_subconfigs)
+        if cls_subconfigs:
+            final_subconfigs.extend(cls_subconfigs)
 
         # Helps make the class pickleable. Pretty hacky though.
-        for k in attr_subconfigs:
-            namespace.pop(k)
+        # for k in attr_subconfigs.keys():
+        #     namespace.pop(k)
         namespace['__subconfigs__'] = final_subconfigs
 
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
@@ -215,6 +217,8 @@ class ModalCLI(metaclass=MetaModalCLI):
         for cli_cls in self.sub_clis:
             cmdname = getattr(cli_cls, '__command__', None)
             if cmdname is None:
+                cmdname = cli_cls.__name__
+            if cmdname is None:
                 raise ValueError(ub.paragraph(
                     f'''
                     The ModalCLI expects that registered subconfigs have a
@@ -238,10 +242,29 @@ class ModalCLI(metaclass=MetaModalCLI):
             group = getattr(cli_cls, '__group__', DEFAULT_GROUP)
             # group = 'FOO'
 
-            if isinstance(cli_cls, ModalCLI):
+            # print(f'cli_cls={cli_cls}')
+            # print(isinstance(cli_cls, ModalCLI))
+            # print('cli_cls.__bases__ = {}'.format(ub.urepr(cli_cls.__bases__, nl=1)))
+            # print('ModalCLI = {}'.format(ub.urepr(ModalCLI, nl=1)))
+
+            if isinstance(cli_cls, ModalCLI) or issubclass(cli_cls, ModalCLI):
                 # Another modal layer
                 modal = cli_cls
+                from scriptconfig import argparse_ext
+                # FIXME: ModalCLI needs a _parserkw method.
+
+                parserkw.update(
+                    # prog=self._prog,
+                    description=self.description,
+                    # epilog=self._epilog,
+                    # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                    # formatter_class=argparse.RawDescriptionHelpFormatter,
+                    formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
+                    # exit_on_error=False,
+                )
+                parserkw['help'] = parserkw['description'].split('\n')[0]
                 cmdinfo_list.append({
+                    'is_modal': True,
                     'cmdname': cmdname,
                     'parserkw': parserkw,
                     'main_func': cli_cls.main,
@@ -254,6 +277,7 @@ class ModalCLI(metaclass=MetaModalCLI):
                 parserkw.update(subconfig._parserkw())
                 parserkw['help'] = parserkw['description'].split('\n')[0]
                 cmdinfo_list.append({
+                    'is_modal': False,
                     'cmdname': cmdname,
                     'parserkw': parserkw,
                     'main_func': cli_cls.main,
@@ -266,12 +290,13 @@ class ModalCLI(metaclass=MetaModalCLI):
 
         from scriptconfig.argparse_ext import RawDescriptionDefaultsHelpFormatter
         if parser is None:
+            import argparse as argparse_mod
             parser = argparse_mod.ArgumentParser(
                 description=self.description,
                 formatter_class=RawDescriptionDefaultsHelpFormatter,
             )
 
-        if self.version is not None:
+        if hasattr(self, 'version') and self.version is not None:
             parser.add_argument('--version', action='store_true',
                                 help='show version number and exit')
 
@@ -301,10 +326,18 @@ class ModalCLI(metaclass=MetaModalCLI):
         for cmdinfo in cmdinfo_list:
             # group = cmdinfo['group']
             # Add a new command to subparser_group
-            subparser = command_subparsers.add_parser(
-                cmdinfo['cmdname'], **cmdinfo['parserkw'])
-            subparser = cmdinfo['subconfig'].argparse(subparser)
-            subparser.set_defaults(main=cmdinfo['main_func'])
+            if cmdinfo['is_modal']:
+                modal_cls = cmdinfo['subconfig']
+                modal_inst = modal_cls()
+                modal_parser = command_subparsers.add_parser(
+                    cmdinfo['cmdname'], **cmdinfo['parserkw'])
+                modal_parser = modal_inst.argparse(parser=modal_parser)
+                modal_parser.set_defaults(main=cmdinfo['main_func'])
+            else:
+                subparser = command_subparsers.add_parser(
+                    cmdinfo['cmdname'], **cmdinfo['parserkw'])
+                subparser = cmdinfo['subconfig'].argparse(subparser)
+                subparser.set_defaults(main=cmdinfo['main_func'])
         return parser
 
     build_parser = argparse

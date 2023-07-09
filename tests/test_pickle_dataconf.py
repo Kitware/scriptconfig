@@ -7,7 +7,7 @@ import scriptconfig as scfg
 
 #@dataconf
 class Legacy(scfg.Config):
-    default = {
+    __default__ = {
         'default': scfg.Value((256, 256), help='chip size'),
         'keys0': [1, 2, 3],
         '__default__': {'argparse': 3.3, 'keys0': [4, 5]},

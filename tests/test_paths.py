@@ -22,7 +22,7 @@ def test_paths_with_commas():
 def test_paths_with_commas_in_config():
     import scriptconfig as scfg
     class TestConfig(scfg.Config):
-        default = {
+        __default__ = {
             'key': scfg.Value(None, type=str),
         }
 
@@ -49,7 +49,7 @@ def test_globstr_with_nargs():
     ub.touch(join(dpath, 'file3.txt'))
 
     class TestConfig(scfg.Config):
-        default = {
+        __default__ = {
             'paths': scfg.Value(None, nargs='+'),
         }
 

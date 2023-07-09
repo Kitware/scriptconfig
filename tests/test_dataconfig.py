@@ -101,7 +101,7 @@ def test_dataconfig_warning():
     """
     import scriptconfig as scfg
     import pytest
-    with pytest.warns(UserWarning):
+    with pytest.warns(Warning):
         class ExampleDataConfig(scfg.DataConfig):
             x = scfg.Value(None),
 

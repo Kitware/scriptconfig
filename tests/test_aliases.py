@@ -1,6 +1,7 @@
 
 def test_config_aliases():
     import scriptconfig as scfg
+    import pytest
     # import ubelt as ub
 
     __common_default__ = {
@@ -11,8 +12,9 @@ def test_config_aliases():
     class Config1(scfg.Config):
         __default__ = __common_default__
 
-    class Config2(scfg.Config):
-        default = __common_default__
+    with pytest.warns(Warning):
+        class Config2(scfg.Config):
+            default = __common_default__
 
     class Config3(scfg.DataConfig):
         __default__ = __common_default__

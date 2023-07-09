@@ -4,7 +4,14 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.9 - Unreleased
+## Version 0.7.10 - Unreleased
+
+### Changed
+* Reduced import time
+* Better handling of nested modal CLIs
+
+
+## Version 0.7.9 - Released 2023-06-05
 
 ### Added
 * New alternate (more concise) syntax for declaring Modal CLIs

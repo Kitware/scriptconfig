@@ -1,8 +1,6 @@
-import glob
-import ubelt as ub
-import copy
 from . import smartcast as smartcast_mod
 import re
+import ubelt as ub
 
 
 long_prefix_pat = re.compile('--[^-].*')
@@ -109,6 +107,12 @@ class Value(ub.NiceRepr):
         self.tags = tags
         self.update(value)
 
+        # TODO: opposite
+        # for use with flags, this indicates that there is another variable
+        # that should always be the opposite of this one.
+        # i.e. force / dry
+        # i.e. verbose / quiet
+
     def __nice__(self):
         # return '{!r}: {!r}'.format(self.type, self.value)
         return f'{self.value!r}'
@@ -123,6 +127,7 @@ class Value(ub.NiceRepr):
         return value
 
     def copy(self):
+        import copy
         return copy.copy(self)
 
     def _to_value_kw(self):
@@ -263,6 +268,7 @@ class PathList(Value):
 
     def cast(self, value=None):
         if isinstance(value, str):
+            import glob
             paths1 = sorted(glob.glob(ub.expandpath(value)))
             paths2 = smartcast_mod.smartcast(value)
             if paths1:
