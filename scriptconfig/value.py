@@ -355,6 +355,103 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     parent.add_argument(*option_strings, required=required, **argkw)
 
 
+def _value_add_argument_kw(value, _value, self, key, fuzzy_hyphens=0):
+    """
+    TODO: resolve with :func:`_value_add_argument_to_parser`. This just creates
+    one or more kwargs for add_argument. (Depending on how many variants of the
+    argument we want).
+
+    Args:
+        value (Any): the unwrapped default value
+        _value (Value): the value metadata
+
+    Returns:
+        Dict[str, Tuple[str, Tuple, Dict]]:
+            special keys to the method name, args, kwargs invocations.
+    """
+    # import argparse
+    from scriptconfig import argparse_ext
+
+    # value: Any | Value
+    name = key
+    argkw = {}
+    argkw['help'] = ''
+    positional = None
+    isflag = False
+    required = False
+
+    # group_lut = getattr(parser, '_sc_group_lut', {})
+    # mutex_group_lut = getattr(parser, '_sc_mutex_group_lut', {})
+    # parser._sc_mutex_group_lut = mutex_group_lut
+    # parser._sc_group_lut = group_lut
+
+    invocations = {}
+
+    # parent = parser
+    if _value is not None:
+        # Use the metadata in the Value class to enhance argparse
+        # _value = _metadata[name]
+        argkw.update(_value.parsekw)
+        required = _value.required
+        value = _value.value
+        isflag = _value.isflag
+        positional = _value.position
+
+        # TODO: handle groups
+        # If the args are flagged as belonging to a group, resepct that.
+        # if _value.group is not None:
+        #     if _value.group not in group_lut:
+        #         groupkw = {}
+        #         if isinstance(_value.group, str):
+        #             groupkw['title'] = _value.group
+        #         group_lut[_value.group] = parent.add_argument_group(**groupkw)
+        #     parent = group_lut[_value.group]
+
+        # if _value.mutex_group is not None:
+        #     if _value.mutex_group not in mutex_group_lut:
+        #         mutex_group_lut[_value.mutex_group] = parent.add_mutually_exclusive_group()
+        #     parent = mutex_group_lut[_value.mutex_group]
+
+    if not argkw['help']:
+        # argkw['help'] = '<undocumented>'
+        argkw['help'] = ''
+
+    argkw['default'] = value
+    argkw['action'] = _maker_smart_parse_action(self)
+
+    if positional:
+        invocations['positional'] = (
+            'add_argument',
+            (name,),
+            argkw.copy(),
+        )
+
+    argkw['dest'] = name
+
+    option_strings = _resolve_alias(name, _value, fuzzy_hyphens)
+
+    if isflag:
+        # Can we support both flag and setitem methods of cli
+        # parsing?
+        argkw.pop('type', None)
+        argkw.pop('choices', None)
+        argkw.pop('action', None)
+        argkw.pop('nargs', None)
+        argkw['dest'] = name
+
+        argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+
+    argkw['required'] = required
+    # parent.add_argument(*option_strings, required=required, **argkw)
+
+    invocations['key_value'] = (
+        'add_argument',
+        option_strings,
+        argkw,
+    )
+    return invocations
+
+
 def _resolve_alias(name, _value, fuzzy_hyphens):
     if _value is None:
         aliases = None

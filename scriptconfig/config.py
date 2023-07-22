@@ -91,6 +91,7 @@ from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
+from scriptconfig.util.util_class import class_or_instancemethod
 
 __all__ = ['Config', 'define']
 
@@ -372,6 +373,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             cmdline = argv
         if default is None:
             default = {}
+        # Note: this calls __post_init__ twice, we may want to refactor to
+        # avoid this.
         self = cls()
         self.load(data, cmdline=cmdline, default=default, strict=strict,
                   autocomplete=autocomplete)
@@ -1289,6 +1292,83 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         description = parser.description
         text = cls._write_code(entries, name, style, description)
+        return text
+
+    def port_to_argparse(self):
+        """
+        Attempt to make code for a nearly-equivalent argparse object.
+
+        This code only handles basic cases. Some of the scriptconfig magic is
+        dropped so we dont need to rely on custom actions.
+
+        The idea is that sometimes we can't depend on scriptconfig, so it would
+        be nice to be able to translate an existing scriptconfig class to the
+        nearly equivalent argparse code.
+
+        SeeAlso:
+            :meth:`Config.argparse` - creates a real argparse object
+
+        Returns:
+            str: code to construct a similar argparse object
+
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.port_to_argparse
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> class SimpleCLI(scfg.DataConfig):
+            >>>     data = scfg.Value(None, help='input data', position=1)
+            >>> self_or_cls = SimpleCLI()
+            >>> text = self_or_cls.port_to_argparse()
+            >>> print(text)
+            >>> # Test that the generated code is executable
+            >>> ns = {}
+            >>> exec(text, ns, ns)
+            >>> parser = ns['parser']
+            >>> args1 = parser.parse_args(['foobar'])
+            >>> assert args1.data == 'foobar'
+            >>> # Looks like we cant do positional or key/value easilly
+            >>> #args1 = parser.parse_args(['--data=blag'])
+            >>> #print('args1 = {}'.format(ub.urepr(args1, nl=1)))
+
+        """
+        parserkw = self._parserkw()
+        to_pop = {k for k, v in parserkw.items() if v is None}
+        parserkw = ub.udict(parserkw) - to_pop
+        parserkw.pop('formatter_class', None)
+
+        constructor_body = ub.indent(ub.repr2(parserkw, explicit=True, nobr=1))
+
+        lines = []
+        lines.append(ub.codeblock(
+            '''
+            import argparse
+            parser = argparse.ArgumentParser(
+            {constructor_body}
+                formatter_class=argparse.RawDescriptionHelpFormatter,
+            )
+            ''').format(
+                constructor_body=constructor_body,
+            ))
+
+        from scriptconfig import value as value_mod
+        for key, _value in self._data.items():
+            value = _value.value
+            invocations = value_mod._value_add_argument_kw(value, _value, self, key)
+            for arg_type, t in invocations.items():
+                print(f'arg_type={arg_type}')
+                meth, args, kwargs = t
+                if not isinstance(kwargs.get('action'), str):
+                    kwargs.pop('action')
+                to_pop = {k for k, v in kwargs.items() if v is None}
+                kwargs = ub.udict(kwargs) - to_pop
+                args_body = ub.urepr(args, explicit=1, nobr=1, trailsep=0).strip().strip(',')
+                kwargs_body = ub.urepr(kwargs, explicit=1, nobr=1, trailsep=0, nl=0).strip(',')
+                if args_body and kwargs_body:
+                    args_body += ', '
+                lines.append(f'parser.{meth}({args_body}{kwargs_body})')
+
+        text = '\n'.join(lines)
         return text
 
     # @classmethod

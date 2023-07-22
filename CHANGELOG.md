@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.11 - Unreleased
 
+### Added
+* New `port_to_argparse` method that will generate text for a nearly equivalent
+  argparse version of the config object.
+
+### Changed
+* Modified ubelt repr to be more executable
+* Added `util` submodule. 
+
 
 ## Version 0.7.10 - Released 2023-07-09
 
