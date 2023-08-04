@@ -53,6 +53,7 @@ Example:
 Notes:
     https://docs.python.org/3/library/dataclasses.html
 """
+from collections import OrderedDict
 from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
 import warnings
@@ -238,7 +239,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     def __init__(self, *args, **kwargs):
         "__autogenerateme__"
         self._data = None
-        self._default = ub.odict()
+        self._default = OrderedDict()
         if getattr(self, '__default__', None):
             # allow for class attributes to specify the default
             self._default.update(self.__default__)

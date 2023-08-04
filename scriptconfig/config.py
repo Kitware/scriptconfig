@@ -86,6 +86,7 @@ TODO:
 """
 import ubelt as ub
 import itertools as it
+from collections import OrderedDict
 from scriptconfig import _ubelt_repr_extension
 from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
@@ -325,7 +326,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         # The _data attribute holds
         self._data = None
-        self._default = ub.odict()
+        self._default = OrderedDict()
         cls_default = getattr(self, '__default__', getattr(self, 'default', None))
         if cls_default:
             # allow for class attributes to specify the default
@@ -453,10 +454,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 walker[path] = list(item)
             elif numpy is not None and isinstance(item, numpy.ndarray):
                 walker[path] = item.tolist()
-            elif isinstance(item, ub.odict):
+            elif isinstance(item, OrderedDict):
                 ...
             elif isinstance(item, dict):
-                walker[path] = ub.odict(sorted(item.items()))
+                walker[path] = OrderedDict(sorted(item.items()))
             else:
                 if hasattr(item, '__json__'):
                     return item.__json__()
@@ -1001,11 +1002,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             import yaml
             def order_rep(dumper, data):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
-            yaml.add_representer(ub.odict, order_rep)
+            yaml.add_representer(OrderedDict, order_rep)
             return yaml.safe_dump(dict(self.items()), stream)
         elif mode == 'json':
             import json
-            json_text = json.dumps(ub.odict(self.items()), indent=4)
+            json_text = json.dumps(OrderedDict(self.items()), indent=4)
             return json_text
         else:
             raise KeyError(mode)
