@@ -91,7 +91,7 @@ from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
-from scriptconfig.util.util_class import class_or_instancemethod
+# from scriptconfig.util.util_class import class_or_instancemethod
 
 __all__ = ['Config', 'define']
 

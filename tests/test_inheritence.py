@@ -31,7 +31,7 @@ def test_inheritence():
     print(text3)
     assert text1 == ub.codeblock(
         '''
-        c1 = Config1({
+        c1 = Config1(**{
             'arg1': 1,
             'arg2': 2,
             'arg3': 3,
@@ -39,7 +39,7 @@ def test_inheritence():
         ''')
     assert text2 == ub.codeblock(
         '''
-        c2 = Config2({
+        c2 = Config2(**{
             'arg1': 1,
             'arg2': 2,
             'arg3': 3,
@@ -50,7 +50,7 @@ def test_inheritence():
         ''')
     assert text3 == ub.codeblock(
         '''
-        c3 = Config3({
+        c3 = Config3(**{
             'arg1': 1,
             'arg2': 22,
             'arg3': 33,
@@ -87,7 +87,7 @@ def test_multiple_inheritence():
     print(text)
     assert text == ub.codeblock(
         '''
-        Foobarable({
+        Foobarable(**{
             'foo_arg1': 1,
             'foo_arg2': Ellipsis,
             'foobarg1': 'c',
@@ -128,7 +128,7 @@ def test_multiple_inheritence_diag():
     print(text)
     assert text == ub.codeblock(
         '''
-        Joined({
+        Joined(**{
             'base_arg1': 'B1',
             'base_arg2': 'B2',
             'base_arg3': 'R_B3',

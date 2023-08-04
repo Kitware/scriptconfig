@@ -12,7 +12,10 @@ def _register_ubelt_repr_extensions():
         def format_scriptconfig(data, **kwargs):
             name = data.__class__.__name__
             body = ub.urepr(data.to_dict(), **kwargs)
-            text = f'{name}(**{body})'
+            if isinstance(data, scfg.DataConfig):
+                text = f'{name}(**{body})'
+            else:
+                text = f'{name}({body})'
             return text
 
     _REPR_EXTENSIONS._lazy_queue.append(_register_scriptconfig_extensions)
