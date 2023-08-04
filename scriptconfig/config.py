@@ -1337,7 +1337,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         parserkw = ub.udict(parserkw) - to_pop
         parserkw.pop('formatter_class', None)
 
-        constructor_body = ub.indent(ub.repr2(parserkw, explicit=True, nobr=1))
+        constructor_body = ub.indent(ub.urepr(parserkw, explicit=True, nobr=1))
 
         lines = []
         lines.append(ub.codeblock(
