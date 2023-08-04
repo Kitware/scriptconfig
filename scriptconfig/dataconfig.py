@@ -232,6 +232,8 @@ class MetaDataConfig(MetaConfig):
 
 
 class DataConfig(Config, metaclass=MetaDataConfig):
+    # No docstring, because user-specified docstring will define the default
+    # __description__.
     __default__ = None
     __description__ = None
     __epilog__ = None
