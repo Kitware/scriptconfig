@@ -2,7 +2,6 @@ from typing import Any
 from typing import List
 import ubelt as ub
 from _typeshed import Incomplete
-from typing import Any
 
 long_prefix_pat: Incomplete
 short_prefix_pat: Incomplete
