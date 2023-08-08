@@ -341,6 +341,14 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         )
         return self.__default__
 
+    @classmethod
+    def _register_main(cls, func):
+        """
+        Register a function as the main method for this dataconfig CLI
+        """
+        cls.main = func
+        return func
+
 
 def __example__():
     """

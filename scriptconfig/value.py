@@ -131,14 +131,22 @@ class Value(ub.NiceRepr):
         return copy.copy(self)
 
     def _to_value_kw(self):
+        """
+        Used in port-to-dataconf and port-to-argparse
+        """
+
+        class CodeRepr(str):
+            def __repr__(self):
+                return self
+
         value = self
         orig_help = self.parsekw['help']
         orig_type = self.parsekw['type']
-        value_kw = {k: str(v) for k, v in self.__dict__.items() if v}
+        value_kw = {k: v for k, v in self.__dict__.items() if v}
         value_kw.pop('parsekw')
         value_kw.update(value.parsekw)
-        value_kw['help'] = repr(orig_help)
-        value_kw['nargs'] = repr(value.parsekw['nargs'])
+        value_kw['help'] = CodeRepr(repr(orig_help))
+        value_kw['nargs'] = CodeRepr(repr(value.parsekw['nargs']))
         if orig_type is not None:
             if isinstance(orig_type, str):
                 value_kw['type'] = repr(orig_type)
@@ -155,6 +163,7 @@ class Value(ub.NiceRepr):
 
         HACKS = 1
         if HACKS:
+
             if value_kw['type'] == 'smartcast':
                 value_kw.pop('type')
             if orig_help and len(orig_help) > 40:
@@ -168,7 +177,7 @@ class Value(ub.NiceRepr):
                         ''')
                     """
                 ).format(wrapped)
-                value_kw['help'] = ub.indent(block, ' ' * 8).lstrip()
+                value_kw['help'] = CodeRepr(ub.indent(block, ' ' * 8).lstrip())
                 # "ub.paragraph(\n'''\n{}\n''')".format(ub.indent(value.help, ' ' * 16))
         value_kw['default'] = value.value
         value_kw.pop('value', None)
@@ -177,6 +186,19 @@ class Value(ub.NiceRepr):
     @classmethod
     def _from_action(cls, action, actionid_to_groupkey, actionid_to_mgroupkey,
                      pos_counter):
+        """
+        Used in port_argparse
+
+        Example:
+            import argparse
+            from scriptconfig.value import *  # NOQA
+            action = argparse._StoreAction('foo', 'bar', default=3)
+            value = Value._from_action(action, {}, {}, 0)
+
+            action = argparse._CountAction('foo', 'bar')
+            value = Value._from_action(action, {}, {}, 0)
+        """
+        import argparse
         key = action.dest
 
         long_option_strings = [
@@ -208,6 +230,8 @@ class Value(ub.NiceRepr):
         if action.nargs == 0 and action.const is True:
             # This is a boolean flag
             real_value_kw['isflag'] = True
+        elif isinstance(action, argparse._CountAction):
+            real_value_kw['isflag'] = 'counter'
         else:
             real_value_kw.pop('isflag', None)
             if action.nargs is not None:
@@ -350,7 +374,10 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
         argkw.pop('nargs', None)
         argkw['dest'] = name
 
-        argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+        if isflag == 'counter':
+            argkw['action'] = argparse_ext.CounterOrKeyValAction
+        else:
+            argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
 
     parent.add_argument(*option_strings, required=required, **argkw)
 

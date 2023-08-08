@@ -1138,7 +1138,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             value_args = [
                 repr(default),
             ]
-            value_args.extend(['{}={}'.format(k, v) for k, v in _value_kw.items() if v is not None])
+            value_args.extend(['{}={}'.format(k, repr(v)) for k, v in _value_kw.items() if v is not None])
             val_body = ', '.join(value_args)
 
             if style == 'orig':
@@ -1354,10 +1354,14 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         from scriptconfig import value as value_mod
         for key, _value in self._data.items():
-            value = _value.value
+            if isinstance(_value, value_mod.Value):
+                value = _value.value
+            else:
+                value = _value
+                _value = self._default[key]
+
             invocations = value_mod._value_add_argument_kw(value, _value, self, key)
             for arg_type, t in invocations.items():
-                print(f'arg_type={arg_type}')
                 meth, args, kwargs = t
                 if not isinstance(kwargs.get('action'), str):
                     kwargs.pop('action')

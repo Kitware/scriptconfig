@@ -10,6 +10,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * New `port_to_argparse` method that will generate text for a nearly equivalent
   argparse version of the config object.
 
+* Can now set `isflag='counter'` to get a variable that will increment on
+  multiple specifications of the flag.
+
 ### Changed
 * Modified ubelt repr to be more executable
 * Added `util` submodule. 
