@@ -135,10 +135,6 @@ class Value(ub.NiceRepr):
         Used in port-to-dataconf and port-to-argparse
         """
 
-        class CodeRepr(str):
-            def __repr__(self):
-                return self
-
         value = self
         orig_help = self.parsekw['help']
         orig_type = self.parsekw['type']
@@ -151,7 +147,7 @@ class Value(ub.NiceRepr):
             if isinstance(orig_type, str):
                 value_kw['type'] = repr(orig_type)
             else:
-                value_kw['type'] = orig_type.__name__
+                value_kw['type'] = CodeRepr(orig_type.__name__)
 
         value_kw = ub.udict(value_kw)
         order = value_kw & ['value', 'nargs', 'type', 'isflag', 'position', 'required',
@@ -379,7 +375,14 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
         else:
             argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
 
-    parent.add_argument(*option_strings, required=required, **argkw)
+    try:
+        parent.add_argument(*option_strings, required=required, **argkw)
+    except Exception:
+        print('ERROR: Failed to add argument')
+        print('argkw = {}'.format(ub.urepr(argkw, nl=1)))
+        print('required = {}'.format(ub.urepr(required, nl=1)))
+        print('option_strings = {}'.format(ub.urepr(option_strings, nl=1)))
+        raise
 
 
 def _value_add_argument_kw(value, _value, self, key, fuzzy_hyphens=0):
@@ -576,3 +579,9 @@ def _maker_smart_parse_action(self):
             parser._explicitly_given.add(action.dest)
 
     return ParseAction
+
+
+class CodeRepr(str):
+    # When we want to write out the exact code that should be inserted.
+    def __repr__(self):
+        return self

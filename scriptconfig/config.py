@@ -1365,10 +1365,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 meth, args, kwargs = t
                 if not isinstance(kwargs.get('action'), str):
                     kwargs.pop('action')
+                if kwargs.get('type', None) is not None:
+                    kwargs['type'] = value_mod.CodeRepr(kwargs['type'].__name__)
                 to_pop = {k for k, v in kwargs.items() if v is None}
                 kwargs = ub.udict(kwargs) - to_pop
                 args_body = ub.urepr(args, explicit=1, nobr=1, trailsep=0).strip().strip(',')
                 kwargs_body = ub.urepr(kwargs, explicit=1, nobr=1, trailsep=0, nl=0).strip(',')
+                print('kwargs_body = {}'.format(ub.urepr(kwargs_body, nl=1)))
                 if args_body and kwargs_body:
                     args_body += ', '
                 lines.append(f'parser.{meth}({args_body}{kwargs_body})')
