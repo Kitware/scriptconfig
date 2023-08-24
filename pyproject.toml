@@ -21,6 +21,9 @@ license = "Apache 2"
 dev_status = "beta"
 enable_gpg = true
 typed = "partial"
+pkg_name = "scriptconfig"
+remote_host = "https://gitlab.kitware.com"
+remote_group = "utils"
 
 [tool.pytest.ini_options]
 addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py --ignore-glob=dev --ignore-glob=docs"

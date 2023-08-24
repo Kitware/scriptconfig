@@ -83,3 +83,7 @@ class PathList(Value):
 
 def scfg_isinstance(item: object, cls: type) -> bool:
     ...
+
+
+class CodeRepr(str):
+    ...
