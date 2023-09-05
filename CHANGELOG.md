@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   multiple specifications of the flag.
 
 ### Changed
+* Quality of life updates to ModalConfig, autocomplete flag, 
 * Modified ubelt repr to be more executable
 * Added `util` submodule. 
 

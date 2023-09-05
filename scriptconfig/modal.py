@@ -1,3 +1,52 @@
+"""
+The scriptconfig ModalCLI
+
+This module defines a way to group several smaller scriptconfig CLIs into a
+single parent CLI that chooses between them "modally". E.g. if we define two
+configs: do_foo and do_bar, we use ModalCLI to define a parent program that can run
+one or the other. Let's make this more concrete.
+
+CommandLine:
+    xdoctest -m scriptconfig.modal __doc__:0
+
+Example
+
+    >>> import scriptconfig as scfg
+    >>> #
+    >>> class DoFooCLI(scfg.DataConfig):
+    >>>     __command__ = 'do_foo'
+    >>>     option1 = scfg.Value(None, help='option1')
+    >>>     #
+    >>>     @classmethod
+    >>>     def main(cls, cmdline=1, **kwargs):
+    >>>         self = cls.cli(cmdline=cmdline, data=kwargs)
+    >>>         print('Called Foo with: ' + str(self))
+    >>> #
+    >>> class DoBarCLI(scfg.DataConfig):
+    >>>     __command__ = 'do_bar'
+    >>>     option1 = scfg.Value(None, help='option1')
+    >>>     #
+    >>>     @classmethod
+    >>>     def main(cls, cmdline=1, **kwargs):
+    >>>         self = cls.cli(cmdline=cmdline, data=kwargs)
+    >>>         print('Called Bar with: ' + str(self))
+    >>> #
+    >>> #
+    >>> class MyModalCLI(scfg.ModalCLI):
+    >>>     __version__ = '1.2.3'
+    >>>     foo = DoFooCLI
+    >>>     bar = DoBarCLI
+    >>> #
+    >>> modal = MyModalCLI()
+    >>> MyModalCLI.main(argv=['do_foo'])
+    >>> #MyModalCLI.main(argv=['do-foo'])
+    >>> MyModalCLI.main(argv=['--version'])
+    >>> try:
+    >>>     MyModalCLI.main(argv=['--help'])
+    >>> except SystemExit:
+    >>>     print('prevent system exit due to calling --help')
+"""
+
 import ubelt as ub
 from scriptconfig.util.util_class import class_or_instancemethod
 # from scriptconfig.config import MetaConfig
@@ -158,6 +207,11 @@ class ModalCLI(metaclass=MetaModalCLI):
             self.description = description
 
         self._instance_subconfigs = sub_clis + self.__subconfigs__
+
+        if version is None:
+            version = getattr(self.__class__, '__version__', None)
+        if version is None:
+            version = getattr(self.__class__, 'version', None)
         self.version = version
 
     def __call__(self, cli_cls):
@@ -299,19 +353,47 @@ class ModalCLI(metaclass=MetaModalCLI):
         # for group, cmdinfos in group_to_cmdinfos.items():
         #     ...
 
+        def fuzzy_cmd_names(n):
+            options = []
+            options.append(n)
+            v1 = n.replace('-', '_')
+            if v1 not in options:
+                options.append(v1)
+            v2 = n.replace('_', '-')
+            if v2 not in options:
+                options.append(v2)
+            main_cmd, *aliases = options
+            return main_cmd, aliases
+
         for cmdinfo in cmdinfo_list:
             # group = cmdinfo['group']
             # Add a new command to subparser_group
+
+            main_cmd, aliases = fuzzy_cmd_names(cmdinfo['cmdname'])
+
+            # TODO: enable alternate hyphen/underscore aliases, but supress
+            # them from the help output. Even better would be to handle
+            # argument completion so they aren't clobbered.
+
+            aliases = []
+            parserkw = cmdinfo['parserkw']
+
+            if 'aliases' in parserkw:
+                parserkw['aliases'] += aliases
+            else:
+                if aliases:
+                    parserkw['aliases'] = aliases
+
             if cmdinfo['is_modal']:
                 modal_cls = cmdinfo['subconfig']
                 modal_inst = modal_cls()
                 modal_parser = command_subparsers.add_parser(
-                    cmdinfo['cmdname'], **cmdinfo['parserkw'])
+                    main_cmd, **parserkw)
                 modal_parser = modal_inst.argparse(parser=modal_parser)
                 modal_parser.set_defaults(main=cmdinfo['main_func'])
             else:
                 subparser = command_subparsers.add_parser(
-                    cmdinfo['cmdname'], **cmdinfo['parserkw'])
+                    main_cmd, **parserkw)
                 subparser = cmdinfo['subconfig'].argparse(subparser)
                 subparser.set_defaults(main=cmdinfo['main_func'])
         return parser
@@ -319,7 +401,7 @@ class ModalCLI(metaclass=MetaModalCLI):
     build_parser = argparse
 
     @class_or_instancemethod
-    def main(self, argv=None, strict=True):
+    def main(self, argv=None, strict=True, autocomplete='auto'):
         """
         Execute the modal CLI as the main script
         """
@@ -328,13 +410,18 @@ class ModalCLI(metaclass=MetaModalCLI):
 
         parser = self.argparse()
 
-        try:
-            import argcomplete
-            # Need to run: "$(register-python-argcomplete xdev)"
-            # or activate-global-python-argcomplete --dest=-
-            # activate-global-python-argcomplete --dest ~/.bash_completion.d
-            # To enable this.
-        except ImportError:
+        if autocomplete:
+            try:
+                import argcomplete
+                # Need to run: "$(register-python-argcomplete xdev)"
+                # or activate-global-python-argcomplete --dest=-
+                # activate-global-python-argcomplete --dest ~/.bash_completion.d
+                # To enable this.
+            except ImportError:
+                argcomplete = None
+                if autocomplete != 'auto':
+                    raise
+        else:
             argcomplete = None
 
         if argcomplete is not None:
