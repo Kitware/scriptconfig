@@ -136,28 +136,26 @@ To get started lets consider some example usage:
     >>> import scriptconfig as scfg
     >>> # In its simplest incarnation, the config class specifies default values.
     >>> # For each configuration parameter.
-    >>> class ExampleConfig(scfg.Config):
-    >>>     __default__ = {
-    >>>         'num': 1,
-    >>>         'mode': 'bar',
-    >>>         'ignore': ['baz', 'biz'],
-    >>>     }
+    >>> class ExampleConfig(scfg.DataConfig):
+    >>>     num = 1
+    >>>     mode = 'bar'
+    >>>     ignore = ['baz', 'biz']
     >>> # Creating an instance, starts using the defaults
     >>> config = ExampleConfig()
-    >>> # Typically you will want to update default from a dict or file.  By
-    >>> # specifying cmdline=True you denote that it is ok for the contents of
-    >>> # `sys.argv` to override config values. Here we pass a dict to `load`.
+    >>> assert config['num'] == 1
+    >>> # Or pass in known data. (load as shown in the original example still works)
     >>> kwargs = {'num': 2}
-    >>> config.load(kwargs, cmdline=False)
+    >>> config = ExampleConfig.cli(default=kwargs, cmdline=False)
     >>> assert config['num'] == 2
     >>> # The `load` method can also be passed a json/yaml file/path.
     >>> config_fpath = '/tmp/foo'
-    >>> open(config_fpath, 'w').write('{"num": 3}')
+    >>> open(config_fpath, 'w').write('{"mode": "foo"}')
     >>> config.load(config_fpath, cmdline=False)
-    >>> assert config['num'] == 3
-    >>> # It is possible to load only from CLI by setting cmdline=True
+    >>> assert config['num'] == 2
+    >>> assert config['mode'] == "foo"
+    >>> # It is possbile to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
-    >>> config.load(cmdline=['--num=4'])
+    >>> config = ExampleConfig.cli(argv=['--num=4'])
     >>> assert config['num'] == 4
     >>> # Note that using `config.load(cmdline=True)` will just use the
     >>> # contents of sys.argv
@@ -186,37 +184,11 @@ like help documentation or type information.
     >>> # Note that the Value type can influence how data is parsed
     >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
 
-
-The above examples are even more concise with the new DataConfig syntax.
-
-.. code-block:: python
-
-    >>> import scriptconfig as scfg
-    >>> # In its simplest incarnation, the config class specifies default values.
-    >>> # For each configuration parameter.
-    >>> class ExampleConfig(scfg.DataConfig):
-    >>>     num = 1
-    >>>     mode = 'bar'
-    >>>     ignore = ['baz', 'biz']
-    >>> # Creating an instance, starts using the defaults
-    >>> config = ExampleConfig()
-    >>> assert config['num'] == 1
-    >>> # Or pass in known data. (load as shown in the original example still works)
-    >>> kwargs = {'num': 2}
-    >>> config = ExampleConfig.cli(default=kwargs, cmdline=False)
-    >>> assert config['num'] == 2
-    >>> # The `load` method can also be passed a json/yaml file/path.
-    >>> config_fpath = '/tmp/foo'
-    >>> open(config_fpath, 'w').write('{"mode": "foo"}')
-    >>> config.load(config_fpath, cmdline=False)
-    >>> assert config['num'] == 2
-    >>> assert config['mode'] == "foo"
-    >>> # It is possbile to load only from CLI by setting cmdline=True
-    >>> # or by setting it to a custom sys.argv
-    >>> config = ExampleConfig.cli(argv=['--num=4'])
-    >>> assert config['num'] == 4
-    >>> # Note that using `config.load(cmdline=True)` will just use the
-    >>> # contents of sys.argv
+(Note the above example uses the older ``Config`` usage pattern where
+attributes are memebers of a ``__default__`` dictionary. The ``DataConfig``
+class should be favored moving forward past version 0.6.2. However,
+the ``__default__`` attribute is always available if you have an existing
+dictionary you want to wrap with scriptconfig.
 
 
 Features
