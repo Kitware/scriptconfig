@@ -52,21 +52,18 @@ file, computes its hash, and then prints it to stdout.
 
     import scriptconfig as scfg
     import hashlib
-    import ubelt as ub
 
 
-    class FileHashConfig(scfg.Config):
+    class FileHashConfig(scfg.DataConfig):
         """
         The docstring will be the description in the CLI help
         """
-        __default__ = {
-            'fpath': scfg.Value(None, position=1, help='a path to a file to hash'),
-            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher'),
-        }
+        fpath = scfg.Value(None, position=1, help='a path to a file to hash')
+        hasher = scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher')
 
 
     def main(**kwargs):
-        config = FileHashConfig(data=kwargs, cmdline=True)
+        config = FileHashConfig.cli(data=kwargs)
         print('config = {!r}'.format(config))
         fpath = config['fpath']
         hasher = getattr(hashlib, config['hasher'])()
@@ -118,49 +115,6 @@ Lastly you can call it from good ol' Python.
 
     import hash_demo
     hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
-
-
-Example Script (New Syntax)
----------------------------
-
-NEW in 0.6.2: there is now a more concise syntax available using a scriptconfig.DataConfig.
-The equivalent version of the above code is:
-
-
-.. code-block:: python
-
-    import scriptconfig as scfg
-    import hashlib
-
-
-    class FileHashConfig(scfg.DataConfig):
-        """
-        The docstring will be the description in the CLI help
-        """
-        fpath = scfg.Value(None, position=1, help='a path to a file to hash')
-        hasher = scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher')
-
-
-    def main(**kwargs):
-        config = FileHashConfig.cli(data=kwargs)
-        print('config = {!r}'.format(config))
-        fpath = config['fpath']
-        hasher = getattr(hashlib, config['hasher'])()
-
-        with open(fpath, 'rb') as file:
-            hasher.update(file.read())
-
-        hashstr = hasher.hexdigest()
-        print('The {hasher} hash of {fpath} is {hashstr}'.format(
-            hashstr=hashstr, **config))
-
-
-    if __name__ == '__main__':
-        main()
-
-
-This can be invoked from the examples folder similarly to the above script
-(replace ``hash_data.py`` with ``hash_data_datconfig.py``.)
 
 
 Project Design Goals
@@ -286,6 +240,8 @@ Features
         when reading cmdline via ``load``.
 
 - Inheritence unions configs.
+
+- Modal configs (see scriptconfig.modal)
 
 
 Gotchas

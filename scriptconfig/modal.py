@@ -379,7 +379,7 @@ class ModalCLI(metaclass=MetaModalCLI):
             parserkw = cmdinfo['parserkw']
 
             if 'aliases' in parserkw:
-                parserkw['aliases'] += aliases
+                parserkw['aliases'] = list(parserkw['aliases']) + list(aliases)
             else:
                 if aliases:
                     parserkw['aliases'] = aliases
