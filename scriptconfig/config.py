@@ -298,7 +298,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     __scfg_class__ = 'Config'
     __default__ = {}
 
-    def __init__(self, data=None, default=None, cmdline=False):
+    def __init__(self, data=None, default=None, cmdline=False,
+                 _dont_call_post_init=False):
         """
         Args:
             data (object): filepath, dict, or None
@@ -332,7 +333,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             # allow for class attributes to specify the default
             self._default.update(cls_default)
         self._alias_map = None
-        self.load(data, cmdline=cmdline, default=default)
+        self.load(data, cmdline=cmdline, default=default,
+                  _dont_call_post_init=_dont_call_post_init)
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=True,
@@ -374,9 +376,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             cmdline = argv
         if default is None:
             default = {}
-        # Note: this calls __post_init__ twice, we may want to refactor to
-        # avoid this.
-        self = cls()
+        # Note: hack to avoid calling  __post_init__ twice
+        # We may want to refactor this to be a bit nicer.
+        # Might require a major version bump and breaking of backwards compat.
+        # avoid this. The thing that makes this difficult is the DataConfig
+        # init method taking in keyword args corresponding to the config which
+        # prevents adding clean options for control flow.
+        self = cls(_dont_call_post_init=True)
         self.load(data, cmdline=cmdline, default=default, strict=strict,
                   autocomplete=autocomplete)
         return self
@@ -552,7 +558,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self._alias_map = None
 
     def load(self, data=None, cmdline=False, mode=None, default=None,
-             strict=False, autocomplete=False):
+             strict=False, autocomplete=False, _dont_call_post_init=False):
         """
         Updates the configuration from a given data source.
 
@@ -751,7 +757,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     if v.required:
                         if self[k] == v.value:
                             raise Exception('Required variable {!r} still has default value'.format(k))
-        self.__post_init__()
+        if not _dont_call_post_init:
+            self.__post_init__()
         return self
 
     def _normalize_alias_key(self, key):
@@ -935,7 +942,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if special_options:
             config_fpath = special_ns['config']
             if config_fpath is not None:
-                self.load(config_fpath, cmdline=False)
+                self.load(config_fpath, cmdline=False,
+                          _dont_call_post_init=True)
 
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
@@ -957,7 +965,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # if value is not None:
                 self[key] = value
 
-        self.__post_init__()
+        # We dont want this here right?
+        # self.__post_init__()
 
         if special_options:
             import sys
@@ -1387,6 +1396,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     def namespace(self):
         """
         Access a namespace like object for compatibility with argparse
+
+        Returns:
+            argparse.Namespace
         """
         from argparse import Namespace
         return Namespace(**dict(self))

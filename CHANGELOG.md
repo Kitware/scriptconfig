@@ -18,6 +18,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Modified ubelt repr to be more executable
 * Added `util` submodule. 
 
+### Fixed
+* The `.cli` classmethod no longer causes `__post_init__` to be called twice.
+
 
 ## Version 0.7.10 - Released 2023-07-09
 
