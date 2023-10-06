@@ -13,6 +13,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Can now set `isflag='counter'` to get a variable that will increment on
   multiple specifications of the flag.
 
+* Added `__allow_abbrev__` control option.
+
 ### Changed
 * Quality of life updates to ModalConfig, autocomplete flag, 
 * Modified ubelt repr to be more executable

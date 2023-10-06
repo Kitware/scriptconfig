@@ -1042,6 +1042,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @property
     def _description(self):
+        if hasattr(self, 'description'):
+            ub.schedule_deprecation(
+                'scriptconfig', 'description', 'attribute of Config classes',
+                migration='Use __description__ or the docstring instead',
+                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+
         description = getattr(self, '__description__',
                               getattr(self, 'description', None))
         if description is None:
@@ -1055,6 +1061,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @property
     def _epilog(self):
+        if hasattr(self, 'epilog'):
+            ub.schedule_deprecation(
+                'scriptconfig', 'epilog', 'attribute of Config classes',
+                migration='Use __epilog__ instead',
+                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+
         epilog = getattr(self, '__epilog__', getattr(self, 'epilog', None))
         if epilog is not None:
             epilog = ub.codeblock(epilog)
@@ -1062,10 +1074,15 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @property
     def _prog(self):
-        prog = getattr(self, 'prog', None)
+        if hasattr(self, 'prog'):
+            ub.schedule_deprecation(
+                'scriptconfig', 'prog', 'attribute of Config classes',
+                migration='Use __prog__ instead',
+                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+        prog = getattr(self, '__prog__', getattr(self, 'prog', None))
         if prog is None:
             prog = self.__class__.__name__
-        prog
+        return prog
 
     def _parserkw(self):
         """
@@ -1081,6 +1098,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
             # exit_on_error=False,
         )
+        if hasattr(self, '__allow_abbrev__'):
+            parserkw['allow_abbrev'] = self.__allow_abbrev__
         return parserkw
 
     def port_to_dataconf(self):

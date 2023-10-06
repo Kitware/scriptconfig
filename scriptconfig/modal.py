@@ -279,19 +279,8 @@ class ModalCLI(metaclass=MetaModalCLI):
 
             if isinstance(cli_cls, ModalCLI) or issubclass(cli_cls, ModalCLI):
                 # Another modal layer
-                modal = cli_cls
-                from scriptconfig import argparse_ext
-                # FIXME: ModalCLI needs a _parserkw method.
-
-                parserkw.update(
-                    # prog=self._prog,
-                    description=self.description,
-                    # epilog=self._epilog,
-                    # formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                    # formatter_class=argparse.RawDescriptionHelpFormatter,
-                    formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
-                    # exit_on_error=False,
-                )
+                modal = cli_cls()
+                parserkw.update(modal._parserkw())
                 parserkw['help'] = parserkw['description'].split('\n')[0]
                 cmdinfo_list.append({
                     'is_modal': True,
@@ -316,15 +305,31 @@ class ModalCLI(metaclass=MetaModalCLI):
                 })
         return cmdinfo_list
 
-    def argparse(self, parser=None, special_options=...):
-
+    def _parserkw(self):
+        """
+        Generate the kwargs for making a new argparse.ArgumentParser
+        """
         from scriptconfig.argparse_ext import RawDescriptionDefaultsHelpFormatter
+        parserkw = dict(
+            description=self.description,
+            formatter_class=RawDescriptionDefaultsHelpFormatter,
+            epilog=getattr(self, '__epilog__', None),
+            prog=getattr(self, '__prog__', None),
+        )
+        if hasattr(self, '__allow_abbrev__'):
+            parserkw['allow_abbrev'] = self.__allow_abbrev__
+        return parserkw
+
+    def argparse(self, parser=None, special_options=...):
+        """
+        Builds a new argparse object for this ModalCLI or extends an existing
+        one with it.
+        """
+
         if parser is None:
             import argparse as argparse_mod
-            parser = argparse_mod.ArgumentParser(
-                description=self.description,
-                formatter_class=RawDescriptionDefaultsHelpFormatter,
-            )
+            parserkw = self._parserkw()
+            parser = argparse_mod.ArgumentParser(**parserkw)
 
         if hasattr(self, 'version') and self.version is not None:
             parser.add_argument('--version', action='store_true',
@@ -385,8 +390,7 @@ class ModalCLI(metaclass=MetaModalCLI):
                     parserkw['aliases'] = aliases
 
             if cmdinfo['is_modal']:
-                modal_cls = cmdinfo['subconfig']
-                modal_inst = modal_cls()
+                modal_inst = cmdinfo['subconfig']
                 modal_parser = command_subparsers.add_parser(
                     main_cmd, **parserkw)
                 modal_parser = modal_inst.argparse(parser=modal_parser)
