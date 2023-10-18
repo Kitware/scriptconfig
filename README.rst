@@ -25,10 +25,35 @@ update from CLI, kwargs, and/or json.
 
 The ``scriptconfig`` module provides a simple way to make configurable scripts
 using a combination of config files, command line arguments, and simple Python
-keyword arguments. A script config object is defined by creating a subclass of
-``Config`` with a ``__default__`` dict class attribute. An instance of a custom
-``Config`` object will behave similar a dictionary, but with a few
-conveniences.
+keyword arguments.
+
+A script config object is defined by creating a subclass of ``Config`` with a
+``__default__`` dict class attribute. An instance of a custom ``Config`` object
+will behave similar a dictionary, but with a few conveniences.
+
+.. code-block:: python
+
+    import scriptconfig as scfg
+
+    class ExampleConfig(scfg.DataConfig):
+        """
+        The docstring will be the description in the CLI help
+        """
+        option1 = scfg.Value('default1', help='option1 help')
+        option2 = scfg.Value('default2', help='option2 help')
+        option3 = scfg.Value('default3', help='option3 help')
+
+    # Use as a dictionary with defaults
+    config = ExampleConfig(option1=123)
+    print(config)
+
+    # Use as a argparse CLI
+    config = ExampleConfig.cli(argv=['--option2=overruled'])
+    print(config)
+
+    # Can always fallback to pure-argparse
+    print(ExampleConfig().port_to_argparse())
+
 
 Installation
 ------------
