@@ -11,7 +11,7 @@ mod_name = "scriptconfig"
 repo_name = "scriptconfig"
 rel_mod_parent_dpath = "."
 os = [ "osx", "linux", "win", "all",]
-url = "https://gitlab.kitware.com/utils/scriptconfig/"
+url = "https://gitlab.kitware.com/utils/scriptconfig"
 min_python = 3.6
 version = "{mod_dpath}/__init__.py::__version__"
 author = "Kitware Inc., Jon Crall"
@@ -21,10 +21,13 @@ license = "Apache 2"
 dev_status = "beta"
 enable_gpg = true
 typed = "partial"
+pkg_name = "scriptconfig"
+remote_host = "https://gitlab.kitware.com"
+remote_group = "utils"
 
 [tool.pytest.ini_options]
 addopts = "-p no:doctest --xdoctest --xdoctest-style=google --ignore-glob=setup.py --ignore-glob=dev --ignore-glob=docs"
-norecursedirs = ".git ignore build __pycache__ dev _skbuild"
+norecursedirs = ".git ignore build __pycache__ dev _skbuild docs"
 filterwarnings = [ "default", "ignore:.*No cfgstr given in Cacher constructor or call.*:Warning", "ignore:.*Define the __nice__ method for.*:Warning", "ignore:.*private pytest class or function.*:Warning",]
 
 [tool.coverage.run]

@@ -55,40 +55,7 @@ class BooleanFlagOrKeyValAction(_Base):
         >>> from scriptconfig.argparse_ext import *  # NOQA
         >>> import argparse
         >>> parser = argparse.ArgumentParser()
-        >>> parser.add_argument('--flag', action=BooleanFlagOrKeyValAction)
-        >>> print(parser.format_usage())
-        >>> print(parser.format_help())
-        >>> import shlex
-        >>> # Map the CLI arg string to what value we would expect to get
-        >>> variants = {
-        >>>     # Case1: you either specify the flag, or you don't
-        >>>     '': None,
-        >>>     '--flag': True,
-        >>>     '--no-flag': False,
-        >>>     # Case1: You specify the flag as a key/value pair
-        >>>     '--flag=0': False,
-        >>>     '--flag=1': True,
-        >>>     '--flag True': True,
-        >>>     '--flag False': False,
-        >>>     # Case1: You specify the negated flag as a key/value pair
-        >>>     # (you probably shouldn't do this)
-        >>>     '--no-flag 0': True,
-        >>>     '--no-flag 1': False,
-        >>>     '--no-flag=True': False,
-        >>>     '--no-flag=False': True,
-        >>> }
-        >>> for args, want in variants.items():
-        >>>     args = shlex.split(args)
-        >>>     ns = parser.parse_known_args(args=args)[0].__dict__
-        >>>     print(f'args={args} -> {ns}')
-        >>>     assert ns['flag'] == want
-
-    Example:
-        >>> # Does this play nice with other complex cases?
-        >>> from scriptconfig.argparse_ext import *  # NOQA
-        >>> import argparse
-        >>> parser = argparse.ArgumentParser()
-        >>> parser.add_argument('--flag', action=BooleanFlagOrKeyValAction)
+        >>> parser.add_argument('-f', '--flag', action=BooleanFlagOrKeyValAction)
         >>> print(parser.format_usage())
         >>> print(parser.format_help())
         >>> import shlex
@@ -173,6 +140,76 @@ class BooleanFlagOrKeyValAction(_Base):
             # value = smartcast_mod._smartcast_bool(values)
             if not key_default:
                 value = not value
+        setattr(namespace, action.dest, value)
+        action._mark_parsed_argument(parser)
+
+
+class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
+    """
+    Extends :BooleanFlagOrKeyValAction: and will increment the value
+    based on the number of times the flag is specified.
+
+    FIXME:
+        Can we get -ffff to work right?
+
+    Example:
+        >>> from scriptconfig.argparse_ext import *  # NOQA
+        >>> import argparse
+        >>> parser = argparse.ArgumentParser()
+        >>> parser.add_argument('-f', '--flag', action=CounterOrKeyValAction)
+        >>> print(parser.format_usage())
+        >>> print(parser.format_help())
+        >>> import shlex
+        >>> # Map the CLI arg string to what value we would expect to get
+        >>> variants = {
+        >>>     # Case1: you either specify the flag, or you don't
+        >>>     '': None,
+        >>>     '--flag': True,
+        >>>     '--no-flag': False,
+        >>>     # Case1: You specify the flag as a key/value pair
+        >>>     '--flag=0': False,
+        >>>     '--flag=1': True,
+        >>>     '--flag True': True,
+        >>>     '--flag False': False,
+        >>>     # Case1: You specify the negated flag as a key/value pair
+        >>>     # (you probably shouldn't do this)
+        >>>     '--no-flag 0': True,
+        >>>     '--no-flag 1': False,
+        >>>     '--no-flag=True': False,
+        >>>     '--no-flag=False': True,
+        >>>     # Multiple flag specification cases
+        >>>     '--flag --flag --flag': 3,
+        >>>     # An explicit set overwrites previous increments
+        >>>     '--flag --flag --flag --flag=0': 0,
+        >>>     # An increments modify previous explicit settings
+        >>>     '--flag=3 --flag --flag --flag': 6,
+        >>> }
+        >>> for args, want in variants.items():
+        >>>     args = shlex.split(args)
+        >>>     ns = parser.parse_known_args(args=args)[0].__dict__
+        >>>     print(f'args={args} -> {ns}')
+        >>>     assert ns['flag'] == want
+    """
+    def __call__(action, parser, namespace, values, option_string=None):
+        if option_string in action.option_strings:
+            # Was the positive or negated key given?
+            key_default = not option_string.startswith('--no-')
+
+        # Was there a value or was the flag specified by itself?
+        if values is None:
+            # For the no k/v case, allow incrementing of the value
+            prev_value = getattr(namespace, action.dest)
+            if prev_value is None:
+                prev_value = 0
+            value = prev_value + key_default
+        else:
+            # Allow for non-boolean values (i.e. auto) to be passed
+            from scriptconfig import smartcast as smartcast_mod
+            value = smartcast_mod.smartcast(values)
+            # value = smartcast_mod._smartcast_bool(values)
+            if not key_default:
+                value = not value
+
         setattr(namespace, action.dest, value)
         action._mark_parsed_argument(parser)
 

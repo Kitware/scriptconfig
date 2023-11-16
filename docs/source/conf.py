@@ -45,10 +45,12 @@ Notes:
             Set the Repository NAME: scriptconfig
             Set the Repository URL: https://gitlab.kitware.com/utils/scriptconfig
 
-        For gitlab you also need to setup an integrations and add gitlab
-        incoming webhook
+        For gitlab you also need to setup an integrations. Navigate to:
 
             https://readthedocs.org/dashboard/scriptconfig/integrations/create/
+
+        Then add gitlab incoming webhook and copy the URL (make sure
+        you copy the real url and not the text so https is included).
 
         Then go to
 
@@ -112,7 +114,7 @@ copyright = '2023, Kitware Inc. Jon Crall'
 author = 'Kitware Inc. Jon Crall'
 modname = 'scriptconfig'
 
-modpath = join(dirname(dirname(dirname(__file__))), modname, '__init__.py')
+modpath = join(dirname(dirname(dirname(__file__))), 'scriptconfig', '__init__.py')
 release = parse_version(modpath)
 version = '.'.join(release.split('.')[0:2])
 
@@ -127,6 +129,7 @@ version = '.'.join(release.split('.')[0:2])
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    # 'autoapi.extension',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
@@ -134,6 +137,10 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
     # 'myst_parser',  # TODO
+
+    'sphinx.ext.githubpages',
+    # 'sphinxcontrib.redirects',
+    'sphinx_reredirects',
 ]
 
 todo_include_todos = True
@@ -146,6 +153,15 @@ autodoc_inherit_docstrings = False
 autodoc_member_order = 'bysource'
 autoclass_content = 'both'
 # autodoc_mock_imports = ['torch', 'torchvision', 'visdom']
+
+# autoapi_modules = {
+#     modname: {
+#         'override': False,
+#         'output': 'auto'
+#     }
+# }
+# autoapi_dirs = [f'../../src/{modname}']
+# autoapi_keep_files = True
 
 intersphinx_mapping = {
     # 'pytorch': ('http://pytorch.org/docs/master/', None),
@@ -163,7 +179,14 @@ intersphinx_mapping = {
     'xdoctest': ('https://xdoctest.readthedocs.io/en/latest/', None),
     'networkx': ('https://networkx.org/documentation/stable/', None),
     'scriptconfig': ('https://scriptconfig.readthedocs.io/en/latest/', None),
+    'rich': ('https://rich.readthedocs.io/en/latest/', None),
 
+    'pytest': ('https://docs.pytest.org/en/latest/', None),
+    # 'pytest._pytest.doctest': ('https://docs.pytest.org/en/latest/_modules/_pytest/doctest.html', None),
+    # 'colorama': ('https://pypi.org/project/colorama/', None),
+    # 'numpy': ('http://docs.scipy.org/doc/numpy/', None),
+    # 'cv2' : ('http://docs.opencv.org/2.4/', None),
+    # 'h5py' : ('http://docs.h5py.org/en/latest/', None)
 }
 __dev_note__ = """
 python -m sphinx.ext.intersphinx https://docs.python.org/3/objects.inv
@@ -173,6 +196,11 @@ python -m sphinx.ext.intersphinx https://kwarray.readthedocs.io/en/latest/object
 python -m sphinx.ext.intersphinx https://kwimage.readthedocs.io/en/latest/objects.inv
 python -m sphinx.ext.intersphinx https://ubelt.readthedocs.io/en/latest/objects.inv
 python -m sphinx.ext.intersphinx https://networkx.org/documentation/stable/objects.inv
+
+sphobjinv suggest -t 90 -u https://readthedocs.org/projects/pytest/reference/objects.inv
+"signal.convolve2d"
+
+python -m sphinx.ext.intersphinx https://pygments-doc.readthedocs.io/en/latest/objects.inv
 """
 
 
@@ -242,7 +270,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'scriptconfigdoc'
+htmlhelp_basename = project + 'doc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -397,6 +425,30 @@ class GoogleStyleDocstringProcessor:
 
     def process(self, lines):
         """
+        Example:
+            >>> import ubelt as ub
+            >>> self = GoogleStyleDocstringProcessor()
+            >>> lines = ['Hello world',
+            >>>              '',
+            >>>              'CommandLine:',
+            >>>              '    hi',
+            >>>              '',
+            >>>              'CommandLine:',
+            >>>              '',
+            >>>              '    bye',
+            >>>              '',
+            >>>              'TextArt:',
+            >>>              '',
+            >>>              '    1',
+            >>>              '    2',
+            >>>              '',
+            >>>              '    345',
+            >>>              '',
+            >>>              'Foobar:',
+            >>>              '',
+            >>>              'TextArt:']
+            >>> new_lines = self.process(lines[:])
+            >>> print(chr(10).join(new_lines))
         """
         orig_lines = lines[:]
         new_lines = []
@@ -508,41 +560,44 @@ class GoogleStyleDocstringProcessor:
                     lines[idx] = "**Example:**"
                     lines.insert(idx + 1, "")
 
-        REFORMAT_RETURNS = 0
-        if REFORMAT_RETURNS:
-            # FORMAT THE RETURNS SECTION A BIT NICER
-            # Split by sphinx types
-            import re
-            tag_pat = re.compile(r'^:(\w*):')
-            directive_pat = re.compile(r'^.. (\w*)::\s*(\w*)')
-            sphinx_parts = []
-            for idx, line in enumerate(lines):
-                tag_match = tag_pat.search(line)
-                directive_match = directive_pat.search(line)
-                if tag_match:
-                    tag = tag_match.groups()[0]
-                    sphinx_parts.append({
-                        'tag': tag, 'start_offset': idx,
-                        'type': 'tag',
-                    })
-                elif directive_match:
-                    tag = directive_match.groups()[0]
-                    sphinx_parts.append({
-                        'tag': tag, 'start_offset': idx,
-                        'type': 'directive',
-                    })
+        REFORMAT_SECTIONS = 0
+        if REFORMAT_SECTIONS:
+            REFORMAT_RETURNS = 0
+            REFORMAT_PARAMS = 0
 
-            prev_offset = len(lines)
-            for part in sphinx_parts[::-1]:
-                part['end_offset'] = prev_offset
-                prev_offset = part['start_offset']
+            docstr = SphinxDocstring(lines)
 
-            for part in sphinx_parts[::-1]:
-                if part['tag'] == 'returns':
-                    edit_slice = slice(part['start_offset'] + 2, part['end_offset'])
-                    return_section = lines[edit_slice]
-                    text = '\n'.join(return_section)
+            if REFORMAT_PARAMS:
+                for found in docstr.find_tagged_lines('Parameters'):
+                    print(found['text'])
+                    edit_slice = found['edit_slice']
 
+                    # TODO: figure out how to do this.
+
+                    # # file = 'foo.rst'
+                    # import rstparse
+                    # rst = rstparse.Parser()
+                    # import io
+                    # rst.read(io.StringIO(found['text']))
+                    # rst.parse()
+                    # for line in rst.lines:
+                    #     print(line)
+
+                    # # found['text']
+                    # import docutils
+
+                    # settings = docutils.frontend.OptionParser(
+                    #     components=(docutils.parsers.rst.Parser,)
+                    #     ).get_default_values()
+                    # document = docutils.utils.new_document('<tempdoc>', settings)
+                    # from docutils.parsers import rst
+                    # rst.Parser().parse(found['text'], document)
+
+            if REFORMAT_RETURNS:
+                for found in docstr.find_tagged_lines('returns'):
+                    # FIXME: account for new slice with -2 offset
+                    edit_slice = found['edit_slice']
+                    text = found['text']
                     new_lines = []
                     for para in text.split('\n\n'):
                         indent = para[:len(para) - len(para.lstrip())]
@@ -558,6 +613,60 @@ class GoogleStyleDocstringProcessor:
         # if name == 'kwimage.Affine.translate':
         #     import sys
         #     sys.exit(1)
+
+
+class SphinxDocstring:
+    """
+    Helper to parse and modify sphinx docstrings
+    """
+    def __init__(docstr, lines):
+        docstr.lines = lines
+
+        # FORMAT THE RETURNS SECTION A BIT NICER
+        import re
+        tag_pat = re.compile(r'^:(\w*):')
+        directive_pat = re.compile(r'^.. (\w*)::\s*(\w*)')
+
+        # Split by sphinx types, mark the line offset where they start / stop
+        sphinx_parts = []
+        for idx, line in enumerate(lines):
+            tag_match = tag_pat.search(line)
+            directive_match = directive_pat.search(line)
+            if tag_match:
+                tag = tag_match.groups()[0]
+                sphinx_parts.append({
+                    'tag': tag, 'start_offset': idx,
+                    'type': 'tag',
+                })
+            elif directive_match:
+                tag = directive_match.groups()[0]
+                sphinx_parts.append({
+                    'tag': tag, 'start_offset': idx,
+                    'type': 'directive',
+                })
+
+        prev_offset = len(lines)
+        for part in sphinx_parts[::-1]:
+            part['end_offset'] = prev_offset
+            prev_offset = part['start_offset']
+
+        docstr.sphinx_parts = sphinx_parts
+
+        if 0:
+            for line in lines:
+                print(line)
+
+    def find_tagged_lines(docstr, tag):
+        for part in docstr.sphinx_parts[::-1]:
+            if part['tag'] == tag:
+                edit_slice = slice(part['start_offset'], part['end_offset'])
+                return_section = docstr.lines[edit_slice]
+                text = '\n'.join(return_section)
+                found = {
+                    'edit_slice': edit_slice,
+                    'text': text,
+                }
+                yield found
 
 
 def paragraph(text):

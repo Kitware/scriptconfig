@@ -3,12 +3,6 @@ from _typeshed import Incomplete
 DEFAULT_GROUP: str
 
 
-class class_or_instancemethod(classmethod):
-
-    def __get__(self, instance, type_):
-        ...
-
-
 class MetaModalCLI(type):
 
     @staticmethod

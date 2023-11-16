@@ -7,7 +7,6 @@ from _typeshed import Incomplete
 from collections.abc import Generator
 from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
-from typing import Any
 
 from typing import Any
 
@@ -111,6 +110,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                       parser: argparse.ArgumentParser,
                       name: str = 'MyConfig',
                       style: str = 'dataconf') -> str:
+        ...
+
+    def port_to_argparse(self) -> str:
         ...
 
     @property

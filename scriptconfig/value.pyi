@@ -2,7 +2,6 @@ from typing import Any
 from typing import List
 import ubelt as ub
 from _typeshed import Incomplete
-from typing import Any
 
 long_prefix_pat: Incomplete
 short_prefix_pat: Incomplete
@@ -83,4 +82,8 @@ class PathList(Value):
 
 
 def scfg_isinstance(item: object, cls: type) -> bool:
+    ...
+
+
+class CodeRepr(str):
     ...

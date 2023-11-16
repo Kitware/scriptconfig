@@ -131,19 +131,23 @@ class Value(ub.NiceRepr):
         return copy.copy(self)
 
     def _to_value_kw(self):
+        """
+        Used in port-to-dataconf and port-to-argparse
+        """
+
         value = self
         orig_help = self.parsekw['help']
         orig_type = self.parsekw['type']
-        value_kw = {k: str(v) for k, v in self.__dict__.items() if v}
+        value_kw = {k: v for k, v in self.__dict__.items() if v}
         value_kw.pop('parsekw')
         value_kw.update(value.parsekw)
-        value_kw['help'] = repr(orig_help)
-        value_kw['nargs'] = repr(value.parsekw['nargs'])
+        value_kw['help'] = CodeRepr(repr(orig_help))
+        value_kw['nargs'] = CodeRepr(repr(value.parsekw['nargs']))
         if orig_type is not None:
             if isinstance(orig_type, str):
                 value_kw['type'] = repr(orig_type)
             else:
-                value_kw['type'] = orig_type.__name__
+                value_kw['type'] = CodeRepr(orig_type.__name__)
 
         value_kw = ub.udict(value_kw)
         order = value_kw & ['value', 'nargs', 'type', 'isflag', 'position', 'required',
@@ -155,6 +159,7 @@ class Value(ub.NiceRepr):
 
         HACKS = 1
         if HACKS:
+
             if value_kw['type'] == 'smartcast':
                 value_kw.pop('type')
             if orig_help and len(orig_help) > 40:
@@ -168,7 +173,7 @@ class Value(ub.NiceRepr):
                         ''')
                     """
                 ).format(wrapped)
-                value_kw['help'] = ub.indent(block, ' ' * 8).lstrip()
+                value_kw['help'] = CodeRepr(ub.indent(block, ' ' * 8).lstrip())
                 # "ub.paragraph(\n'''\n{}\n''')".format(ub.indent(value.help, ' ' * 16))
         value_kw['default'] = value.value
         value_kw.pop('value', None)
@@ -177,6 +182,19 @@ class Value(ub.NiceRepr):
     @classmethod
     def _from_action(cls, action, actionid_to_groupkey, actionid_to_mgroupkey,
                      pos_counter):
+        """
+        Used in port_argparse
+
+        Example:
+            import argparse
+            from scriptconfig.value import *  # NOQA
+            action = argparse._StoreAction('foo', 'bar', default=3)
+            value = Value._from_action(action, {}, {}, 0)
+
+            action = argparse._CountAction('foo', 'bar')
+            value = Value._from_action(action, {}, {}, 0)
+        """
+        import argparse
         key = action.dest
 
         long_option_strings = [
@@ -208,6 +226,8 @@ class Value(ub.NiceRepr):
         if action.nargs == 0 and action.const is True:
             # This is a boolean flag
             real_value_kw['isflag'] = True
+        elif isinstance(action, argparse._CountAction):
+            real_value_kw['isflag'] = 'counter'
         else:
             real_value_kw.pop('isflag', None)
             if action.nargs is not None:
@@ -350,9 +370,116 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
         argkw.pop('nargs', None)
         argkw['dest'] = name
 
+        if isflag == 'counter':
+            argkw['action'] = argparse_ext.CounterOrKeyValAction
+        else:
+            argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+
+    try:
+        parent.add_argument(*option_strings, required=required, **argkw)
+    except Exception:
+        print('ERROR: Failed to add argument')
+        print('argkw = {}'.format(ub.urepr(argkw, nl=1)))
+        print('required = {}'.format(ub.urepr(required, nl=1)))
+        print('option_strings = {}'.format(ub.urepr(option_strings, nl=1)))
+        raise
+
+
+def _value_add_argument_kw(value, _value, self, key, fuzzy_hyphens=0):
+    """
+    TODO: resolve with :func:`_value_add_argument_to_parser`. This just creates
+    one or more kwargs for add_argument. (Depending on how many variants of the
+    argument we want).
+
+    Args:
+        value (Any): the unwrapped default value
+        _value (Value): the value metadata
+
+    Returns:
+        Dict[str, Tuple[str, Tuple, Dict]]:
+            special keys to the method name, args, kwargs invocations.
+    """
+    # import argparse
+    from scriptconfig import argparse_ext
+
+    # value: Any | Value
+    name = key
+    argkw = {}
+    argkw['help'] = ''
+    positional = None
+    isflag = False
+    required = False
+
+    # group_lut = getattr(parser, '_sc_group_lut', {})
+    # mutex_group_lut = getattr(parser, '_sc_mutex_group_lut', {})
+    # parser._sc_mutex_group_lut = mutex_group_lut
+    # parser._sc_group_lut = group_lut
+
+    invocations = {}
+
+    # parent = parser
+    if _value is not None:
+        # Use the metadata in the Value class to enhance argparse
+        # _value = _metadata[name]
+        argkw.update(_value.parsekw)
+        required = _value.required
+        value = _value.value
+        isflag = _value.isflag
+        positional = _value.position
+
+        # TODO: handle groups
+        # If the args are flagged as belonging to a group, resepct that.
+        # if _value.group is not None:
+        #     if _value.group not in group_lut:
+        #         groupkw = {}
+        #         if isinstance(_value.group, str):
+        #             groupkw['title'] = _value.group
+        #         group_lut[_value.group] = parent.add_argument_group(**groupkw)
+        #     parent = group_lut[_value.group]
+
+        # if _value.mutex_group is not None:
+        #     if _value.mutex_group not in mutex_group_lut:
+        #         mutex_group_lut[_value.mutex_group] = parent.add_mutually_exclusive_group()
+        #     parent = mutex_group_lut[_value.mutex_group]
+
+    if not argkw['help']:
+        # argkw['help'] = '<undocumented>'
+        argkw['help'] = ''
+
+    argkw['default'] = value
+    argkw['action'] = _maker_smart_parse_action(self)
+
+    if positional:
+        invocations['positional'] = (
+            'add_argument',
+            (name,),
+            argkw.copy(),
+        )
+
+    argkw['dest'] = name
+
+    option_strings = _resolve_alias(name, _value, fuzzy_hyphens)
+
+    if isflag:
+        # Can we support both flag and setitem methods of cli
+        # parsing?
+        argkw.pop('type', None)
+        argkw.pop('choices', None)
+        argkw.pop('action', None)
+        argkw.pop('nargs', None)
+        argkw['dest'] = name
+
         argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
 
-    parent.add_argument(*option_strings, required=required, **argkw)
+    argkw['required'] = required
+    # parent.add_argument(*option_strings, required=required, **argkw)
+
+    invocations['key_value'] = (
+        'add_argument',
+        option_strings,
+        argkw,
+    )
+    return invocations
 
 
 def _resolve_alias(name, _value, fuzzy_hyphens):
@@ -452,3 +579,9 @@ def _maker_smart_parse_action(self):
             parser._explicitly_given.add(action.dest)
 
     return ParseAction
+
+
+class CodeRepr(str):
+    # When we want to write out the exact code that should be inserted.
+    def __repr__(self):
+        return self

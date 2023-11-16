@@ -4,7 +4,27 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.10 - Unreleased
+## Version 0.7.11 - Unreleased
+
+### Added
+* New `port_to_argparse` method that will generate text for a nearly equivalent
+  argparse version of the config object.
+
+* Can now set `isflag='counter'` to get a variable that will increment on
+  multiple specifications of the flag.
+
+* Added `__allow_abbrev__` control option.
+
+### Changed
+* Quality of life updates to ModalConfig, autocomplete flag, 
+* Modified ubelt repr to be more executable
+* Added `util` submodule. 
+
+### Fixed
+* The `.cli` classmethod no longer causes `__post_init__` to be called twice.
+
+
+## Version 0.7.10 - Released 2023-07-09
 
 ### Changed
 * Reduced import time

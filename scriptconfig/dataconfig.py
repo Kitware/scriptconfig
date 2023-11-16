@@ -53,6 +53,7 @@ Example:
 Notes:
     https://docs.python.org/3/library/dataclasses.html
 """
+from collections import OrderedDict
 from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
 import warnings
@@ -231,14 +232,20 @@ class MetaDataConfig(MetaConfig):
 
 
 class DataConfig(Config, metaclass=MetaDataConfig):
+    # No docstring, because user-specified docstring will define the default
+    # __description__.
     __default__ = None
     __description__ = None
     __epilog__ = None
 
     def __init__(self, *args, **kwargs):
         "__autogenerateme__"
+        # Private internal hack to prevent __post_init__ from being called
+        # if we are immediately going to load and call it again.
+        _dont_call_post_init = kwargs.pop('_dont_call_post_init', False)
+
         self._data = None
-        self._default = ub.odict()
+        self._default = OrderedDict()
         if getattr(self, '__default__', None):
             # allow for class attributes to specify the default
             self._default.update(self.__default__)
@@ -254,7 +261,8 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         self._default.update(new_defaults)
         self._data = self._default.copy()
         self._enable_setattr = True
-        self.__post_init__()
+        if not _dont_call_post_init:
+            self.__post_init__()
 
     def __getattr__(self, key):
         # Note: attributes that mirror the public API will be suppressed
@@ -337,6 +345,14 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             deprecate='0.7.7', error='1.0.0', remove='1.0.1',
         )
         return self.__default__
+
+    @classmethod
+    def _register_main(cls, func):
+        """
+        Register a function as the main method for this dataconfig CLI
+        """
+        cls.main = func
+        return func
 
 
 def __example__():

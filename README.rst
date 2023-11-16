@@ -25,10 +25,35 @@ update from CLI, kwargs, and/or json.
 
 The ``scriptconfig`` module provides a simple way to make configurable scripts
 using a combination of config files, command line arguments, and simple Python
-keyword arguments. A script config object is defined by creating a subclass of
-``Config`` with a ``__default__`` dict class attribute. An instance of a custom
-``Config`` object will behave similar a dictionary, but with a few
-conveniences.
+keyword arguments.
+
+A script config object is defined by creating a subclass of ``Config`` with a
+``__default__`` dict class attribute. An instance of a custom ``Config`` object
+will behave similar a dictionary, but with a few conveniences.
+
+.. code-block:: python
+
+    import scriptconfig as scfg
+
+    class ExampleConfig(scfg.DataConfig):
+        """
+        The docstring will be the description in the CLI help
+        """
+        option1 = scfg.Value('default1', help='option1 help')
+        option2 = scfg.Value('default2', help='option2 help')
+        option3 = scfg.Value('default3', help='option3 help')
+
+    # Use as a dictionary with defaults
+    config = ExampleConfig(option1=123)
+    print(config)
+
+    # Use as a argparse CLI
+    config = ExampleConfig.cli(argv=['--option2=overruled'])
+    print(config)
+
+    # Can always fallback to pure-argparse
+    print(ExampleConfig().port_to_argparse())
+
 
 Installation
 ------------
@@ -52,21 +77,18 @@ file, computes its hash, and then prints it to stdout.
 
     import scriptconfig as scfg
     import hashlib
-    import ubelt as ub
 
 
-    class FileHashConfig(scfg.Config):
+    class FileHashConfig(scfg.DataConfig):
         """
         The docstring will be the description in the CLI help
         """
-        __default__ = {
-            'fpath': scfg.Value(None, position=1, help='a path to a file to hash'),
-            'hasher': scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher'),
-        }
+        fpath = scfg.Value(None, position=1, help='a path to a file to hash')
+        hasher = scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher')
 
 
     def main(**kwargs):
-        config = FileHashConfig(data=kwargs, cmdline=True)
+        config = FileHashConfig.cli(data=kwargs)
         print('config = {!r}'.format(config))
         fpath = config['fpath']
         hasher = getattr(hashlib, config['hasher'])()
@@ -120,49 +142,6 @@ Lastly you can call it from good ol' Python.
     hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
 
 
-Example Script (New Syntax)
----------------------------
-
-NEW in 0.6.2: there is now a more concise syntax available using a scriptconfig.DataConfig.
-The equivalent version of the above code is:
-
-
-.. code-block:: python
-
-    import scriptconfig as scfg
-    import hashlib
-
-
-    class FileHashConfig(scfg.DataConfig):
-        """
-        The docstring will be the description in the CLI help
-        """
-        fpath = scfg.Value(None, position=1, help='a path to a file to hash')
-        hasher = scfg.Value('sha1', choices=['sha1', 'sha512'], help='a name of a hashlib hasher')
-
-
-    def main(**kwargs):
-        config = FileHashConfig.cli(data=kwargs)
-        print('config = {!r}'.format(config))
-        fpath = config['fpath']
-        hasher = getattr(hashlib, config['hasher'])()
-
-        with open(fpath, 'rb') as file:
-            hasher.update(file.read())
-
-        hashstr = hasher.hexdigest()
-        print('The {hasher} hash of {fpath} is {hashstr}'.format(
-            hashstr=hashstr, **config))
-
-
-    if __name__ == '__main__':
-        main()
-
-
-This can be invoked from the examples folder similarly to the above script
-(replace ``hash_data.py`` with ``hash_data_datconfig.py``.)
-
-
 Project Design Goals
 --------------------
 
@@ -176,64 +155,6 @@ Project Design Goals
       lists, numbers, strings, and paths.
 
 To get started lets consider some example usage:
-
-.. code-block:: python
-
-    >>> import scriptconfig as scfg
-    >>> # In its simplest incarnation, the config class specifies default values.
-    >>> # For each configuration parameter.
-    >>> class ExampleConfig(scfg.Config):
-    >>>     __default__ = {
-    >>>         'num': 1,
-    >>>         'mode': 'bar',
-    >>>         'ignore': ['baz', 'biz'],
-    >>>     }
-    >>> # Creating an instance, starts using the defaults
-    >>> config = ExampleConfig()
-    >>> # Typically you will want to update default from a dict or file.  By
-    >>> # specifying cmdline=True you denote that it is ok for the contents of
-    >>> # `sys.argv` to override config values. Here we pass a dict to `load`.
-    >>> kwargs = {'num': 2}
-    >>> config.load(kwargs, cmdline=False)
-    >>> assert config['num'] == 2
-    >>> # The `load` method can also be passed a json/yaml file/path.
-    >>> config_fpath = '/tmp/foo'
-    >>> open(config_fpath, 'w').write('{"num": 3}')
-    >>> config.load(config_fpath, cmdline=False)
-    >>> assert config['num'] == 3
-    >>> # It is possible to load only from CLI by setting cmdline=True
-    >>> # or by setting it to a custom sys.argv
-    >>> config.load(cmdline=['--num=4'])
-    >>> assert config['num'] == 4
-    >>> # Note that using `config.load(cmdline=True)` will just use the
-    >>> # contents of sys.argv
-
-
-Notice in the above example the keys in your default dictionary are command
-line arguments and values are their defaults.  You can augment default values
-by wrapping them in ``scriptconfig.Value`` objects to encapsulate information
-like help documentation or type information.
-
-
-.. code-block:: python
-
-    >>> import scriptconfig as scfg
-    >>> class ExampleConfig(scfg.Config):
-    >>>     __default__ = {
-    >>>         'num': scfg.Value(1, help='a number'),
-    >>>         'mode': scfg.Value('bar', help='mode1 help'),
-    >>>         'mode2': scfg.Value('bar', type=str, help='mode2 help'),
-    >>>         'ignore': scfg.Value(['baz', 'biz'], help='list of ignore vals'),
-    >>>     }
-    >>> config = ExampleConfig()
-    >>> # smartcast can handle lists as long as there are no spaces
-    >>> config.load(cmdline=['--ignore=spam,eggs'])
-    >>> assert config['ignore'] == ['spam', 'eggs']
-    >>> # Note that the Value type can influence how data is parsed
-    >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
-
-
-The above examples are even more concise with the new DataConfig syntax.
 
 .. code-block:: python
 
@@ -265,6 +186,36 @@ The above examples are even more concise with the new DataConfig syntax.
     >>> # contents of sys.argv
 
 
+Notice in the above example the keys in your default dictionary are command
+line arguments and values are their defaults.  You can augment default values
+by wrapping them in ``scriptconfig.Value`` objects to encapsulate information
+like help documentation or type information.
+
+
+.. code-block:: python
+
+    >>> import scriptconfig as scfg
+    >>> class ExampleConfig(scfg.Config):
+    >>>     __default__ = {
+    >>>         'num': scfg.Value(1, help='a number'),
+    >>>         'mode': scfg.Value('bar', help='mode1 help'),
+    >>>         'mode2': scfg.Value('bar', type=str, help='mode2 help'),
+    >>>         'ignore': scfg.Value(['baz', 'biz'], help='list of ignore vals'),
+    >>>     }
+    >>> config = ExampleConfig()
+    >>> # smartcast can handle lists as long as there are no spaces
+    >>> config.load(cmdline=['--ignore=spam,eggs'])
+    >>> assert config['ignore'] == ['spam', 'eggs']
+    >>> # Note that the Value type can influence how data is parsed
+    >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
+
+(Note the above example uses the older ``Config`` usage pattern where
+attributes are memebers of a ``__default__`` dictionary. The ``DataConfig``
+class should be favored moving forward past version 0.6.2. However,
+the ``__default__`` attribute is always available if you have an existing
+dictionary you want to wrap with scriptconfig.
+
+
 Features
 --------
 
@@ -286,6 +237,8 @@ Features
         when reading cmdline via ``load``.
 
 - Inheritence unions configs.
+
+- Modal configs (see scriptconfig.modal)
 
 
 Gotchas

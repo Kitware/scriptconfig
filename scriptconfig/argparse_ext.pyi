@@ -32,6 +32,16 @@ class BooleanFlagOrKeyValAction(_Base):
         ...
 
 
+class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
+
+    def __call__(action,
+                 parser,
+                 namespace,
+                 values,
+                 option_string: Incomplete | None = ...) -> None:
+        ...
+
+
 class RawDescriptionDefaultsHelpFormatter(_RawDescriptionHelpFormatter,
                                           _ArgumentDefaultsHelpFormatter):
     group_name_formatter = str

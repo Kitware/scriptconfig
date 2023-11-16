@@ -86,11 +86,13 @@ TODO:
 """
 import ubelt as ub
 import itertools as it
+from collections import OrderedDict
 from scriptconfig import _ubelt_repr_extension
 from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
+# from scriptconfig.util.util_class import class_or_instancemethod
 
 __all__ = ['Config', 'define']
 
@@ -296,7 +298,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     __scfg_class__ = 'Config'
     __default__ = {}
 
-    def __init__(self, data=None, default=None, cmdline=False):
+    def __init__(self, data=None, default=None, cmdline=False,
+                 _dont_call_post_init=False):
         """
         Args:
             data (object): filepath, dict, or None
@@ -324,13 +327,14 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         # The _data attribute holds
         self._data = None
-        self._default = ub.odict()
+        self._default = OrderedDict()
         cls_default = getattr(self, '__default__', getattr(self, 'default', None))
         if cls_default:
             # allow for class attributes to specify the default
             self._default.update(cls_default)
         self._alias_map = None
-        self.load(data, cmdline=cmdline, default=default)
+        self.load(data, cmdline=cmdline, default=default,
+                  _dont_call_post_init=_dont_call_post_init)
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=True,
@@ -372,7 +376,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             cmdline = argv
         if default is None:
             default = {}
-        self = cls()
+        # Note: hack to avoid calling  __post_init__ twice
+        # We may want to refactor this to be a bit nicer.
+        # Might require a major version bump and breaking of backwards compat.
+        # avoid this. The thing that makes this difficult is the DataConfig
+        # init method taking in keyword args corresponding to the config which
+        # prevents adding clean options for control flow.
+        self = cls(_dont_call_post_init=True)
         self.load(data, cmdline=cmdline, default=default, strict=strict,
                   autocomplete=autocomplete)
         return self
@@ -450,10 +460,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 walker[path] = list(item)
             elif numpy is not None and isinstance(item, numpy.ndarray):
                 walker[path] = item.tolist()
-            elif isinstance(item, ub.odict):
+            elif isinstance(item, OrderedDict):
                 ...
             elif isinstance(item, dict):
-                walker[path] = ub.odict(sorted(item.items()))
+                walker[path] = OrderedDict(sorted(item.items()))
             else:
                 if hasattr(item, '__json__'):
                     return item.__json__()
@@ -548,7 +558,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self._alias_map = None
 
     def load(self, data=None, cmdline=False, mode=None, default=None,
-             strict=False, autocomplete=False):
+             strict=False, autocomplete=False, _dont_call_post_init=False):
         """
         Updates the configuration from a given data source.
 
@@ -747,7 +757,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     if v.required:
                         if self[k] == v.value:
                             raise Exception('Required variable {!r} still has default value'.format(k))
-        self.__post_init__()
+        if not _dont_call_post_init:
+            self.__post_init__()
         return self
 
     def _normalize_alias_key(self, key):
@@ -931,7 +942,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if special_options:
             config_fpath = special_ns['config']
             if config_fpath is not None:
-                self.load(config_fpath, cmdline=False)
+                self.load(config_fpath, cmdline=False,
+                          _dont_call_post_init=True)
 
         # Finally load explicit CLI values
         for key in parser._explicitly_given:
@@ -953,7 +965,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # if value is not None:
                 self[key] = value
 
-        self.__post_init__()
+        # We dont want this here right?
+        # self.__post_init__()
 
         if special_options:
             import sys
@@ -998,11 +1011,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             import yaml
             def order_rep(dumper, data):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
-            yaml.add_representer(ub.odict, order_rep)
+            yaml.add_representer(OrderedDict, order_rep)
             return yaml.safe_dump(dict(self.items()), stream)
         elif mode == 'json':
             import json
-            json_text = json.dumps(ub.odict(self.items()), indent=4)
+            json_text = json.dumps(OrderedDict(self.items()), indent=4)
             return json_text
         else:
             raise KeyError(mode)
@@ -1029,6 +1042,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @property
     def _description(self):
+        if hasattr(self, 'description'):
+            ub.schedule_deprecation(
+                'scriptconfig', 'description', 'attribute of Config classes',
+                migration='Use __description__ or the docstring instead',
+                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+
         description = getattr(self, '__description__',
                               getattr(self, 'description', None))
         if description is None:
@@ -1042,6 +1061,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @property
     def _epilog(self):
+        if hasattr(self, 'epilog'):
+            ub.schedule_deprecation(
+                'scriptconfig', 'epilog', 'attribute of Config classes',
+                migration='Use __epilog__ instead',
+                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+
         epilog = getattr(self, '__epilog__', getattr(self, 'epilog', None))
         if epilog is not None:
             epilog = ub.codeblock(epilog)
@@ -1049,10 +1074,15 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @property
     def _prog(self):
-        prog = getattr(self, 'prog', None)
+        if hasattr(self, 'prog'):
+            ub.schedule_deprecation(
+                'scriptconfig', 'prog', 'attribute of Config classes',
+                migration='Use __prog__ instead',
+                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+        prog = getattr(self, '__prog__', getattr(self, 'prog', None))
         if prog is None:
             prog = self.__class__.__name__
-        prog
+        return prog
 
     def _parserkw(self):
         """
@@ -1068,6 +1098,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             formatter_class=argparse_ext.RawDescriptionDefaultsHelpFormatter,
             # exit_on_error=False,
         )
+        if hasattr(self, '__allow_abbrev__'):
+            parserkw['allow_abbrev'] = self.__allow_abbrev__
         return parserkw
 
     def port_to_dataconf(self):
@@ -1134,7 +1166,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             value_args = [
                 repr(default),
             ]
-            value_args.extend(['{}={}'.format(k, v) for k, v in _value_kw.items() if v is not None])
+            value_args.extend(['{}={}'.format(k, repr(v)) for k, v in _value_kw.items() if v is not None])
             val_body = ', '.join(value_args)
 
             if style == 'orig':
@@ -1291,6 +1323,89 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         text = cls._write_code(entries, name, style, description)
         return text
 
+    def port_to_argparse(self):
+        """
+        Attempt to make code for a nearly-equivalent argparse object.
+
+        This code only handles basic cases. Some of the scriptconfig magic is
+        dropped so we dont need to rely on custom actions.
+
+        The idea is that sometimes we can't depend on scriptconfig, so it would
+        be nice to be able to translate an existing scriptconfig class to the
+        nearly equivalent argparse code.
+
+        SeeAlso:
+            :meth:`Config.argparse` - creates a real argparse object
+
+        Returns:
+            str: code to construct a similar argparse object
+
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.port_to_argparse
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> class SimpleCLI(scfg.DataConfig):
+            >>>     data = scfg.Value(None, help='input data', position=1)
+            >>> self_or_cls = SimpleCLI()
+            >>> text = self_or_cls.port_to_argparse()
+            >>> print(text)
+            >>> # Test that the generated code is executable
+            >>> ns = {}
+            >>> exec(text, ns, ns)
+            >>> parser = ns['parser']
+            >>> args1 = parser.parse_args(['foobar'])
+            >>> assert args1.data == 'foobar'
+            >>> # Looks like we cant do positional or key/value easilly
+            >>> #args1 = parser.parse_args(['--data=blag'])
+            >>> #print('args1 = {}'.format(ub.urepr(args1, nl=1)))
+
+        """
+        parserkw = self._parserkw()
+        to_pop = {k for k, v in parserkw.items() if v is None}
+        parserkw = ub.udict(parserkw) - to_pop
+        parserkw.pop('formatter_class', None)
+
+        constructor_body = ub.indent(ub.urepr(parserkw, explicit=True, nobr=1))
+
+        lines = []
+        lines.append(ub.codeblock(
+            '''
+            import argparse
+            parser = argparse.ArgumentParser(
+            {constructor_body}
+                formatter_class=argparse.RawDescriptionHelpFormatter,
+            )
+            ''').format(
+                constructor_body=constructor_body,
+            ))
+
+        from scriptconfig import value as value_mod
+        for key, _value in self._data.items():
+            if isinstance(_value, value_mod.Value):
+                value = _value.value
+            else:
+                value = _value
+                _value = self._default[key]
+
+            invocations = value_mod._value_add_argument_kw(value, _value, self, key)
+            for arg_type, t in invocations.items():
+                meth, args, kwargs = t
+                if not isinstance(kwargs.get('action'), str):
+                    kwargs.pop('action')
+                if kwargs.get('type', None) is not None:
+                    kwargs['type'] = value_mod.CodeRepr(kwargs['type'].__name__)
+                to_pop = {k for k, v in kwargs.items() if v is None}
+                kwargs = ub.udict(kwargs) - to_pop
+                args_body = ub.urepr(args, explicit=1, nobr=1, trailsep=0).strip().strip(',')
+                kwargs_body = ub.urepr(kwargs, explicit=1, nobr=1, trailsep=0, nl=0).strip(',')
+                if args_body and kwargs_body:
+                    args_body += ', '
+                lines.append(f'parser.{meth}({args_body}{kwargs_body})')
+
+        text = '\n'.join(lines)
+        return text
+
     # @classmethod
     # def _construct_config_text(cls):
     #     ...
@@ -1299,6 +1414,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     def namespace(self):
         """
         Access a namespace like object for compatibility with argparse
+
+        Returns:
+            argparse.Namespace
         """
         from argparse import Namespace
         return Namespace(**dict(self))
