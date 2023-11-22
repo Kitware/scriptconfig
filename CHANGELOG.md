@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.12 - Unreleased
 
+### Fixed
+* Fixed issue of porting to argparse when object contained non-wrapped default values.
+
 
 ## Version 0.7.11 - Released 2023-11-16
 

@@ -17,19 +17,18 @@ ScriptConfig
 | Pypi             | https://pypi.org/project/scriptconfig            |
 +------------------+--------------------------------------------------+
 
-The main webpage for this project is: https://gitlab.kitware.com/utils/scriptconfig
+The goal of ``scriptconfig`` is to make it easy to be able to define a default
+configuration by **simply defining a dictionary**, and then allow that
+configuration to be modified by either:
 
-The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
-**simply defining a dictionary**. This enables you to write simple configs and
-update from CLI, kwargs, and/or json.
+1. Updating it with another Python dictionary (e.g. ``kwargs``)
+2. Reading a YAML/JSON configuration file, or
+3. Inspecting values on ``sys.argv``, in which case we provide a powerful
+   command line interface (CLI).
 
-The ``scriptconfig`` module provides a simple way to make configurable scripts
-using a combination of config files, command line arguments, and simple Python
-keyword arguments.
-
-A script config object is defined by creating a subclass of ``Config`` with a
-``__default__`` dict class attribute. An instance of a custom ``Config`` object
-will behave similar a dictionary, but with a few conveniences.
+The simplest way to create a script config is to create a class that inherits
+from ``scriptconfig.DataConfig``.  Then, use class variables to define the
+expected keys and default values.
 
 .. code-block:: python
 
@@ -39,36 +38,94 @@ will behave similar a dictionary, but with a few conveniences.
         """
         The docstring will be the description in the CLI help
         """
+
+        # Wrap defaults with `Value` to provide metadata
+
         option1 = scfg.Value('default1', help='option1 help')
         option2 = scfg.Value('default2', help='option2 help')
         option3 = scfg.Value('default3', help='option3 help')
+
+        # Wrapping a default with `Value` is optional
+
+        option4 = 'default4'
+
+
+An instance of a config object will work similarly to a dataclass, but it also
+implements methods to duck-type a dictionary. Thus a scriptconfig object can be
+dropped into code that uses an existing dictionary configuration or an existing
+argparse namespace configuration.
+
+
+.. code-block:: python
 
     # Use as a dictionary with defaults
     config = ExampleConfig(option1=123)
     print(config)
 
+    # Can access items like a dictionary
+    print(config['option1'])
+
+    # OR Can access items like a namespace
+    print(config.option1)
+
+
+Use the ``.cli`` classmethod to create an extended argparse command line
+interface. Options to the ``cli`` method are similar to
+``argparse.ArgumentParser.parse_args``.
+
+.. code-block:: python
+
     # Use as a argparse CLI
     config = ExampleConfig.cli(argv=['--option2=overruled'])
     print(config)
 
-    # Can always fallback to pure-argparse
-    print(ExampleConfig().port_to_argparse())
+
+After all that, if you still aren't loving scriptconfig, or you can't use it as
+a dependency in production, you can ask it to convert itself to pure-argparse:
+
+
+.. code-block:: python
+
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog='ExampleConfig',
+        description='The docstring will be the description in the CLI help',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument('--option1', help='option1 help', default='default1', dest='option1', required=False)
+    parser.add_argument('--option2', help='option2 help', default='default2', dest='option2', required=False)
+    parser.add_argument('--option3', help='option3 help', default='default3', dest='option3', required=False)
+    parser.add_argument('--option4', help='', default='default4', dest='option4', required=False)
+
+
+Of course, the above also removes extra features of scriptconfig - so its not
+exactly 1-to-1, but it's close. It's also a good tool for transferring any
+existing intuition about ``argparse`` to ``scriptconfig``.
 
 
 Installation
 ------------
 
-The `scriptconfig <https://pypi.org/project/scriptconfig/>`_.  package can be installed via pip:
+The `scriptconfig <https://pypi.org/project/scriptconfig/>`_  package can be installed via pip:
 
 .. code-block:: bash
 
     pip install scriptconfig
 
 
+To install with argcomplete and rich-argparse support, either install these
+packages separately or use:
+
+
+.. code-block:: bash
+
+    pip install scriptconfig[optional]
+
+
 Features
 --------
 
-- Serializes to json
+- Serializes to JSON
 
 - Dict-like interface. By default a ``Config`` object operates independent of config files or the command line.
 
@@ -87,7 +144,7 @@ Features
 
 - Fuzzy hyphen matching: e.g. ``--foo-bar=2`` and ``--foo_bar=2`` are treated the same for argparse options (note: modal commands do not have this option yet)
 
-- Inheritence unions configs.
+- Inheritance unions configs.
 
 - Modal configs (see scriptconfig.modal)
 
@@ -101,7 +158,7 @@ Example Script
 
 Scriptconfig is used to define a flat configuration dictionary with values that
 can be specified via Python keyword arguments, command line parameters, or a
-yaml config file. Consider the following script that prints its config, opens a
+YAML config file. Consider the following script that prints its config, opens a
 file, computes its hash, and then prints it to stdout.
 
 
@@ -152,7 +209,7 @@ Purely from the command line:
     # Using a positional arguments and other defaults
     python hash_demo.py $HOME/.bashrc
 
-From the command line using a yaml config:
+From the command line using a YAML config:
 
 .. code-block:: bash
 
@@ -306,7 +363,7 @@ To get started lets consider some example usage:
     >>> kwargs = {'num': 2}
     >>> config = ExampleConfig.cli(default=kwargs, cmdline=False)
     >>> assert config['num'] == 2
-    >>> # The `load` method can also be passed a json/yaml file/path.
+    >>> # The `load` method can also be passed a JSON/YAML file/path.
     >>> config_fpath = '/tmp/foo'
     >>> open(config_fpath, 'w').write('{"mode": "foo"}')
     >>> config.load(config_fpath, cmdline=False)
@@ -344,7 +401,7 @@ like help documentation or type information.
     >>> config.load(cmdline=['--mode=spam,eggs', '--mode2=spam,eggs'])
 
 (Note the above example uses the older ``Config`` usage pattern where
-attributes are memebers of a ``__default__`` dictionary. The ``DataConfig``
+attributes are members of a ``__default__`` dictionary. The ``DataConfig``
 class should be favored moving forward past version 0.6.2. However,
 the ``__default__`` attribute is always available if you have an existing
 dictionary you want to wrap with scriptconfig.
@@ -393,9 +450,9 @@ leave the behavior undefined.
 FAQ
 ---
 
-Question: How do I override the default values for a scriptconfig object using json file?
+Question: How do I override the default values for a scriptconfig object using JSON file?
 
-Answer:  This depends if you want to pass the path to that json file via the command line or if you have that file in memory already.  There are ways to do either. In the first case you can pass ``--config=<path-to-your-file>`` (assuming you have set the ``cmdline=True`` keyword arg when creating your config object e.g.: ``config = MyConfig(cmdline=True)``. In the second case when you create an instance of the scriptconfig object pass the ``default=<your dict>`` when creating the object: e.g. ``config = MyConfig(default=json.load(open(fpath, 'r')))``.  But the special ``--config`` ``--dump`` and ``--dumps`` CLI arg is baked into script config to make this easier.
+Answer:  This depends if you want to pass the path to that JSON file via the command line or if you have that file in memory already.  There are ways to do either. In the first case you can pass ``--config=<path-to-your-file>`` (assuming you have set the ``cmdline=True`` keyword arg when creating your config object e.g.: ``config = MyConfig(cmdline=True)``. In the second case when you create an instance of the scriptconfig object pass the ``default=<your dict>`` when creating the object: e.g. ``config = MyConfig(default=json.load(open(fpath, 'r')))``.  But the special ``--config`` ``--dump`` and ``--dumps`` CLI arg is baked into script config to make this easier.
 
 
 Related Software

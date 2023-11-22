@@ -1387,6 +1387,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             else:
                 value = _value
                 _value = self._default[key]
+                if not isinstance(_value, value_mod.Value):
+                    # hack
+                    _value = value_mod.Value(_value)
 
             invocations = value_mod._value_add_argument_kw(value, _value, self, key)
             for arg_type, t in invocations.items():
