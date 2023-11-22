@@ -64,6 +64,31 @@ The `scriptconfig <https://pypi.org/project/scriptconfig/>`_.  package can be in
 
     pip install scriptconfig
 
+
+Features
+--------
+
+- Serializes to json
+
+- Dict-like interface. By default a ``Config`` object operates independent of config files or the command line.
+
+- Can create command line interfaces
+
+  - Can directly create an independent argparse object
+
+  - Can use special command line loading using ``self.load(cmdline=True)``. This extends the basic argparse interface with:
+
+      - Can specify options as either ``--option value`` or ``--option=value``
+
+      - Default config options allow for "smartcasting" values like lists and paths
+
+      - Automatically add ``--config``, ``--dumps``, and ``--dump`` CLI options
+        when reading cmdline via ``load``.
+
+- Inheritence unions configs.
+
+- Modal configs (see scriptconfig.modal)
+
 Example Script
 --------------
 
@@ -141,6 +166,51 @@ Lastly you can call it from good ol' Python.
     import hash_demo
     hash_demo.main(fpath=hash_demo.__file__, hasher='sha512')
 
+Modal CLIs
+----------
+
+A ModalCLI defines a way to group several smaller scriptconfig CLIs into a
+single parent CLI that chooses between them "modally". E.g. if we define two
+configs: do_foo and do_bar, we use ModalCLI to define a parent program that can
+run one or the other. Let's make this more concrete.
+
+
+.. code-block:: python
+    import scriptconfig as scfg
+    #
+    class DoFooCLI(scfg.DataConfig):
+        __command__ = 'do_foo'
+        option1 = scfg.Value(None, help='option1')
+        #
+        @classmethod
+        def main(cls, cmdline=1, **kwargs):
+            self = cls.cli(cmdline=cmdline, data=kwargs)
+            print('Called Foo with: ' + str(self))
+    #
+    class DoBarCLI(scfg.DataConfig):
+        __command__ = 'do_bar'
+        option1 = scfg.Value(None, help='option1')
+        #
+        @classmethod
+        def main(cls, cmdline=1, **kwargs):
+            self = cls.cli(cmdline=cmdline, data=kwargs)
+            print('Called Bar with: ' + str(self))
+    #
+    #
+    class MyModalCLI(scfg.ModalCLI):
+        __version__ = '1.2.3'
+        foo = DoFooCLI
+        bar = DoBarCLI
+    #
+    modal = MyModalCLI()
+    MyModalCLI.main(argv=['do_foo'])
+    #MyModalCLI.main(argv=['do-foo'])
+    MyModalCLI.main(argv=['--version'])
+    try:
+        MyModalCLI.main(argv=['--help'])
+    except SystemExit:
+        print('prevent system exit due to calling --help')
+
 
 Project Design Goals
 --------------------
@@ -214,31 +284,6 @@ attributes are memebers of a ``__default__`` dictionary. The ``DataConfig``
 class should be favored moving forward past version 0.6.2. However,
 the ``__default__`` attribute is always available if you have an existing
 dictionary you want to wrap with scriptconfig.
-
-
-Features
---------
-
-- Serializes to json
-
-- Dict-like interface. By default a ``Config`` object operates independent of config files or the command line.
-
-- Can create command line interfaces
-
-  - Can directly create an independent argparse object
-
-  - Can use special command line loading using ``self.load(cmdline=True)``. This extends the basic argparse interface with:
-
-      - Can specify options as either ``--option value`` or ``--option=value``
-
-      - Default config options allow for "smartcasting" values like lists and paths
-
-      - Automatically add ``--config``, ``--dumps``, and ``--dump`` CLI options
-        when reading cmdline via ``load``.
-
-- Inheritence unions configs.
-
-- Modal configs (see scriptconfig.modal)
 
 
 Gotchas
