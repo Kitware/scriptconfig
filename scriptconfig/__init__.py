@@ -2,6 +2,16 @@
 ScriptConfig
 ============
 
++------------------+--------------------------------------------------+
+| Read the docs    | https://scriptconfig.readthedocs.io              |
++------------------+--------------------------------------------------+
+| Gitlab (main)    | https://gitlab.kitware.com/utils/scriptconfig    |
++------------------+--------------------------------------------------+
+| Github (mirror)  | https://github.com/Kitware/scriptconfig          |
++------------------+--------------------------------------------------+
+| Pypi             | https://pypi.org/project/scriptconfig            |
++------------------+--------------------------------------------------+
+
 The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
 **simply defining a dictionary**. Thie enables you to write simple configs and
 update from CLI, kwargs, and/or json.
