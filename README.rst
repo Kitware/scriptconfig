@@ -4,7 +4,7 @@ ScriptConfig
 .. # TODO Get CI services running on gitlab
 .. #|CircleCI| |Travis| |Codecov| |ReadTheDocs|
 
-|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |Downloads|
+|GitlabCIPipeline| |GitlabCICoverage| |Appveyor| |Pypi| |PypiDownloads|
 
 
 +------------------+--------------------------------------------------+
@@ -645,7 +645,7 @@ TODO
 .. |Pypi| image:: https://img.shields.io/pypi/v/scriptconfig.svg
    :target: https://pypi.python.org/pypi/scriptconfig
 
-.. |Downloads| image:: https://img.shields.io/pypi/dm/scriptconfig.svg
+.. |PypiDownloads| image:: https://img.shields.io/pypi/dm/scriptconfig.svg
    :target: https://pypistats.org/packages/scriptconfig
 
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/scriptconfig/badge/?version=latest
