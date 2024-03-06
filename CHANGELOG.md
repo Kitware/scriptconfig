@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * Fixed issue of porting to argparse when object contained non-wrapped default values.
 
+### Changed
+* `scfg.Flag` no longer errors if isflag is set to a truthy value.
+
 
 ## Version 0.7.11 - Released 2023-11-16
 
