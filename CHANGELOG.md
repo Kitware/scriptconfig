@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * `scfg.Flag` no longer errors if isflag is set to a truthy value.
+* Rename `port_argparse` as `port_from_argparse` (old method still exists as an alias, but will be deprecated).
 
 
 ## Version 0.7.11 - Released 2023-11-16

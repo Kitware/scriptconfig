@@ -81,7 +81,8 @@ interface. Options to the ``cli`` method are similar to
 
 
 After all that, if you still aren't loving scriptconfig, or you can't use it as
-a dependency in production, you can ask it to convert itself to pure-argparse:
+a dependency in production, you can ask it to convert itself to pure-argparse
+via ``print(ExampleConfig().port_to_argparse())``, and it will print out:
 
 
 .. code-block:: python
@@ -101,6 +102,24 @@ a dependency in production, you can ask it to convert itself to pure-argparse:
 Of course, the above also removes extra features of scriptconfig - so its not
 exactly 1-to-1, but it's close. It's also a good tool for transferring any
 existing intuition about ``argparse`` to ``scriptconfig``.
+
+Similarly there is a method which can take an existing ArgumentParser as input,
+and produce a scriptconfig definition. Given the above ``parser`` object,
+``print(scfg.Config.port_from_argparse(parser, style))`` will print out:
+
+.. code-block:: python
+
+    import ubelt as ub
+    import scriptconfig as scfg
+
+    class MyConfig(scfg.DataConfig):
+        """
+        The docstring will be the description in the CLI help
+        """
+        option1 = scfg.Value('default1', help='option1 help')
+        option2 = scfg.Value('default2', help='option2 help')
+        option3 = scfg.Value('default3', help='option3 help')
+        option4 = scfg.Value('default4', help='')
 
 
 Goal
@@ -439,14 +458,14 @@ Lastly, ensure your Python script has the following two comments at the top:
 Project Design Goals
 --------------------
 
-    * Write Python programs that can be invoked either through the commandline
-      or via Python itself.
+* Write Python programs that can be invoked either through the commandline
+  or via Python itself.
 
-    * Drop in replacement for any dictionary-based configuration system.
+* Drop in replacement for any dictionary-based configuration system.
 
-    * Intuitive parsing (currently working on this), ideally improve on
-      argparse if possible. This means being able to easily specify simple
-      lists, numbers, strings, and paths.
+* Intuitive parsing (currently working on this), ideally improve on
+  argparse if possible. This means being able to easily specify simple
+  lists, numbers, strings, and paths.
 
 To get started lets consider some example usage:
 

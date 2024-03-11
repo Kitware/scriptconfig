@@ -1211,7 +1211,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         info_dict = click_main.to_info_dict(ctx)  # NOQA
 
     @classmethod
-    def port_argparse(cls, parser, name='MyConfig', style='dataconf'):
+    def port_from_argparse(cls, parser, name='MyConfig', style='dataconf'):
         """
         Generate the corresponding scriptconfig code from an existing argparse
         instance.
@@ -1260,7 +1260,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> mutex_group3 = parser.add_mutually_exclusive_group()
             >>> mutex_group3.add_argument('--mgroup3_opt1')
             >>> mutex_group3.add_argument('--mgroup3_opt2')
-            >>> text = scfg.Config.port_argparse(parser, name='PortedConfig', style='dataconf')
+            >>> text = scfg.Config.port_from_argparse(parser, name='PortedConfig', style='dataconf')
             >>> print(text)
             >>> # Make an instance of the ported class
             >>> vals = {}
@@ -1322,6 +1322,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         description = parser.description
         text = cls._write_code(entries, name, style, description)
         return text
+
+    # Backwards compatability, deprecate and remove
+    port_argparse = port_from_argparse
 
     def port_to_argparse(self):
         """
