@@ -1194,7 +1194,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def port_click(cls, click_main, name='MyConfig', style='dataconf'):
+    def port_from_click(cls, click_main, name='MyConfig', style='dataconf'):
         """
         Example:
             @click.command()
