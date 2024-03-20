@@ -248,8 +248,9 @@ class Flag(Value):
     Exactly the same as a Value except isflag default to True
     """
     def __init__(self, value=False, **kwargs):
-        assert 'isflag' not in kwargs
-        kwargs['isflag'] = True
+        isflag = kwargs.get('isflag', True)
+        assert isflag, 'Cannot disable isflag on a Flag value'
+        kwargs['isflag'] = isflag
         super().__init__(value=value, **kwargs)
 
 

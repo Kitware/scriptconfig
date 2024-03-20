@@ -361,9 +361,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 interact with the command line. If set to False, then the
                 argument parser is bypassed (useful for invoking a CLI
                 programatically with kwargs and ignoring sys.argv).
+                NOTE: this will be depracted in favor of "argv" in the future.
 
-            argv (List[str]):
+            argv (List[str] | None | bool):
                 if specified, ignore sys.argv and parse this instead.
+                if True, then parse ``sys.argv``.
+                if False, then ignore ``sys.argv``.
 
             strict (bool):
                 if True use ``parse_args`` otherwise use ``parse_known_args``.
@@ -582,16 +585,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     * special_options (bool): defaults to True
                     * autocomplete (bool): defaults to False
                 Defaults to False.
+                NOTE: will be deprecated renamed to "argv" in the future.
 
             mode (str | None):
                 Either json or yaml.
-
-            cmdline (bool | List[str] | str):
-                If False, then no command line information is used.
-                If True, then sys.argv is parsed and used.
-                If a list of strings that used instead of sys.argv.
-                If a string, then that is parsed using shlex and used instead
-                of sys.argv. Defaults to False.
 
             default (dict | None):
                 updated defaults. Note: anything passed to default will be deep
@@ -1194,7 +1191,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def port_click(cls, click_main, name='MyConfig', style='dataconf'):
+    def port_from_click(cls, click_main, name='MyConfig', style='dataconf'):
         """
         Example:
             @click.command()
@@ -1211,7 +1208,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         info_dict = click_main.to_info_dict(ctx)  # NOQA
 
     @classmethod
-    def port_argparse(cls, parser, name='MyConfig', style='dataconf'):
+    def port_from_argparse(cls, parser, name='MyConfig', style='dataconf'):
         """
         Generate the corresponding scriptconfig code from an existing argparse
         instance.
@@ -1260,7 +1257,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> mutex_group3 = parser.add_mutually_exclusive_group()
             >>> mutex_group3.add_argument('--mgroup3_opt1')
             >>> mutex_group3.add_argument('--mgroup3_opt2')
-            >>> text = scfg.Config.port_argparse(parser, name='PortedConfig', style='dataconf')
+            >>> text = scfg.Config.port_from_argparse(parser, name='PortedConfig', style='dataconf')
             >>> print(text)
             >>> # Make an instance of the ported class
             >>> vals = {}
@@ -1322,6 +1319,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         description = parser.description
         text = cls._write_code(entries, name, style, description)
         return text
+
+    # Backwards compatability, deprecate and remove
+    port_argparse = port_from_argparse
 
     def port_to_argparse(self):
         """
@@ -1387,6 +1387,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             else:
                 value = _value
                 _value = self._default[key]
+                if not isinstance(_value, value_mod.Value):
+                    # hack
+                    _value = value_mod.Value(_value)
 
             invocations = value_mod._value_add_argument_kw(value, _value, self, key)
             for arg_type, t in invocations.items():

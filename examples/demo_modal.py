@@ -1,13 +1,10 @@
 #!/usr/bin/env python
-"""
-Demo for a simple Modal CLI
-"""
+# PYTHON_ARGCOMPLETE_OK
 import scriptconfig as scfg
 
 
-class FooCLI(scfg.DataConfig):
-    __command__ = 'foo'
-
+class DoFooCLI(scfg.DataConfig):
+    __command__ = 'do_foo'
     option1 = scfg.Value(None, help='option1')
 
     @classmethod
@@ -16,11 +13,8 @@ class FooCLI(scfg.DataConfig):
         print('Called Foo with: ' + str(self))
 
 
-class BarCLI(scfg.DataConfig):
-    __alias__ = ['b', 'baz']
-    __command__ = 'bar'
-    __allow_abbrev__ = True
-
+class DoBarCLI(scfg.DataConfig):
+    __command__ = 'do_bar'
     option1 = scfg.Value(None, help='option1')
 
     @classmethod
@@ -30,22 +24,10 @@ class BarCLI(scfg.DataConfig):
 
 
 class MyModalCLI(scfg.ModalCLI):
-
     __version__ = '1.2.3'
-    __epilog__ = "This is an optional epilog"
-    # __allow_abbrev__ = True   # Note: does not seem to work for modal subparsers
-
-    foo = FooCLI
-    bar = BarCLI
+    foo = DoFooCLI
+    bar = DoBarCLI
 
 
 if __name__ == '__main__':
-    """
-    CommandLine:
-        python ~/code/scriptconfig/examples/demo_modal.py --help
-        python ~/code/scriptconfig/examples/demo_modal.py bar --help
-        python ~/code/scriptconfig/examples/demo_modal.py bar --o f
-        python ~/code/scriptconfig/examples/demo_modal.py bar --o f
-        python ~/code/scriptconfig/examples/demo_modal.py f
-    """
-    MyModalCLI.main()
+    MyModalCLI().main()

@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.11 - Unreleased
+## Version 0.7.12 - Unreleased
+
+### Fixed
+* Fixed issue of porting to argparse when object contained non-wrapped default values.
+
+### Changed
+* `scfg.Flag` no longer errors if isflag is set to a truthy value.
+* Rename `port_argparse` as `port_from_argparse` (old method still exists as an alias, but will be deprecated).
+
+
+## Version 0.7.11 - Released 2023-11-16
 
 ### Added
 * New `port_to_argparse` method that will generate text for a nearly equivalent
