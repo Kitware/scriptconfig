@@ -852,6 +852,15 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> parser.print_help()
             >>> x = parser.parse_known_args()
 
+        Example:
+            >>> import scriptconfig as scfg
+            >>> import pytest
+            >>> class EmptyConfig(scfg.Config):
+            >>>     ...
+            >>> self = EmptyConfig()
+            >>> with pytest.raises(Exception) as ex:
+            >>>     self._read_argv(argv=32132)
+
         Ignore:
             >>> # Weird cases
             >>> self = MyConfig()
@@ -890,10 +899,31 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             else:
                 argcomplete_mod.autocomplete(parser)
 
-        if strict:
-            ns = parser.parse_args(argv).__dict__
-        else:
-            ns = parser.parse_known_args(argv)[0].__dict__
+        try:
+            if strict:
+                ns = parser.parse_args(argv).__dict__
+            else:
+                ns = parser.parse_known_args(argv)[0].__dict__
+        except (ValueError, TypeError) as ex:
+            # For errors (like ValueError) where its probably a programmer
+            # error and not a user error, give the debugger some information
+            # about the scriptconfig object.
+            from scriptconfig.util import util_exception
+            # TODO: figure out argv that triggers a value error so we can add a test
+            note = ub.codeblock(
+                f'''
+                Error while attempting to parse arguments in _read_argv
+
+                Context:
+                    argv = {argv!r}
+                    special_options = {special_options!r}
+                    strict = {strict!r}
+                    autocomplete = {autocomplete!r}
+                    self = {self!r}
+                ''')
+            print(note)
+            ex = util_exception.add_exception_note(ex, note)
+            raise ex
 
         special_ns_keys = ['config', 'dump', 'dumps']
         if special_options:

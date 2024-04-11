@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.14 - Unreleased
 
+### Changed
+* Better error messages when parsing argv
+
 
 ## Version 0.7.13 - Released 2024-03-19
 
