@@ -282,6 +282,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         epilog (str): A class attribute that if specified will add an epilog
             section to the help text.
 
+    SeeAlso:
+        :class:`scriptconfig.DataConfig`
+
     Example:
         >>> # Inherit from `Config` and assign `__default__`
         >>> import scriptconfig as scfg

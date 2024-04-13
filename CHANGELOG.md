@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 * Better error messages when parsing argv
+* Add a docstring to `DataConfig`
 
 
 ## Version 0.7.13 - Released 2024-03-19
