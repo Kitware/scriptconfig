@@ -573,7 +573,8 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
         >>> # underscores and dashes, but scriptconfig can.
         >>> import argparse
         >>> import ubelt as ub
-        >>> parser = argparse.ArgumentParser(exit_on_error=False)
+        >>> #parser = argparse.ArgumentParser(exit_on_error=False)
+        >>> parser = CompatArgumentParser(exit_on_error=False)  # for 3.9-
         >>> parser.add_argument('--my_option1', default='default')
         >>> parser.add_argument('--my-option2', default='default')
         >>> #
