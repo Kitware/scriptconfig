@@ -3,6 +3,7 @@ Argparse Extensions
 """
 import argparse
 import os
+import sys
 _FALSY = {'0', 'false', 'f', 'no', ''}
 SCRIPTCONFIG_NORICH = os.environ.get('SCRIPTCONFIG_NORICH', '').lower() not in _FALSY
 
