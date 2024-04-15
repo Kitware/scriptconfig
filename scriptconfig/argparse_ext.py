@@ -443,6 +443,10 @@ class CompatArgumentParser(argparse.ArgumentParser):
                 short_explicit_arg = option_string[2:]
                 if short_option_prefix in self._option_string_actions:
                     action = self._option_string_actions[short_option_prefix]
+                    # FIXME: An update to CPython 3.11 added a new "sep"
+                    # pararameter in the option tuple.
+                    # Commit that broke us is here:
+                    # https://github.com/python/cpython/commit/c02b7ae4dd367444aa6822d5fb73b61e8f5a4ff9
                     tup = action, short_option_prefix, short_explicit_arg
                     result.append(tup)
 
