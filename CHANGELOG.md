@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.13 - Unreleased
+## Version 0.7.14 - Unreleased
+
+### Changed
+* Better error messages when parsing argv
+* Add a docstring to `DataConfig`
+
+
+## Version 0.7.13 - Released 2024-03-19
+
+### Fixed
+* Fix issue caused by a CPython patch https://github.com/python/cpython/pull/115674
 
 
 ## Version 0.7.12 - Released 2024-03-19

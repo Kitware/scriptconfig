@@ -232,6 +232,56 @@ class MetaDataConfig(MetaConfig):
 
 
 class DataConfig(Config, metaclass=MetaDataConfig):
+    """
+    Base class for dataconfig-style configs.
+    Overwrite this docstr with a description.
+
+    To use, create a class (e.g. MyConfig) that inherits from DataConfig.  The
+    configuration keys and their default values are specified by class level
+    attributes. Metadata for keys can be given by specifying the default values
+    as a :class:`scriptconfig.Value`.
+
+    An instance can be created programatically with keyword arguments
+    specifying updates to default values.
+
+    The :func:`DataConfig.cli` classmethod can be used to create an instance
+    where the values are optionally populated from command line arguments in
+    ``sys.argv`` or a custom ``argv``.
+
+    Usage of the config is flexible.  It can be used as a dictionary or as a
+    namespace. That is, you can either use ``config['key']`` or ``config.key``
+    to access values for ``key``. The only incompatability between this and a
+    normal dictionary is that this does not allow new keys to be added,
+    otherwise it can be treated exactly as a dictionary.
+
+    Example:
+        >>> import scriptconfig as scfg
+        >>> class MyConfig(scfg.DataConfig):
+        >>>     key1 = 'default-value1'
+        >>>     key2 = 'default-value2'
+        >>>     key3 = scfg.Value('default-value3', help='extra metadata!')
+        >>> # Create a programatic instance
+        >>> config = MyConfig()
+        >>> print(f'config={config}')
+        config=<MyConfig({'key1': 'default-value1', 'key2': 'default-value2', 'key3': 'default-value3'})>
+        >>> # Create an instance via command line args
+        >>> # (note the default "smartcasting")
+        >>> config = MyConfig.cli(argv=['--key1', '123', '--key2=345', '--key3=abc'])
+        >>> print(f'config={config}')
+        config=<MyConfig({'key1': 123, 'key2': 345, 'key3': 'abc'})>
+
+    For fine-grained control overwrite the following attributes:
+
+        * ``__epilog__`` (str):  documentation for the epilog of the argparse help string
+
+        * ``__post_init__`` (callable): function that normalizes values on instance creation.
+
+        * ``__default__`` (Dict[str, Any]): an alternate way to specify key/default-values based on an existing dictionary. Specifying an item in this dictionary has the same effect as specifying a class-attribute.
+
+    SeeAlso:
+        :class:`scriptconfig.Config`
+    """
+    # Not sure if having a docstring for this will break user-configs.
     # No docstring, because user-specified docstring will define the default
     # __description__.
     __default__ = None
