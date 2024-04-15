@@ -27,6 +27,15 @@ else:
     _RawDescriptionHelpFormatter = rich_argparse.RawDescriptionRichHelpFormatter
     _ArgumentDefaultsHelpFormatter = rich_argparse.ArgumentDefaultsRichHelpFormatter
 
+
+# Check if we are on 3.11 with a patch version higher than 3.11.9
+# Or if we are higher than 3.12.3
+# https://github.com/python/cpython/pull/115674
+HAS_ARGPARSE_GH_114180 = (
+    (sys.version_info[0:2] == (3, 11) and sys.version_info[2] > 9) or
+    (sys.version_info[0:3] >= (3, 12, 3))
+)
+
 # Inherit from StoreAction to make configargparse happy.  Hopefully python
 # doesn't change the behavior of this private class.
 # If we ditch support for configargparse in the future, then we can more
@@ -316,19 +325,22 @@ class RawDescriptionDefaultsHelpFormatter(
 
 class CompatArgumentParser(argparse.ArgumentParser):
     """
-    For Python 3.6-3.8 compatibility where the exit_on_error flag does not
-    exist.
+    A modified version of the standard library ArgumentParser with back-ported
+    features needed by scriptconfig for compatability across different Python
+    versions. Namely, this ensures the ``exit_on_error`` property exists for
+    Python 3.6 - 3.8
     """
 
     def __init__(self, *args, **kwargs):
         self.exit_on_error = kwargs.pop('exit_on_error', True)
         super().__init__(*args, **kwargs)
 
-    # def error(self, message):
-    #     if self.exit_on_error:
-    #         super().error(message)
-
     def parse_known_args(self, args=None, namespace=None):
+        """
+        This is the Python 3.10 implementation of this function.
+        We define this for Python 3.6-3.8 compatibility where the exit_on_error
+        flag does not exist.
+        """
         # This is the version from Python 3.10
         from argparse import _sys, Namespace, SUPPRESS, ArgumentError
         from argparse import _UNRECOGNIZED_ARGS_ATTR
@@ -373,11 +385,23 @@ class CompatArgumentParser(argparse.ArgumentParser):
             delattr(namespace, _UNRECOGNIZED_ARGS_ATTR)
         return namespace, args
 
+
+class ExtendedArgumentParser_PRE_GH_114180(CompatArgumentParser):
+    """
+    Extends the compatable argument parser to add minor new features.
+    Namely: allowing options in argv to interchangably use "_" or "-".
+
+    This is based on a 2018 version (~cpython 3.7.2) of argparse.
+    E.g. https://github.com/python/cpython/blob/v3.7.2/Lib/argparse.py
+
+    References:
+        .. [SO53527387] https://stackoverflow.com/questions/53527387/make-argparse-treat-dashes-and-underscore-identically
+    """
+
     def _parse_optional(self, arg_string):
         """
         Allow "_" or "-" on the CLI.
 
-        https://stackoverflow.com/questions/53527387/make-argparse-treat-dashes-and-underscore-identically
         """
         from gettext import gettext as gettext_fn
 
@@ -425,6 +449,9 @@ class CompatArgumentParser(argparse.ArgumentParser):
         return None, arg_string, None
 
     def _get_option_tuples(self, option_string):
+        """
+        Helper to allow "_" or "-" on the CLI.
+        """
         result = []
 
         if '=' in option_string:
@@ -466,3 +493,144 @@ class CompatArgumentParser(argparse.ArgumentParser):
 
         # return the collected option tuples
         return result
+
+
+class ExtendedArgumentParser_POST_GH_114180(CompatArgumentParser):
+    """
+    Extends the compatable argument parser to add minor new features.
+    Namely: allowing options in argv to interchangably use "_" or "-".
+
+    This is based on the CPython 3.12.3 versin of of argparse.
+    https://github.com/python/cpython/blob/v3.7.2/Lib/argparse.py
+
+    This is an alternate version of
+    :class:`ExtendedArgumentParser_PRE_GH_114180` that works with changes
+    introduced in
+    https://github.com/python/cpython/commit/c02b7ae4dd367444aa6822d5fb73b61e8f5a4ff9
+    """
+    def _get_option_tuples(self, option_string):
+        result = []
+
+        # option strings starting with two prefix characters are only
+        # split at the '='
+        chars = self.prefix_chars
+        if option_string[0] in chars and option_string[1] in chars:
+            if self.allow_abbrev:
+                option_prefix, sep, explicit_arg = option_string.partition('=')
+                norm_option_prefix = option_prefix.replace('-', '_')
+                if not sep:
+                    sep = explicit_arg = None
+                for option_string in self._option_string_actions:
+                    norm_option_string = option_string.replace('-', '_')
+                    # if option_string.startswith(option_prefix):
+                    if norm_option_string.startswith(norm_option_prefix):
+                        action = self._option_string_actions[option_string]
+                        tup = action, option_string, sep, explicit_arg
+                        result.append(tup)
+
+        # single character options can be concatenated with their arguments
+        # but multiple character options always have to have their argument
+        # separate
+        elif option_string[0] in chars and option_string[1] not in chars:
+            option_prefix = option_string
+            short_option_prefix = option_string[:2]
+            short_explicit_arg = option_string[2:]
+
+            for option_string in self._option_string_actions:
+                if option_string == short_option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, '', short_explicit_arg
+                    result.append(tup)
+                elif option_string.startswith(option_prefix):
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, None, None
+                    result.append(tup)
+
+        # shouldn't ever get here
+        else:
+            self.error(('unexpected option string: %s') % option_string)
+
+        # return the collected option tuples
+        return result
+
+
+if HAS_ARGPARSE_GH_114180:
+    _ExtendedArgumentParserBase = ExtendedArgumentParser_POST_GH_114180
+else:
+    _ExtendedArgumentParserBase = ExtendedArgumentParser_PRE_GH_114180
+
+
+class ExtendedArgumentParser(_ExtendedArgumentParserBase):
+    """
+    Extends the compatable argument parser to add minor new features.
+    Namely: allowing options in argv to interchangably use "_" or "-".
+
+    CommandLine:
+        xdoctest -m scriptconfig.argparse_ext ExtendedArgumentParser
+
+    Example:
+        >>> # Demonstrate how the default ArgumentParser does not interchange
+        >>> # underscores and dashes, but scriptconfig can.
+        >>> import argparse
+        >>> import ubelt as ub
+        >>> parser = argparse.ArgumentParser(exit_on_error=False)
+        >>> parser.add_argument('--my_option1', default='default')
+        >>> parser.add_argument('--my-option2', default='default')
+        >>> #
+        >>> # In vanilla argparse you have to use the option exactly
+        >>> res1 = parser.parse_args(args=['--my_option1=foo-bar_baz']).__dict__
+        >>> res2 = parser.parse_args(args=['--my-option2=foo-bar_baz']).__dict__
+        >>> print(f'res1 = {ub.urepr(res1, nl=1)}')
+        >>> print(f'res2 = {ub.urepr(res2, nl=1)}')
+        >>> assert (res1 == {'my_option1': 'foo-bar_baz', 'my_option2': 'default'})
+        >>> assert (res2 == {'my_option1': 'default', 'my_option2': 'foo-bar_baz'})
+        >>> # You cannot swap "_" and "-" in argument names
+        >>> import pytest
+        >>> with pytest.raises(SystemExit):
+        >>>     parser.parse_args(args=['--my_option2=foo-bar_baz'])
+        >>> with pytest.raises(SystemExit):
+        >>>     parser.parse_args(args=['--my-option1=foo-bar_baz'])
+        >>> #
+        >>> # With the ExtendedArgumentParser you can freely interchange underscores
+        >>> # and dashes when specfying argv.
+        >>> parser = ExtendedArgumentParser(exit_on_error=False)
+        >>> parser.add_argument('--my_option1', default='default')
+        >>> parser.add_argument('--my-option2', default='default')
+        >>> # Original cases work
+        >>> res3 = parser.parse_args(args=['--my_option1=foo-bar_baz']).__dict__
+        >>> res4 = parser.parse_args(args=['--my-option2=foo-bar_baz']).__dict__
+        >>> print(f'res3 = {ub.urepr(res3, nl=1)}')
+        >>> print(f'res4 = {ub.urepr(res4, nl=1)}')
+        >>> # Swapped "_" and "-" in the option name now works too
+        >>> res5 = parser.parse_args(args=['--my-option1=foo-bar_baz']).__dict__
+        >>> res6 = parser.parse_args(args=['--my_option2=foo-bar_baz']).__dict__
+        >>> print(f'res5 = {ub.urepr(res5, nl=1)}')
+        >>> print(f'res6 = {ub.urepr(res6, nl=1)}')
+        >>> assert res3 == {'my_option1': 'foo-bar_baz', 'my_option2': 'default'}
+        >>> assert res4 == {'my_option1': 'default', 'my_option2': 'foo-bar_baz'}
+        >>> assert res5 == {'my_option1': 'foo-bar_baz', 'my_option2': 'default'}
+        >>> assert res6 == {'my_option1': 'default', 'my_option2': 'foo-bar_baz'}
+
+    Example:
+        >>> import argparse
+        >>> import ubelt as ub
+        >>> parser = ExtendedArgumentParser()
+        >>> parser.add_argument('--my_option1', default='default')
+        >>> parser.add_argument('--my-option2', default='default')
+        >>> # General test cases
+        >>> cases = [
+        >>>     dict(args=['--my-option1', 'foo-bar_baz'], expected={'my_option1': 'foo-bar_baz', 'my_option2': 'default'}),
+        >>>     dict(args=['--my_option1', 'foo-bar_baz'], expected={'my_option1': 'foo-bar_baz', 'my_option2': 'default'}),
+        >>>     dict(args=['--my_option2', 'foo-bar_baz'], expected={'my_option1': 'default', 'my_option2': 'foo-bar_baz'}),
+        >>>     dict(args=['--my-option2', 'foo-bar_baz'], expected={'my_option1': 'default', 'my_option2': 'foo-bar_baz'}),
+        >>>     dict(args=['--my-option1=foo-bar_baz'], expected={'my_option1': 'foo-bar_baz', 'my_option2': 'default'}),
+        >>>     dict(args=['--my_option1=foo-bar_baz'], expected={'my_option1': 'foo-bar_baz', 'my_option2': 'default'}),
+        >>>     dict(args=['--my_option2=foo-bar_baz'], expected={'my_option1': 'default', 'my_option2': 'foo-bar_baz'}),
+        >>>     dict(args=['--my-option2=foo-bar_baz'], expected={'my_option1': 'default', 'my_option2': 'foo-bar_baz'}),
+        >>> ]
+        >>> for case in cases:
+        >>>     print(f'case = {ub.urepr(case, nl=1)}')
+        >>>     result = parser.parse_args(args=case['args'])
+        >>>     print(f'result = {ub.urepr(result, nl=1)}')
+        >>>     assert result.__dict__ == case['expected']
+    """

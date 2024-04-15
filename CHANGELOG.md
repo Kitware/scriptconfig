@@ -13,6 +13,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.13 - Released 2024-03-19
 
+### Fixed
+* Fix issue caused by a CPython patch https://github.com/python/cpython/pull/115674
+
 
 ## Version 0.7.12 - Released 2024-03-19
 

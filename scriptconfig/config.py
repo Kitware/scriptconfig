@@ -1636,7 +1636,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if parser is None:
             parserkw = self._parserkw()
             # parser = argparse.ArgumentParser(**parserkw)
-            parser = argparse_ext.CompatArgumentParser(**parserkw)
+            parser = argparse_ext.ExtendedArgumentParser(**parserkw)
 
         # Use custom action used to mark which values were explicitly set on
         # the commandline
