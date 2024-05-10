@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.7.15 - Unreleased
 
+### Added
+* Allow special options to be passed to cli
 
 ## Version 0.7.14 - Released 2024-04-15
 
