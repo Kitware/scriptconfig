@@ -377,6 +377,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
             autocomplete (bool | str):
                 if True try to enable argcomplete.
+
+            special_options (bool, default=False):
+                adds special scriptconfig options, namely: --config, --dumps,
+                and --dump.
         """
         if cmdline and argv is not None:
             cmdline = argv
@@ -606,6 +610,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             autocomplete (bool):
                 if True, attempts to use the autocomplete package if it is
                 available if reading from sys.argv. Defaults to False.
+
+            special_options (bool, default=False):
+                adds special scriptconfig options, namely: --config, --dumps,
+                and --dump. Prefer using this over cmdline.
 
         Note:
             if cmdline=True, this will create an argument parser.
