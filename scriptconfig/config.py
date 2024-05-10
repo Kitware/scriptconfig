@@ -378,9 +378,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             autocomplete (bool | str):
                 if True try to enable argcomplete.
 
-            special_options (bool, default=False):
+            special_options (bool, default=True):
                 adds special scriptconfig options, namely: --config, --dumps,
-                and --dump.
+                and --dump. In the future this default will change to False.
         """
         if cmdline and argv is not None:
             cmdline = argv
@@ -586,6 +586,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
                     of sys.argv.
+                DO NOT USE dictionary form. It is deprecated.
                 If a dictionary grants fine grained controls over the args
                 passed to :func:`Config._read_argv`. Can contain:
                     * strict (bool): defaults to False
@@ -753,6 +754,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 'argv': None,
             }
             if isinstance(cmdline, dict):
+                ub.schedule_deprecation('scriptconfig', 'cmdline', 'parameter as a dictionary',
+                                        migration='The API should expose any special params explicitly',
+                                        deprecate='0.7.15', error='0.8.0', remove='0.9.0')
                 read_argv_kwargs.update(cmdline)
             elif ub.iterable(cmdline) or isinstance(cmdline, str):
                 read_argv_kwargs['argv'] = cmdline
