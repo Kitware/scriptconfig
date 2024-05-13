@@ -341,7 +341,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=True,
-            cmdline=True, autocomplete='auto'):
+            cmdline=True, autocomplete='auto', special_options=True):
         """
         Create a commandline aware config instance.
 
@@ -377,6 +377,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
             autocomplete (bool | str):
                 if True try to enable argcomplete.
+
+            special_options (bool, default=True):
+                adds special scriptconfig options, namely: --config, --dumps,
+                and --dump. In the future this default will change to False.
         """
         if cmdline and argv is not None:
             cmdline = argv
@@ -390,7 +394,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         # prevents adding clean options for control flow.
         self = cls(_dont_call_post_init=True)
         self.load(data, cmdline=cmdline, default=default, strict=strict,
-                  autocomplete=autocomplete)
+                  autocomplete=autocomplete, special_options=special_options)
         return self
 
     @classmethod
@@ -564,7 +568,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self._alias_map = None
 
     def load(self, data=None, cmdline=False, mode=None, default=None,
-             strict=False, autocomplete=False, _dont_call_post_init=False):
+             strict=False, autocomplete=False, _dont_call_post_init=False,
+             special_options=True):
         """
         Updates the configuration from a given data source.
 
@@ -581,6 +586,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 If a list of strings that used instead of sys.argv.
                 If a string, then that is parsed using shlex and used instead
                     of sys.argv.
+                DO NOT USE dictionary form. It is deprecated.
                 If a dictionary grants fine grained controls over the args
                 passed to :func:`Config._read_argv`. Can contain:
                     * strict (bool): defaults to False
@@ -605,6 +611,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             autocomplete (bool):
                 if True, attempts to use the autocomplete package if it is
                 available if reading from sys.argv. Defaults to False.
+
+            special_options (bool, default=False):
+                adds special scriptconfig options, namely: --config, --dumps,
+                and --dump. Prefer using this over cmdline.
 
         Note:
             if cmdline=True, this will create an argument parser.
@@ -738,12 +748,15 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             # should override them IF they exist on in sys.argv, but not if
             # they don't?
             read_argv_kwargs = {
-                'special_options': True,
+                'special_options': special_options,
                 'strict': strict,
                 'autocomplete': autocomplete,
                 'argv': None,
             }
             if isinstance(cmdline, dict):
+                ub.schedule_deprecation('scriptconfig', 'cmdline', 'parameter as a dictionary',
+                                        migration='The API should expose any special params explicitly',
+                                        deprecate='0.7.15', error='0.8.0', remove='0.9.0')
                 read_argv_kwargs.update(cmdline)
             elif ub.iterable(cmdline) or isinstance(cmdline, str):
                 read_argv_kwargs['argv'] = cmdline

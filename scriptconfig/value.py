@@ -56,7 +56,7 @@ class Value(ub.NiceRepr):
 
         short_alias (List[str] | None):
             other short names (that will be prefixed with '-') that will be
-            accepted by the argparse CLI.
+            accepted by the argparse CLI. e.g. ``short_alias=['n']``
 
         group (str | None):
             Impacts display of underlying argparse object by grouping values
