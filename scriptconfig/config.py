@@ -180,7 +180,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'default', f'class attribute of {name}',
                 migration='Use __default__ instead',
-                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.6', error='0.10.0', remove='1.0.0',
             )
 
         HANDLE_INHERITENCE = 1
@@ -212,7 +212,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'normalize', f'class attribute of {name}',
                 migration='Use __post_init__ instead',
-                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.6', error='0.10.0', remove='1.0.0',
             )
 
         if '__post_init__' in namespace and 'normalize' not in namespace:
@@ -756,7 +756,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             if isinstance(cmdline, dict):
                 ub.schedule_deprecation('scriptconfig', 'cmdline', 'parameter as a dictionary',
                                         migration='The API should expose any special params explicitly',
-                                        deprecate='0.7.15', error='0.8.0', remove='0.9.0')
+                                        deprecate='0.7.15', error='0.10.0', remove='1.0.0')
                 read_argv_kwargs.update(cmdline)
             elif ub.iterable(cmdline) or isinstance(cmdline, str):
                 read_argv_kwargs['argv'] = cmdline
@@ -1089,7 +1089,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ub.schedule_deprecation(
                 'scriptconfig', 'description', 'attribute of Config classes',
                 migration='Use __description__ or the docstring instead',
-                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+                deprecate='0.7.11', error='0.10.0', remove='1.0.0')
 
         description = getattr(self, '__description__',
                               getattr(self, 'description', None))
@@ -1108,7 +1108,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ub.schedule_deprecation(
                 'scriptconfig', 'epilog', 'attribute of Config classes',
                 migration='Use __epilog__ instead',
-                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+                deprecate='0.7.11', error='0.10.0', remove='1.0.0')
 
         epilog = getattr(self, '__epilog__', getattr(self, 'epilog', None))
         if epilog is not None:
@@ -1121,7 +1121,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ub.schedule_deprecation(
                 'scriptconfig', 'prog', 'attribute of Config classes',
                 migration='Use __prog__ instead',
-                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+                deprecate='0.7.11', error='0.10.0', remove='1.0.0')
         prog = getattr(self, '__prog__', getattr(self, 'prog', None))
         if prog is None:
             prog = self.__class__.__name__
