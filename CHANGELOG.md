@@ -4,7 +4,19 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.7.15 - Unreleased
+## Version 0.8.0 - Unreleased
+
+### Removed
+
+* Remove 3.6 and 3.7 support
+
+
+### Fix:
+* Fixed the `define` method.
+* Initial implementation of `port_from_click`
+
+
+## Version 0.7.15 - Released 2024-05-13
 
 ### Added
 * Allow special options to be passed to cli

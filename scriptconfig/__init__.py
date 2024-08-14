@@ -142,7 +142,7 @@ key/value pairs --- i.e. a dictionary.
 
 
 See the :mod:`scriptconfig.config` module docs for details and examples on
-getting started as well as :doc:`getting_started docs <getting_started>`
+getting started as well as :doc:`getting_started docs <manual/getting_started>`
 """
 
 __autogen__ = """
@@ -151,7 +151,7 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.7.15'
+__version__ = '0.8.0'
 
 __submodules__ = {
     'modal': None,

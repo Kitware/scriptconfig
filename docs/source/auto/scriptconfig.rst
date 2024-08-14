@@ -1,6 +1,14 @@
 scriptconfig package
 ====================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   scriptconfig.util
+
 Submodules
 ----------
 

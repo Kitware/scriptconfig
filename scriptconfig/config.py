@@ -142,18 +142,26 @@ def scfg_isinstance(item, cls):
 def define(default={}, name=None):
     """
     Alternate method for defining a custom Config type
+
+    Example:
+        >>> from scriptconfig.config import define, Value
+        >>> cls = define({'k1': Value('v1'), 'k2': 'v2'}, 'MyConfig')
+        >>> instance = cls()
+        >>> assert instance.to_dict() == {'k1': 'v1', 'k2': 'v2'}
+        >>> print(instance)
+        <MyConfig({'k1': 'v1', 'k2': 'v2'})>
     """
     import uuid
+    from textwrap import dedent
     if name is None:
         hashid = str(uuid.uuid4()).replace('-', '_')
         name = 'Config_{}'.format(hashid)
-    from textwrap import dedent
-    vals = {}
+    vals = {'default': default}
     code = dedent(
         '''
         import scriptconfig as scfg
         class {name}(scfg.Config):
-            pass
+            __default__ = default
         '''.strip('\n').format(name=name))
     exec(code, vals)
     cls = vals[name]
@@ -180,7 +188,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'default', f'class attribute of {name}',
                 migration='Use __default__ instead',
-                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.6', error='0.10.0', remove='1.0.0',
             )
 
         HANDLE_INHERITENCE = 1
@@ -212,7 +220,7 @@ class MetaConfig(type):
             ub.schedule_deprecation(
                 'scriptconfig', 'normalize', f'class attribute of {name}',
                 migration='Use __post_init__ instead',
-                deprecate='0.7.6', error='0.8.0', remove='0.9.0',
+                deprecate='0.7.6', error='0.10.0', remove='1.0.0',
             )
 
         if '__post_init__' in namespace and 'normalize' not in namespace:
@@ -756,21 +764,21 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             if isinstance(cmdline, dict):
                 ub.schedule_deprecation('scriptconfig', 'cmdline', 'parameter as a dictionary',
                                         migration='The API should expose any special params explicitly',
-                                        deprecate='0.7.15', error='0.8.0', remove='0.9.0')
+                                        deprecate='0.7.15', error='0.10.0', remove='1.0.0')
                 read_argv_kwargs.update(cmdline)
             elif ub.iterable(cmdline) or isinstance(cmdline, str):
                 read_argv_kwargs['argv'] = cmdline
             self._read_argv(**read_argv_kwargs)
 
-        if 1:
-            # Check that all required variables are not the same as defaults
-            # Probably a way to make this check nicer
-            for k, v in self._default.items():
-                if scfg_isinstance(v, Value):
-                    if v.required:
-                        if self[k] == v.value:
-                            raise Exception('Required variable {!r} still has default value'.format(k))
         if not _dont_call_post_init:
+            if 1:
+                # Check that all required variables are not the same as defaults
+                # Probably a way to make this check nicer
+                for k, v in self._default.items():
+                    if scfg_isinstance(v, Value):
+                        if v.required:
+                            if self[k] == v.value:
+                                raise Exception('Required variable {!r} still has default value'.format(k))
             self.__post_init__()
         return self
 
@@ -1089,7 +1097,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ub.schedule_deprecation(
                 'scriptconfig', 'description', 'attribute of Config classes',
                 migration='Use __description__ or the docstring instead',
-                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+                deprecate='0.7.11', error='0.10.0', remove='1.0.0')
 
         description = getattr(self, '__description__',
                               getattr(self, 'description', None))
@@ -1108,7 +1116,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ub.schedule_deprecation(
                 'scriptconfig', 'epilog', 'attribute of Config classes',
                 migration='Use __epilog__ instead',
-                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+                deprecate='0.7.11', error='0.10.0', remove='1.0.0')
 
         epilog = getattr(self, '__epilog__', getattr(self, 'epilog', None))
         if epilog is not None:
@@ -1121,7 +1129,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ub.schedule_deprecation(
                 'scriptconfig', 'prog', 'attribute of Config classes',
                 migration='Use __prog__ instead',
-                deprecate='0.7.11', error='0.8.0', remove='0.9.0')
+                deprecate='0.7.11', error='0.10.0', remove='1.0.0')
         prog = getattr(self, '__prog__', getattr(self, 'prog', None))
         if prog is None:
             prog = self.__class__.__name__
@@ -1145,9 +1153,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             parserkw['allow_abbrev'] = self.__allow_abbrev__
         return parserkw
 
-    def port_to_dataconf(self):
+    def port_to_dataconf(self, style='dataconf'):
         """
         Helper that will write the code to express this config as a DataConfig.
+
+        TODO: In the future perhaps rename to something that indicates we can
+            write a code representation of this object in either config or data
+            config style?
 
         CommandLine:
             xdoctest -m scriptconfig.config Config.port_to_dataconf
@@ -1166,7 +1178,6 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             entries.append((key, value_kw))
         description = self._description
         name = self.__class__.__name__
-        style = 'dataconf'
         text = self._write_code(entries, name, style, description)
         return text
 
@@ -1237,21 +1248,67 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def port_from_click(cls, click_main, name='MyConfig', style='dataconf'):
+    def port_from_click(cls, click_main, name=None, style='dataconf'):
         """
+        Prints scriptconfig code that roughtly implements some click CLI.
+
+        Args:
+            click_main (click.core.Command): command to port
+
+            name (str | None): the name of the new class, if None then
+               uses the name of the CLI command.
+
+            style (str): either dataconf or orig
+
+        Returns:
+            str : The code that roughly implements the config class.
+
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.port_from_click
+
         Example:
-            @click.command()
-            @click.option('--dataset', required=True, type=click.Path(exists=True), help='input dataset')
-            @click.option('--deployed', required=True, type=click.Path(exists=True), help='weights file')
-            def click_main(dataset, deployed):
+            >>> # xdoctest: +REQUIRES(module:click)
+            >>> from scriptconfig.config import *  # NOQA
+            >>> import click
+            >>> import scriptconfig as scfg
+            >>> @click.command()
+            >>> @click.option('--dataset', required=True, type=click.Path(exists=True), help='input dataset')
+            >>> @click.option('--deployed', required=True, type=click.Path(exists=True), help='weights file')
+            >>> @click.option('--key1', default=123, type=click.Path(exists=True), help='weights file')
+            >>> @click.option('--key2', default='456', type=click.Path(exists=True), help='weights file')
+            >>> def click_main(dataset, deployed):
+            >>>     ...
+            >>> text = scfg.Config.port_from_click(click_main)
+            >>> print(text)
+            import ubelt as ub
+            import scriptconfig as scfg
+            ...
+            class click_main(scfg.DataConfig):
                 ...
+                argparse CLI generated by scriptconfig 0.8.0
+                ...
+                dataset = scfg.Value(None, required=True, help='input dataset')
+                deployed = scfg.Value(None, required=True, help='weights file')
+                key1 = scfg.Value(123, help='weights file')
+                key2 = scfg.Value(456, help='weights file')
         """
-        raise NotImplementedError('todo: figure out how to do this')
         import click
         ctx = click.Context(click.Command(''))
-        # parser = click_main.make_parser(ctx)
-        # print(f'parser={parser}')  # not an argparse object
         info_dict = click_main.to_info_dict(ctx)  # NOQA
+        default = {}
+        blocklist = {'help'}
+        for param in info_dict['params']:
+            if param['name'] in blocklist:
+                continue
+            default[param['name']] = Value(
+                param['default'],
+                required=param['required'],
+                isflag=param['is_flag'], help=param['help'])
+        if name is None:
+            name = info_dict['name'].replace('-', '_')
+        config_cls = define(default, name)
+        instance = config_cls(_dont_call_post_init=True)
+        return instance.port_to_dataconf(style=style)
 
     @classmethod
     def port_from_argparse(cls, parser, name='MyConfig', style='dataconf'):

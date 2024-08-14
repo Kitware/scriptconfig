@@ -51,6 +51,8 @@ class BooleanFlagOrKeyValAction(_Base):
 
     This helps allow for a flexible specification of boolean values:
 
+    .. code::
+
         --flag        > {'flag': True}
         --flag=1      > {'flag': True}
         --flag True   > {'flag': True}

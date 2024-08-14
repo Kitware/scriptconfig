@@ -17,7 +17,7 @@ Notes:
     # need to edit the conf.py
 
     cd ~/code/scriptconfig/docs
-    sphinx-apidoc --private --separate -f -o ~/code/scriptconfig/docs/source/auto ~/code/scriptconfig/scriptconfig
+    sphinx-apidoc --private --separate --force --output-dir ~/code/scriptconfig/docs/source/auto ~/code/scriptconfig/scriptconfig
 
     # Note: the module should importable before running this
     # (e.g. install it in developer mode or munge the PYTHONPATH)
