@@ -15,7 +15,9 @@ ScriptConfig's documentation
    :maxdepth: 8
    :caption: Package Layout
 
-   modules
+   auto/scriptconfig
+   auto/modules
+   manual/getting_started
 
 
 Indices and tables
