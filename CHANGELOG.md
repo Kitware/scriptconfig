@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Remove 3.6 and 3.7 support
 
 
+### Fix:
+* Fixed the `define` method.
+* Initial implementation of `port_from_click`
+
+
 ## Version 0.7.15 - Released 2024-05-13
 
 ### Added
