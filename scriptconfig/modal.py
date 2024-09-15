@@ -226,9 +226,13 @@ class ModalCLI(metaclass=MetaModalCLI):
     @class_or_instancemethod
     def register(cls_or_self, cli_cls):
         """
+        Add a sub-CLI to this modal CLI
+
         Args:
             cli_cli (scriptconfig.Config):
                 A CLI-aware config object to register as a sub CLI
+
+        # TODO: ability to specify alias when registering the modal command
         """
         # Note: the order or registration is how it will appear in the CLI help
         # Hack for older scriptconfig
