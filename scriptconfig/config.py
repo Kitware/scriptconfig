@@ -308,6 +308,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     """
     __scfg_class__ = 'Config'
     __default__ = {}
+    # __allow_newattr__ = False
 
     def __init__(self, data=None, default=None, cmdline=False,
                  _dont_call_post_init=False):
@@ -525,13 +526,17 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if key not in self._data:
             key = self._normalize_alias_key(key)
             if key not in self._data:
-                raise Exception('Cannot add keys to ScriptConfig objects')
+                if not getattr(self, '__allow_newattr__', False):
+                    raise Exception(
+                        'Cannot add keys to scriptconfig.Config objects unless '
+                        'self.__allow_newattr__ is True'
+                    )
         if scfg_isinstance(value, Value):
             # If the new item is a Value object simply overwrite the old one
             self._data[key] = value
         else:
-            template = self.__default__[key]
-            if scfg_isinstance(template, Value):
+            template = self.__default__.get(key, None)
+            if template is not None and scfg_isinstance(template, Value):
                 # If the new value is raw data, and we have a underlying Value
                 # object update it.
                 self._data[key] = template.cast(value)
@@ -788,7 +793,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         if getattr(self, '_alias_map', None) is None:
             self._alias_map = self._build_alias_map()
-        return self._alias_map[key]
+        return self._alias_map.get(key, key)
 
     def _normalize_alias_dict(self, data):
         """

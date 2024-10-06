@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.0 - Released 2024-08-14
 
+### Add
+* Add experimental new flag `__allow_newattr__` which relaxes the constraint
+  that you can't add keys on the fly.
+
 ### Removed
 
 * Remove 3.6 and 3.7 support

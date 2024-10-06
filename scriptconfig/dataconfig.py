@@ -337,16 +337,23 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         Forwards setattrs in the configuration to the dictionary interface,
         otherwise passes it through.
         """
-        if not key.startswith('_') and getattr(self, '_enable_setattr', False) and key in self:
-            # After object initialization allow the user to use setattr on any
-            # value in the underlying dictionary. Everything else uses the
-            # normal mechanism.
-            try:
-                self[key] = value
-            except KeyError:
-                raise AttributeError(key)
-        else:
+        if key.startswith('_'):
+            # Currently we do not allow leading underscores to be config
+            # values to give us some flexibility for API changes.
             self.__dict__[key] = value
+        else:
+            can_setattr = (getattr(self, '__allow_newattr__', False))  # case where user can add new keys on the fly
+            can_setattr |= (getattr(self, '_enable_setattr', False) and key in self)  # internal usage for initialization
+            if can_setattr:
+                # After object initialization allow the user to use setattr on any
+                # value in the underlying dictionary. Everything else uses the
+                # normal mechanism.
+                try:
+                    self[key] = value
+                except KeyError:
+                    raise AttributeError(key)
+            else:
+                self.__dict__[key] = value
 
     @classmethod
     def legacy(cls, cmdline=False, data=None, default=None, strict=False):
