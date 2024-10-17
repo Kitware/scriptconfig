@@ -1505,7 +1505,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> parser = ns['parser']
             >>> args1 = parser.parse_args(['foobar'])
             >>> assert args1.data == 'foobar'
-            >>> # Looks like we cant do positional or key/value easilly
+            >>> # Looks like we can't do positional or key/value easilly
             >>> #args1 = parser.parse_args(['--data=blag'])
             >>> #print('args1 = {}'.format(ub.urepr(args1, nl=1)))
 

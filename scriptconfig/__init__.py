@@ -13,7 +13,7 @@ ScriptConfig
 +------------------+--------------------------------------------------+
 
 The goal of ``scriptconfig`` is to make it easy to be able to define a CLI by
-**simply defining a dictionary**. Thie enables you to write simple configs and
+**simply defining a dictionary**. This enables you to write simple configs and
 update from CLI, kwargs, and/or json.
 
 The pattern is simple:
