@@ -350,9 +350,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=True,
-            cmdline=True, autocomplete='auto', special_options=True):
+            cmdline=True, autocomplete='auto', special_options=True,
+            transition_helpers=True, verbose=False):
         """
-        Create a commandline aware config instance.
+        Create a command-line aware config instance.
 
         Calls the original "load" way of creating non-dataclass config objects.
         This may be refactored in the future.
@@ -372,11 +373,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 Defaults to True, which creates and uses an argparse object to
                 interact with the command line. If set to False, then the
                 argument parser is bypassed (useful for invoking a CLI
-                programatically with kwargs and ignoring sys.argv).
-                NOTE: this will be depracted in favor of "argv" in the future.
+                programmatically with kwargs and ignoring sys.argv).
+                NOTE: this will be deprecated in favor of "argv" in the future.
 
             argv (List[str] | None | bool):
-                if specified, ignore sys.argv and parse this instead.
+                if specified as a list or string, ignore sys.argv and parse
+                this instead. Otherwise,
                 if True, then parse ``sys.argv``.
                 if False, then ignore ``sys.argv``.
 
@@ -387,10 +389,38 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             autocomplete (bool | str):
                 if True try to enable argcomplete.
 
+            transition_helpers (bool):
+                if True, we perform special munging to help transition to new
+                versions (e.g. cmdline->argv transition). This will cause
+                issues if your config has a key named "cmdline", otherwise it
+                is safe to keep on.
+
             special_options (bool, default=True):
                 adds special scriptconfig options, namely: --config, --dumps,
                 and --dump. In the future this default will change to False.
+
+            verbose (bool | str):
+                If true, then perform a rich print of the config after it is
+                parsed. This is a convenience to reduce script boilerplate.
+                If "auto", it will default to true in most cases, except when
+                we can infer special behavior from the user-defined config via
+                standard keys: verbose, quiet, and silent.
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     __default__ = {
+            >>>         'option1': scfg.Value((1, 2, 3), tuple),
+            >>>         'option2': 'bar',
+            >>>         'option3': None,
+            >>>         'verbose': False,
+            >>>     }
+            >>> # You can now make instances of this class
+            >>> config = MyConfig.cli(argv=False, verbose='auto')
+            >>> config = MyConfig.cli(argv=False, data=dict(verbose=1), verbose='auto')
         """
+        if transition_helpers and hasattr(data, 'pop'):
+            argv = data.pop('cmdline', argv)  # helper for cmdline->argv transition
         if cmdline and argv is not None:
             cmdline = argv
         if default is None:
@@ -404,6 +434,17 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self = cls(_dont_call_post_init=True)
         self.load(data, cmdline=cmdline, default=default, strict=strict,
                   autocomplete=autocomplete, special_options=special_options)
+
+        if isinstance(verbose, str) and verbose == 'auto':
+            verbose = self.get('verbose', verbose)
+            verbose = not self.get('quiet', not verbose)
+            verbose = not self.get('silent', not verbose)
+
+        if verbose:
+            import rich
+            from rich.markup import escape
+            rich.print('config = ' + escape(ub.urepr(self, nl=1)))
+
         return self
 
     @classmethod
