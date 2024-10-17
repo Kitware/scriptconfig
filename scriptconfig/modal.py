@@ -380,7 +380,7 @@ class ModalCLI(metaclass=MetaModalCLI):
 
             main_cmd, aliases = fuzzy_cmd_names(cmdinfo['cmdname'])
 
-            # TODO: enable alternate hyphen/underscore aliases, but supress
+            # TODO: enable alternate hyphen/underscore aliases, but suppress
             # them from the help output. Even better would be to handle
             # argument completion so they aren't clobbered.
 
@@ -463,4 +463,4 @@ class ModalCLI(metaclass=MetaModalCLI):
                 ret = 0
             return ret
 
-    run = main  # alias for backwards compatiability
+    run = main  # alias for backwards compatibility

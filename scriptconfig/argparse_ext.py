@@ -328,7 +328,7 @@ class RawDescriptionDefaultsHelpFormatter(
 class CompatArgumentParser(argparse.ArgumentParser):
     """
     A modified version of the standard library ArgumentParser with back-ported
-    features needed by scriptconfig for compatability across different Python
+    features needed by scriptconfig for compatibility across different Python
     versions. Namely, this ensures the ``exit_on_error`` property exists for
     Python 3.6 - 3.8
     """
@@ -390,8 +390,8 @@ class CompatArgumentParser(argparse.ArgumentParser):
 
 class ExtendedArgumentParser_PRE_GH_114180(CompatArgumentParser):
     """
-    Extends the compatable argument parser to add minor new features.
-    Namely: allowing options in argv to interchangably use "_" or "-".
+    Extends the compatible argument parser to add minor new features.
+    Namely: allowing options in argv to interchangeably use "_" or "-".
 
     This is based on a 2018 version (~cpython 3.7.2) of argparse.
     E.g. https://github.com/python/cpython/blob/v3.7.2/Lib/argparse.py
@@ -499,10 +499,10 @@ class ExtendedArgumentParser_PRE_GH_114180(CompatArgumentParser):
 
 class ExtendedArgumentParser_POST_GH_114180(CompatArgumentParser):
     """
-    Extends the compatable argument parser to add minor new features.
-    Namely: allowing options in argv to interchangably use "_" or "-".
+    Extends the compatible argument parser to add minor new features.
+    Namely: allowing options in argv to interchangeably use "_" or "-".
 
-    This is based on the CPython 3.12.3 versin of of argparse.
+    This is based on the CPython 3.12.3 version of of argparse.
     https://github.com/python/cpython/blob/v3.7.2/Lib/argparse.py
 
     This is an alternate version of
@@ -564,8 +564,8 @@ else:
 
 class ExtendedArgumentParser(_ExtendedArgumentParserBase):
     """
-    Extends the compatable argument parser to add minor new features.
-    Namely: allowing options in argv to interchangably use "_" or "-".
+    Extends the compatible argument parser to add minor new features.
+    Namely: allowing options in argv to interchangeably use "_" or "-".
 
     CommandLine:
         xdoctest -m scriptconfig.argparse_ext ExtendedArgumentParser
@@ -595,7 +595,7 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
         >>>     parser.parse_args(args=['--my-option1=foo-bar_baz'])
         >>> #
         >>> # With the ExtendedArgumentParser you can freely interchange underscores
-        >>> # and dashes when specfying argv.
+        >>> # and dashes when specifying argv.
         >>> parser = ExtendedArgumentParser(exit_on_error=False)
         >>> parser.add_argument('--my_option1', default='default')
         >>> parser.add_argument('--my-option2', default='default')

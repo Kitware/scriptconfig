@@ -53,7 +53,7 @@ def generate_typed_stubs():
     typed stub files.
 
     pyfile mypy.stubgen
-    # Delete compiled verisons so we can hack it
+    # Delete compiled versions so we can hack it
 
     # ls $VIRTUAL_ENV/lib/*/site-packages/mypy/*.so
     # rm $VIRTUAL_ENV/lib/*/site-packages/mypy/*.so
@@ -191,7 +191,7 @@ def generate_typed_stubs():
             # Hack for specific module
             # if mod.path.endswith('util_path.py'):
             #     gen.add_typing_import('TypeVar')
-            #     # hack for variable inheritence
+            #     # hack for variable inheritance
             #     gen._output = ['import pathlib\nimport os\n', "_PathBase = pathlib.WindowsPath if os.name == 'nt' else pathlib.PosixPath\n"] + gen._output
 
             text = ''.join(gen.output())

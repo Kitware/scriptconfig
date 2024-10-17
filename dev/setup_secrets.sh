@@ -190,14 +190,14 @@ toggle_setx_enter(){
         __context_1_toggle_setx=0
     fi
     if [[ "$__context_1_toggle_setx" == "1" ]]; then
-        echo "Setx was on, disable temporarilly"
+        echo "Setx was on, disable temporarily"
         set +x
     fi
 }
 
 toggle_setx_exit(){
     echo "Exit sensitive area"
-    # Can we guarentee this will happen?
+    # Can we guarantee this will happen?
     if [[ "$__context_1_toggle_setx" == "1" ]]; then
         set -x
     fi
@@ -399,8 +399,8 @@ export_encrypted_code_signing_keys(){
     # Export the main key instead (its better to have subkeys, but this is a lesser evil)
     if [[ "$GPG_SIGN_SUBKEY" == "" ]]; then
         # NOTE: if you get here this probably means your subkeys expired (and
-        # wont even be visible), so we probably should check for that here and
-        # thrown an error instead of using this hack, which likely wont work
+        # won't even be visible), so we probably should check for that here and
+        # thrown an error instead of using this hack, which likely won't work
         # anyway.
         GPG_SIGN_SUBKEY=$(gpg --list-keys --with-subkey-fingerprints "$GPG_IDENTIFIER" | grep "\[C\]" -A 1 | tail -n 1 | awk '{print $1}')
     fi

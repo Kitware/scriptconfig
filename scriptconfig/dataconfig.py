@@ -38,7 +38,7 @@ Example:
     >>> open(config_fpath, 'w').write('{"num": 3}')
     >>> config.load(config_fpath, cmdline=False)
     >>> assert config['num'] == 3
-    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # It is possible to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
     >>> config.load(cmdline=['--num=4', '--mode' ,'fiz'])
     >>> assert config['num'] == 4
@@ -241,7 +241,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     attributes. Metadata for keys can be given by specifying the default values
     as a :class:`scriptconfig.Value`.
 
-    An instance can be created programatically with keyword arguments
+    An instance can be created programmatically with keyword arguments
     specifying updates to default values.
 
     The :func:`DataConfig.cli` classmethod can be used to create an instance
@@ -250,7 +250,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
 
     Usage of the config is flexible.  It can be used as a dictionary or as a
     namespace. That is, you can either use ``config['key']`` or ``config.key``
-    to access values for ``key``. The only incompatability between this and a
+    to access values for ``key``. The only incompatibility between this and a
     normal dictionary is that this does not allow new keys to be added,
     otherwise it can be treated exactly as a dictionary.
 
@@ -260,7 +260,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         >>>     key1 = 'default-value1'
         >>>     key2 = 'default-value2'
         >>>     key3 = scfg.Value('default-value3', help='extra metadata!')
-        >>> # Create a programatic instance
+        >>> # Create a programmatic instance
         >>> config = MyConfig()
         >>> print(f'config={config}')
         config=<MyConfig({'key1': 'default-value1', 'key2': 'default-value2', 'key3': 'default-value3'})>
@@ -427,7 +427,7 @@ def __example__():
         x: int = 0
         y: str = 3
 
-    ### Different varaints of the same basic configuration (varying amounts of metadata)
+    ### Different variants of the same basic configuration (varying amounts of metadata)
     class ExampleDataConfig1:
         chip_dims = (256, 256)
         time_dim = 5

@@ -193,7 +193,7 @@ class MetaConfig(type):
 
         HANDLE_INHERITENCE = 1
         if HANDLE_INHERITENCE:
-            # Handle inheritence, add in defaults from base classes
+            # Handle inheritance, add in defaults from base classes
             # Not sure this is exactly correct. Experimental.
             this_default = namespace.get('__default__', {})
             if this_default is None:
@@ -609,7 +609,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         default = self._normalize_alias_dict(default)
 
         # The user might pass raw values in which case we should keep the
-        # metadata from the exsting wrapped Values and just update the .value
+        # metadata from the existing wrapped Values and just update the .value
         # attribute.
         for k, v in default.items():
             old_default = self._default[k]
@@ -1296,7 +1296,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     @classmethod
     def port_from_click(cls, click_main, name=None, style='dataconf'):
         """
-        Prints scriptconfig code that roughtly implements some click CLI.
+        Prints scriptconfig code that roughly implements some click CLI.
 
         Args:
             click_main (click.core.Command): command to port
@@ -1374,7 +1374,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 to the existing argparse object.
 
         Note:
-            The correctness of this function is not guarenteed.  This only
+            The correctness of this function is not guaranteed.  This only
             works perfectly in simple cases, but in complex cases it may not
             produce 1-to-1 results, however it will provide a useful starting
             point.
@@ -1469,7 +1469,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         text = cls._write_code(entries, name, style, description)
         return text
 
-    # Backwards compatability, deprecate and remove
+    # Backwards compatibility, deprecate and remove
     port_argparse = port_from_argparse
 
     def port_to_argparse(self):
@@ -1505,7 +1505,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> parser = ns['parser']
             >>> args1 = parser.parse_args(['foobar'])
             >>> assert args1.data == 'foobar'
-            >>> # Looks like we can't do positional or key/value easilly
+            >>> # Looks like we can't do positional or key/value easily
             >>> #args1 = parser.parse_args(['--data=blag'])
             >>> #print('args1 = {}'.format(ub.urepr(args1, nl=1)))
 
@@ -1613,7 +1613,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             A good CLI spec for lists might be
 
             # In the case where ``key`` ends with and ``=``, assume the list is
-            # given as a comma separated string with optional square brakets at
+            # given as a comma separated string with optional square brackets at
             # each end.
 
             --key=[f]
@@ -1778,7 +1778,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # TODO: make this a warning in 3.7+ and ensure there is a good
                 # API for just indicating that a value is supposed to be
                 # positional, and using its order in the dictionary as that
-                # position. Need to account for inheritence though.
+                # position. Need to account for inheritance though.
                 raise Exception('two values have the same position')
             _keyorder = ub.oset(ub.argsort(_positions))
             _keyorder |= (ub.oset(self._default) - _keyorder)

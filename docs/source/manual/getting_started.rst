@@ -26,7 +26,7 @@ Otherwise it behaves exactly like ``YourConfig(**kwargs)``
 
 Using ``YourConfig.cli(cmdline=False, ...)``  disables CLI parsing so you can force
 it to use the exact passed parameters (very useful when you want to invoke the
-CLI programatically from python, and not make an argparse object under the
+CLI programmatically from python, and not make an argparse object under the
 hood)
 
 The main limitation of scriptconfig over argparse is that you are forced to
