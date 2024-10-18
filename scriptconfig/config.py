@@ -441,10 +441,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             verbose = not self.get('silent', not verbose)
 
         if verbose:
-            import rich
-            from rich.markup import escape
-            rich.print('config = ' + escape(ub.urepr(self, nl=1)))
-
+            try:
+                import rich
+                from rich.markup import escape
+            except ImportError:
+                print('config = ' + ub.urepr(self, nl=1))
+            else:
+                rich.print('config = ' + escape(ub.urepr(self, nl=1)))
         return self
 
     @classmethod
