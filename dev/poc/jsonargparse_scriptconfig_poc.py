@@ -157,7 +157,7 @@ class ScriptConfigArgumentParser(jsonargparse.ArgumentParser):
                 default = config_cls.default
 
             for key, value in default.items():
-                # TODO can we make this compatability better?
+                # TODO can we make this compatibility better?
                 # Can we actually use the scriptconfig argparsing action?
                 type = value.parsekw['type']
                 if type is None or not isinstance(type, type):

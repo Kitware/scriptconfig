@@ -226,9 +226,13 @@ class ModalCLI(metaclass=MetaModalCLI):
     @class_or_instancemethod
     def register(cls_or_self, cli_cls):
         """
+        Add a sub-CLI to this modal CLI
+
         Args:
             cli_cli (scriptconfig.Config):
                 A CLI-aware config object to register as a sub CLI
+
+        # TODO: ability to specify alias when registering the modal command
         """
         # Note: the order or registration is how it will appear in the CLI help
         # Hack for older scriptconfig
@@ -376,7 +380,7 @@ class ModalCLI(metaclass=MetaModalCLI):
 
             main_cmd, aliases = fuzzy_cmd_names(cmdinfo['cmdname'])
 
-            # TODO: enable alternate hyphen/underscore aliases, but supress
+            # TODO: enable alternate hyphen/underscore aliases, but suppress
             # them from the help output. Even better would be to handle
             # argument completion so they aren't clobbered.
 
@@ -459,4 +463,4 @@ class ModalCLI(metaclass=MetaModalCLI):
                 ret = 0
             return ret
 
-    run = main  # alias for backwards compatiability
+    run = main  # alias for backwards compatibility

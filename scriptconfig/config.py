@@ -193,7 +193,7 @@ class MetaConfig(type):
 
         HANDLE_INHERITENCE = 1
         if HANDLE_INHERITENCE:
-            # Handle inheritence, add in defaults from base classes
+            # Handle inheritance, add in defaults from base classes
             # Not sure this is exactly correct. Experimental.
             this_default = namespace.get('__default__', {})
             if this_default is None:
@@ -308,6 +308,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     """
     __scfg_class__ = 'Config'
     __default__ = {}
+    # __allow_newattr__ = False
 
     def __init__(self, data=None, default=None, cmdline=False,
                  _dont_call_post_init=False):
@@ -349,9 +350,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=True,
-            cmdline=True, autocomplete='auto', special_options=True):
+            cmdline=True, autocomplete='auto', special_options=True,
+            transition_helpers=True, verbose=False):
         """
-        Create a commandline aware config instance.
+        Create a command-line aware config instance.
 
         Calls the original "load" way of creating non-dataclass config objects.
         This may be refactored in the future.
@@ -371,11 +373,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 Defaults to True, which creates and uses an argparse object to
                 interact with the command line. If set to False, then the
                 argument parser is bypassed (useful for invoking a CLI
-                programatically with kwargs and ignoring sys.argv).
-                NOTE: this will be depracted in favor of "argv" in the future.
+                programmatically with kwargs and ignoring sys.argv).
+                NOTE: this will be deprecated in favor of "argv" in the future.
 
             argv (List[str] | None | bool):
-                if specified, ignore sys.argv and parse this instead.
+                if specified as a list or string, ignore sys.argv and parse
+                this instead. Otherwise,
                 if True, then parse ``sys.argv``.
                 if False, then ignore ``sys.argv``.
 
@@ -386,10 +389,38 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             autocomplete (bool | str):
                 if True try to enable argcomplete.
 
+            transition_helpers (bool):
+                if True, we perform special munging to help transition to new
+                versions (e.g. cmdline->argv transition). This will cause
+                issues if your config has a key named "cmdline", otherwise it
+                is safe to keep on.
+
             special_options (bool, default=True):
                 adds special scriptconfig options, namely: --config, --dumps,
                 and --dump. In the future this default will change to False.
+
+            verbose (bool | str):
+                If true, then perform a rich print of the config after it is
+                parsed. This is a convenience to reduce script boilerplate.
+                If "auto", it will default to true in most cases, except when
+                we can infer special behavior from the user-defined config via
+                standard keys: verbose, quiet, and silent.
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> class MyConfig(scfg.Config):
+            >>>     __default__ = {
+            >>>         'option1': scfg.Value((1, 2, 3), tuple),
+            >>>         'option2': 'bar',
+            >>>         'option3': None,
+            >>>         'verbose': False,
+            >>>     }
+            >>> # You can now make instances of this class
+            >>> config = MyConfig.cli(argv=False, verbose='auto')
+            >>> config = MyConfig.cli(argv=False, data=dict(verbose=1), verbose='auto')
         """
+        if transition_helpers and hasattr(data, 'pop'):
+            argv = data.pop('cmdline', argv)  # helper for cmdline->argv transition
         if cmdline and argv is not None:
             cmdline = argv
         if default is None:
@@ -403,6 +434,20 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self = cls(_dont_call_post_init=True)
         self.load(data, cmdline=cmdline, default=default, strict=strict,
                   autocomplete=autocomplete, special_options=special_options)
+
+        if isinstance(verbose, str) and verbose == 'auto':
+            verbose = self.get('verbose', verbose)
+            verbose = not self.get('quiet', not verbose)
+            verbose = not self.get('silent', not verbose)
+
+        if verbose:
+            try:
+                import rich
+                from rich.markup import escape
+            except ImportError:
+                print('config = ' + ub.urepr(self, nl=1))
+            else:
+                rich.print('config = ' + escape(ub.urepr(self, nl=1)))
         return self
 
     @classmethod
@@ -525,13 +570,17 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if key not in self._data:
             key = self._normalize_alias_key(key)
             if key not in self._data:
-                raise Exception('Cannot add keys to ScriptConfig objects')
+                if not getattr(self, '__allow_newattr__', False):
+                    raise Exception(
+                        'Cannot add keys to scriptconfig.Config objects unless '
+                        'self.__allow_newattr__ is True'
+                    )
         if scfg_isinstance(value, Value):
             # If the new item is a Value object simply overwrite the old one
             self._data[key] = value
         else:
-            template = self.__default__[key]
-            if scfg_isinstance(template, Value):
+            template = self.__default__.get(key, None)
+            if template is not None and scfg_isinstance(template, Value):
                 # If the new value is raw data, and we have a underlying Value
                 # object update it.
                 self._data[key] = template.cast(value)
@@ -563,7 +612,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         default = self._normalize_alias_dict(default)
 
         # The user might pass raw values in which case we should keep the
-        # metadata from the exsting wrapped Values and just update the .value
+        # metadata from the existing wrapped Values and just update the .value
         # attribute.
         for k, v in default.items():
             old_default = self._default[k]
@@ -788,7 +837,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         if getattr(self, '_alias_map', None) is None:
             self._alias_map = self._build_alias_map()
-        return self._alias_map[key]
+        return self._alias_map.get(key, key)
 
     def _normalize_alias_dict(self, data):
         """
@@ -1250,7 +1299,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     @classmethod
     def port_from_click(cls, click_main, name=None, style='dataconf'):
         """
-        Prints scriptconfig code that roughtly implements some click CLI.
+        Prints scriptconfig code that roughly implements some click CLI.
 
         Args:
             click_main (click.core.Command): command to port
@@ -1285,7 +1334,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             ...
             class click_main(scfg.DataConfig):
                 ...
-                argparse CLI generated by scriptconfig 0.8.0
+                argparse CLI generated by scriptconfig ...
                 ...
                 dataset = scfg.Value(None, required=True, help='input dataset')
                 deployed = scfg.Value(None, required=True, help='weights file')
@@ -1328,7 +1377,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 to the existing argparse object.
 
         Note:
-            The correctness of this function is not guarenteed.  This only
+            The correctness of this function is not guaranteed.  This only
             works perfectly in simple cases, but in complex cases it may not
             produce 1-to-1 results, however it will provide a useful starting
             point.
@@ -1423,7 +1472,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         text = cls._write_code(entries, name, style, description)
         return text
 
-    # Backwards compatability, deprecate and remove
+    # Backwards compatibility, deprecate and remove
     port_argparse = port_from_argparse
 
     def port_to_argparse(self):
@@ -1459,7 +1508,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> parser = ns['parser']
             >>> args1 = parser.parse_args(['foobar'])
             >>> assert args1.data == 'foobar'
-            >>> # Looks like we cant do positional or key/value easilly
+            >>> # Looks like we can't do positional or key/value easily
             >>> #args1 = parser.parse_args(['--data=blag'])
             >>> #print('args1 = {}'.format(ub.urepr(args1, nl=1)))
 
@@ -1567,7 +1616,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             A good CLI spec for lists might be
 
             # In the case where ``key`` ends with and ``=``, assume the list is
-            # given as a comma separated string with optional square brakets at
+            # given as a comma separated string with optional square brackets at
             # each end.
 
             --key=[f]
@@ -1732,7 +1781,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # TODO: make this a warning in 3.7+ and ensure there is a good
                 # API for just indicating that a value is supposed to be
                 # positional, and using its order in the dictionary as that
-                # position. Need to account for inheritence though.
+                # position. Need to account for inheritance though.
                 raise Exception('two values have the same position')
             _keyorder = ub.oset(ub.argsort(_positions))
             _keyorder |= (ub.oset(self._default) - _keyorder)

@@ -8,7 +8,7 @@ def add_exception_note(ex, note, force_legacy=False):
     Add unstructured information to an exception.
 
     If PEP 678 is available (i.e. on Python >= 3.11), use it, otherwise create
-    a new exeception based on the old one with an updated note.
+    a new exception based on the old one with an updated note.
 
     Args:
         ex (BaseException): the exception to modify

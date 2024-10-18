@@ -37,3 +37,9 @@ branch = true
 [tool.coverage.report]
 exclude_lines = [ "pragma: no cover", ".*  # pragma: no cover", ".*  # nocover", "def __repr__", "raise AssertionError", "raise NotImplementedError", "if 0:", "if trace is not None", "verbose = .*", "^ *raise", "^ *pass *$", "if _debug:", "if __name__ == .__main__.:", ".*if six.PY2:",]
 omit = [ "scriptconfig/__main__.py", "*/setup.py",]
+
+[tool.codespell]
+skip = ['./docs/build', './scriptconfig.egg-info']
+count = true
+quiet-level = 3
+ignore-words-list = ["ANS", "doesnt", "cant"]

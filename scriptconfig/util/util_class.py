@@ -2,7 +2,7 @@ class class_or_instancemethod(classmethod):
     """
     A decorator that allows a method to behave as a class or instance method.
 
-    The user is responsible for testing if the first arugment is an instance of
+    The user is responsible for testing if the first argument is an instance of
     the class or the class itself. This is can be done by using
     ``isinstance(..., type)``. More explicitly, if the first argument of the
     decorated function is ``self_or_cls``, then ``isinstance(self_or_cls,

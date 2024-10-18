@@ -111,7 +111,7 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
             return _as_smart_type(item, astype)
     else:
         # Note this is not a common case, the input is typically a string
-        # Might want to rethink behvaior in this case.
+        # Might want to rethink behavior in this case.
         if astype is None:
             return item
         else:

@@ -174,7 +174,7 @@ away (i.e by calling the ``.cli`` classmethod) without any major sacrifice to
 code simplicity. However, as a project evolves we may eventually want to
 refactor our CLI to gain full control over the metadata in our configuration an
 CLI. Scriptconfig has a tool to help with this too. Given this janky definition,
-we can port to a more ellegant style. We can run
+we can port to a more elegant style. We can run
 ``print(config.port_to_dataconf())`` which prints:
 
 
@@ -491,7 +491,7 @@ To get started lets consider some example usage:
     >>> config.load(config_fpath, cmdline=False)
     >>> assert config['num'] == 2
     >>> assert config['mode'] == "foo"
-    >>> # It is possbile to load only from CLI by setting cmdline=True
+    >>> # It is possible to load only from CLI by setting cmdline=True
     >>> # or by setting it to a custom sys.argv
     >>> config = ExampleConfig.cli(argv=['--num=4'])
     >>> assert config['num'] == 4
@@ -625,7 +625,7 @@ TODO
 
 - [ ] Fuzzy hyphens in ModelCLIs
 
-- [X] Policy on nested heirachies (currently disallowed) - jsonargparse will be the solution here.
+- [X] Policy on nested hierarchies (currently disallowed) - jsonargparse will be the solution here.
 
   - [ ] How to best integrate with jsonargparse
 
