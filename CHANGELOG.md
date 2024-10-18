@@ -8,7 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-New convenience arguments to `.cli`
+* New convenience arguments to `.cli`
+* Support for 3.13
 
 
 ## Version 0.8.0 - Released 2024-08-14
