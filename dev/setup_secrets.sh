@@ -399,8 +399,8 @@ export_encrypted_code_signing_keys(){
     # Export the main key instead (its better to have subkeys, but this is a lesser evil)
     if [[ "$GPG_SIGN_SUBKEY" == "" ]]; then
         # NOTE: if you get here this probably means your subkeys expired (and
-        # won't even be visible), so we probably should check for that here and
-        # thrown an error instead of using this hack, which likely won't work
+        # wont even be visible), so we probably should check for that here and
+        # thrown an error instead of using this hack, which likely wont work
         # anyway.
         GPG_SIGN_SUBKEY=$(gpg --list-keys --with-subkey-fingerprints "$GPG_IDENTIFIER" | grep "\[C\]" -A 1 | tail -n 1 | awk '{print $1}')
     fi
