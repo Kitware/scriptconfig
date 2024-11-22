@@ -184,8 +184,11 @@ class MetaDataConfig(MetaConfig):
         # print(f'MetaDataConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         # Only do this for children of DataConfig, skip this for DataConfig
-        # itself. This is a hacky way to do that.
-        if namespace['__module__'] != 'scriptconfig.dataconfig' or name != 'DataConfig':
+        # itself. This is a hacky way to do this. Can we make this check more
+        # robust? The problem is the `DataConfig` attribute isn't defined when
+        # this runs, so we can't check for equality to it, otherwise we could
+        # just check that bases included `DataConfig`.
+        if namespace.get('__module__', None) != 'scriptconfig.dataconfig' or name != 'DataConfig':
             # Cant call datconf directly, but we can simulate
             # We can modify the namespace before the class gets constructed
             # too, which is slightly cleaner.

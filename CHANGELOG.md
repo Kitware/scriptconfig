@@ -6,6 +6,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.2 - Unreleased
 
+### Changed
+
+* The `Value` class can now take `default` as a keyword argument for better
+  interoperability with argparse. We may remove the `value` keyword in the
+  future in favor of this.
+
+
+### Added
+* Add experimental new method `DataConfig.cls_from_argparse` which dynamically
+  creates a scriptconfig object from an existing argparse object. Some advanced
+  argparse options may not be supported.
+
 
 ## Version 0.8.1 - Released 2024-10-18
 

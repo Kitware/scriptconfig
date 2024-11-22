@@ -88,7 +88,14 @@ class Value(ub.NiceRepr):
     def __init__(self, value=None, type=None, help=None, choices=None,
                  position=None, isflag=False, nargs=None, alias=None,
                  required=False, short_alias=None, group=None,
-                 mutex_group=None, tags=None):
+                 mutex_group=None, tags=None, *, default=None):
+
+        if default is not None:
+            if value is not None:
+                raise ValueError('Error: only one of default or value should be specified')
+            else:
+                value = default
+
         self.value = None
         self.type = type
         self.alias = alias
@@ -299,7 +306,7 @@ class PathList(Value):
         return value
 
 
-def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=0):
+def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=False):
     """
     POC for a new simplified way for a value to add itself as an argument to a
     parser.
@@ -307,6 +314,10 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     Args:
         value (Any): the unwrapped default value
         _value (Value): the value metadata
+        self (Config): the parent scriptconfig object
+        parser (ArgumentParser): the parser to add to
+        key (str) : the name or destination
+        fuzzy_hyphens (bool): enable fuzzy hyphens or not
     """
     # import argparse
     from scriptconfig import argparse_ext
@@ -379,7 +390,7 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     try:
         parent.add_argument(*option_strings, required=required, **argkw)
     except Exception:
-        print('ERROR: Failed to add argument')
+        print('ERROR: Failed to add argument (in _value_add_argument_to_parser / Config.argparse)')
         print('argkw = {}'.format(ub.urepr(argkw, nl=1)))
         print('required = {}'.format(ub.urepr(required, nl=1)))
         print('option_strings = {}'.format(ub.urepr(option_strings, nl=1)))
