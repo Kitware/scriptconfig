@@ -130,7 +130,9 @@ class Value(ub.NiceRepr):
 
     def cast(self, value):
         if isinstance(value, str):
-            value = smartcast_mod.smartcast(value, self.type)
+            # FIXME: We want to move away from allow_split=True
+            value = smartcast_mod.smartcast(value, self.type,
+                                            allow_split='auto')
         return value
 
     def copy(self):

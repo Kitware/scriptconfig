@@ -12,6 +12,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   interoperability with argparse. We may remove the `value` keyword in the
   future in favor of this.
 
+* The `smartcast` `allow_split` now works, and defaults to "auto", which will prepare us for a backwards incompatible change to remove the auto string split behavior.
+
 
 ### Added
 * Add experimental new method `DataConfig.cls_from_argparse` which dynamically
