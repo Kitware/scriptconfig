@@ -96,7 +96,7 @@ class BooleanFlagOrKeyValAction(_Base):
         >>>     assert ns['flag'] == want
     """
     def __init__(self, option_strings, dest, default=None, required=False,
-                 help=None):
+                 help=None, type=None):
 
         _option_strings = []
         for option_string in option_strings:
@@ -109,10 +109,14 @@ class BooleanFlagOrKeyValAction(_Base):
 
         actionkw = dict(
             option_strings=_option_strings, dest=dest, default=default,
-            type=None, choices=None, required=required, help=help,
+            type=type, choices=None, required=required, help=help,
             metavar=None)
         # Either the zero arg flag form or the 1 arg key/value form.
         actionkw['nargs'] = '?'
+
+        # not sure if type is supported here. Hacking it in to fix
+        # interaction of smartcast and isflag
+        # self._hacked_in_type = type
 
         # Hack because of the Store Base for configargparse support
         argparse.Action.__init__(self, **actionkw)
@@ -148,7 +152,7 @@ class BooleanFlagOrKeyValAction(_Base):
         else:
             # Allow for non-boolean values (i.e. auto) to be passed
             from scriptconfig import smartcast as smartcast_mod
-            value = smartcast_mod.smartcast(values)
+            value = smartcast_mod.smartcast(values, action.type)
             # value = smartcast_mod._smartcast_bool(values)
             if not key_default:
                 value = not value

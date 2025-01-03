@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.2 - Unreleased
 
+### Added
+
+* The "type" of a `Value` can now be set to "smartcast:legacy" for explicit old behavior or "smartcast:v1" for the new candidate behavior.
+
 ### Changed
 
 * The `Value` class can now take `default` as a keyword argument for better

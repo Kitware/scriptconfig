@@ -267,6 +267,10 @@ class Path(Value):
     """
     Note this is mean to be used only with scriptconfig.Config.
     It does NOT represent a pathlib object.
+
+    NOTE:
+        Not well maintained or used, may be removed or refactored in the
+        future.
     """
     def __init__(self, value=None, help=None, alias=None):
         super(Path, self).__init__(value, str, help=help, alias=alias)
@@ -280,6 +284,10 @@ class Path(Value):
 class PathList(Value):
     """
     Can be specified as a list or as a globstr
+
+    NOTE:
+        Not well maintained or used, may be removed or refactored in the
+        future.
 
     FIXME:
         will fail if there are any commas in the path name
@@ -378,7 +386,7 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     if isflag:
         # Can we support both flag and setitem methods of cli
         # parsing?
-        argkw.pop('type', None)
+        # argkw.pop('type', None)
         argkw.pop('choices', None)
         argkw.pop('action', None)
         argkw.pop('nargs', None)
@@ -388,6 +396,20 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
             argkw['action'] = argparse_ext.CounterOrKeyValAction
         else:
             argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
+
+    if isinstance(argkw.get('type', None), str):
+        # Coerce the type into a callable. We may need to do this in other
+        # places if so, we should factor out common code.
+        if argkw['type'] == 'smartcast':
+            argkw['type'] = smartcast_mod.smartcast
+        elif argkw['type'] == 'smartcast:v1':
+            from functools import partial
+            argkw['type'] = partial(smartcast_mod.smartcast, allow_split=False)
+        elif argkw['type'] == 'smartcast:legacy':
+            from functools import partial
+            argkw['type'] = partial(smartcast_mod.smartcast, allow_split=True)
+        else:
+            raise KeyError(f'Unknown special type key: {argkw["type"]}')
 
     try:
         parent.add_argument(*option_strings, required=required, **argkw)
