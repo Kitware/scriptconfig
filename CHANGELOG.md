@@ -18,6 +18,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * The `smartcast` `allow_split` now works, and defaults to "auto", which will prepare us for a backwards incompatible change to remove the auto string split behavior.
 
+### Fixed
+
+* Fix issue with internal argparse change in CPython#125355
+
 
 ### Added
 * Add experimental new method `DataConfig.cls_from_argparse` which dynamically

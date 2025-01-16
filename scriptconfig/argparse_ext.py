@@ -36,6 +36,16 @@ HAS_ARGPARSE_GH_114180 = (
     (sys.version_info[0:3] >= (3, 12, 3))
 )
 
+
+# NOTE: CPython broke us here by changing the internal API to require an intermixed arg
+# https://github.com/python/cpython/issues/125355
+# https://github.com/python/cpython/commit/759a54d28ffe7eac8c23917f5d3dfad8309856be#diff-205ef24c9374465bf35c359abce9211d3aa113e986a1e3d41569eb29d07df479
+# TODO: we should likely add better support for it, for now we workaround.
+HAS_ARGPARSE_GH_125355 = (
+    (sys.version_info[0:2] == (3, 12) and sys.version_info[2] >= 8) or
+    (sys.version_info[0:3] >= (3, 13, 1))
+)
+
 # Inherit from StoreAction to make configargparse happy.  Hopefully python
 # doesn't change the behavior of this private class.
 # If we ditch support for configargparse in the future, then we can more
@@ -379,12 +389,18 @@ class CompatArgumentParser(argparse.ArgumentParser):
         # parse the arguments and exit if there are any errors
         if self.exit_on_error:
             try:
-                namespace, args = self._parse_known_args(args, namespace)
+                if HAS_ARGPARSE_GH_125355:
+                    namespace, args = self._parse_known_args(args, namespace, intermixed=False)
+                else:
+                    namespace, args = self._parse_known_args(args, namespace)
             except ArgumentError:
                 err = _sys.exc_info()[1]
                 self.error(str(err))
         else:
-            namespace, args = self._parse_known_args(args, namespace)
+            if HAS_ARGPARSE_GH_125355:
+                namespace, args = self._parse_known_args(args, namespace, intermixed=False)
+            else:
+                namespace, args = self._parse_known_args(args, namespace)
 
         if hasattr(namespace, _UNRECOGNIZED_ARGS_ATTR):
             args.extend(getattr(namespace, _UNRECOGNIZED_ARGS_ATTR))
