@@ -17,9 +17,18 @@ ScriptConfig
 | Pypi             | https://pypi.org/project/scriptconfig            |
 +------------------+--------------------------------------------------+
 
-The goal of ``scriptconfig`` is to make it easy to be able to define a default
-configuration by **simply defining a dictionary**, and then allow that
-configuration to be modified by either:
+* Define concise CLI or function signatures.
+
+* Instantiate configs with YAML, cli-args, or kwargs.
+
+* Can generate equivalent argparse (can help to prototype and be replaced with pure-argparse).
+
+With ``scriptconfig``, define a flat key/value CLI with defaults using a
+dictionary or dataclass-like syntax. Values can simply be the default value, or
+a special ``scriptconfig.Value`` class that allows for metadata storage (e.g.
+help, positional, required, etc...). The configuration can instantiated by
+either:
+
 
 1. Updating it with another Python dictionary (e.g. ``kwargs``)
 2. Reading a YAML/JSON configuration file, or
