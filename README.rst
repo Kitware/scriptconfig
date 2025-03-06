@@ -626,6 +626,10 @@ Click - https://pypi.org/project/click/
 
 ConfigArgparse - https://pypi.org/project/ConfigArgParse/
 
+Tyro - https://github.com/brentyi/tyro
+
+Typer - https://typer.tiangolo.com/
+
 
 TODO
 ----
