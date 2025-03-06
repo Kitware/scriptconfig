@@ -136,7 +136,7 @@ def parse_version(fpath):
     return visitor.version
 
 project = 'scriptconfig'
-copyright = '2024, Kitware Inc. Jon Crall'
+copyright = '2025, Kitware Inc. Jon Crall'
 author = 'Kitware Inc. Jon Crall'
 modname = 'scriptconfig'
 
