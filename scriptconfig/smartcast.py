@@ -3,7 +3,7 @@ __all__ = ['smartcast']
 NoneType = type(None)
 
 
-def smartcast(item, astype=None, strict=False, allow_split=False):
+def smartcast(item, astype=None, strict=False, allow_split='auto'):
     r"""
     Converts a string into a standard python type.
 
@@ -15,7 +15,7 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
     list, tuple.
 
     Args:
-        item (str | object):
+        item (str | Any):
             represents some data of another type.
 
         astype (type | None):
@@ -29,10 +29,11 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
 
         allow_split (bool):
             if True will interpret strings with commas as sequences.
-            Defaults to True.
+            Defaults to "auto", which pre 1.0 will default to True and warn the
+            user. In version 1.0 we will change the default to False.
 
     Returns:
-        object: some item
+        Any: some item
 
     Raises:
         TypeError: if we cannot determine the type
@@ -92,12 +93,42 @@ def smartcast(item, astype=None, strict=False, allow_split=False):
 
     if isinstance(item, str):
         if astype is None:
-            type_list = [int, float, complex, bool, NoneType]
+            candidate_type_list = [int, float, complex, bool, NoneType]
             if ',' in item:
-                type_list += [list, tuple, set]
+                # NOTE: THIS TRIES TO BE TOO CLEVER AND FAILS. We need to
+                # depreate this behavior where it will automagically split
+                # commas. We need to simplify the behavior and have the user
+                # explicitly enable similar behavior.
+
+                # The auto int / float / bool parts are fine. The auto list
+                # part is what is causing the problem. Perhaps we should just
+                # use YAML.
+
+                # Plan:
+                # 1. Add a allow_split flag that defaults to 'auto' and if this case
+                # is hit.
+                # 2. If this case is hit and the allow_split flag is auto, warn the
+                # user that the behavior will change in the future.
+                # 3. For now have auto default to True.
+                # 4. In the future change the default to False.
+
+                if allow_split == 'auto':
+                    import warnings
+                    warnings.warn(
+                        'smartcast has been given a string with commas and the '
+                        'allow_split="auto". Currently this will default to True and split the string into a list. '
+                        'After version 1.0 the default will change to False and strings will not be split into lists by default '
+                        'To disable this warning explicitly set allow_split=True to keep the string splitting behavior or allow_split=False '
+                        'to disable it and use the new default behavior. '
+                        'If using this in a Value object, you can prevent future incompatibility by '
+                        'setting type=str and handling casting in the __post_init__ method of the DataConfig'
+                    )
+                    allow_split = True
+                if allow_split:
+                    candidate_type_list += [list, tuple, set]
 
             # Try each candidate in the type list until something works
-            for astype in type_list:
+            for astype in candidate_type_list:
                 try:
                     return _as_smart_type(item, astype)
                 except (TypeError, ValueError):

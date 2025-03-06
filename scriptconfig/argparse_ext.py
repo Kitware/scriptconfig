@@ -36,6 +36,16 @@ HAS_ARGPARSE_GH_114180 = (
     (sys.version_info[0:3] >= (3, 12, 3))
 )
 
+
+# NOTE: CPython broke us here by changing the internal API to require an intermixed arg
+# https://github.com/python/cpython/issues/125355
+# https://github.com/python/cpython/commit/759a54d28ffe7eac8c23917f5d3dfad8309856be#diff-205ef24c9374465bf35c359abce9211d3aa113e986a1e3d41569eb29d07df479
+# TODO: we should likely add better support for it, for now we workaround.
+HAS_ARGPARSE_GH_125355 = (
+    (sys.version_info[0:2] == (3, 12) and sys.version_info[2] >= 8) or
+    (sys.version_info[0:3] >= (3, 13, 1))
+)
+
 # Inherit from StoreAction to make configargparse happy.  Hopefully python
 # doesn't change the behavior of this private class.
 # If we ditch support for configargparse in the future, then we can more
@@ -96,7 +106,7 @@ class BooleanFlagOrKeyValAction(_Base):
         >>>     assert ns['flag'] == want
     """
     def __init__(self, option_strings, dest, default=None, required=False,
-                 help=None):
+                 help=None, type=None):
 
         _option_strings = []
         for option_string in option_strings:
@@ -109,10 +119,14 @@ class BooleanFlagOrKeyValAction(_Base):
 
         actionkw = dict(
             option_strings=_option_strings, dest=dest, default=default,
-            type=None, choices=None, required=required, help=help,
+            type=type, choices=None, required=required, help=help,
             metavar=None)
         # Either the zero arg flag form or the 1 arg key/value form.
         actionkw['nargs'] = '?'
+
+        # not sure if type is supported here. Hacking it in to fix
+        # interaction of smartcast and isflag
+        # self._hacked_in_type = type
 
         # Hack because of the Store Base for configargparse support
         argparse.Action.__init__(self, **actionkw)
@@ -148,7 +162,7 @@ class BooleanFlagOrKeyValAction(_Base):
         else:
             # Allow for non-boolean values (i.e. auto) to be passed
             from scriptconfig import smartcast as smartcast_mod
-            value = smartcast_mod.smartcast(values)
+            value = smartcast_mod.smartcast(values, action.type)
             # value = smartcast_mod._smartcast_bool(values)
             if not key_default:
                 value = not value
@@ -375,12 +389,18 @@ class CompatArgumentParser(argparse.ArgumentParser):
         # parse the arguments and exit if there are any errors
         if self.exit_on_error:
             try:
-                namespace, args = self._parse_known_args(args, namespace)
+                if HAS_ARGPARSE_GH_125355:
+                    namespace, args = self._parse_known_args(args, namespace, intermixed=False)
+                else:
+                    namespace, args = self._parse_known_args(args, namespace)
             except ArgumentError:
                 err = _sys.exc_info()[1]
                 self.error(str(err))
         else:
-            namespace, args = self._parse_known_args(args, namespace)
+            if HAS_ARGPARSE_GH_125355:
+                namespace, args = self._parse_known_args(args, namespace, intermixed=False)
+            else:
+                namespace, args = self._parse_known_args(args, namespace)
 
         if hasattr(namespace, _UNRECOGNIZED_ARGS_ATTR):
             args.extend(getattr(namespace, _UNRECOGNIZED_ARGS_ATTR))

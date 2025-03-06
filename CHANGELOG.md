@@ -4,7 +4,32 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.8.1 - Unreleased
+## Version 0.8.2 - Unreleased
+
+### Added
+
+* The "type" of a `Value` can now be set to "smartcast:legacy" for explicit old behavior or "smartcast:v1" for the new candidate behavior.
+
+### Changed
+
+* The `Value` class can now take `default` as a keyword argument for better
+  interoperability with argparse. We may remove the `value` keyword in the
+  future in favor of this.
+
+* The `smartcast` `allow_split` now works, and defaults to "auto", which will prepare us for a backwards incompatible change to remove the auto string split behavior.
+
+### Fixed
+
+* Fix issue with internal argparse change in CPython#125355
+
+
+### Added
+* Add experimental new method `DataConfig.cls_from_argparse` which dynamically
+  creates a scriptconfig object from an existing argparse object. Some advanced
+  argparse options may not be supported.
+
+
+## Version 0.8.1 - Released 2024-10-18
 
 ### Added
 

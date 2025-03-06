@@ -1419,6 +1419,90 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> recon = self.argparse()
             >>> print('recon._actions = {}'.format(ub.urepr(recon._actions, nl=1)))
         """
+        entries = cls._values_from_argparse(parser)
+        description = parser.description
+        text = cls._write_code(entries, name, style, description)
+        return text
+
+    @classmethod
+    def cls_from_argparse(cls, parser, name=None, description=None):
+        """
+        Create a full configuration class from an existing argparse parser.
+
+        Args:
+            parser (argparse.ArgumentParser):
+                The parser we will use to dynamically create a scriptconfig class
+
+            name (str): the name of the new class.
+                If unspecified, the name will be ``"Dynamic" + cls.__name__``
+
+            description (None | str):
+                if specified override the description from the parser.
+
+        Returns:
+            Config: a subclass of the Config or DataConfig class.
+
+        SeeAlso:
+            :func:`Config.port_from_argparse` - like this function, but returns
+                the text that could be executed to define the new class
+                statically.  In constrat this creates the clas dynamically.
+
+        CommandLine:
+            xdoctest -m scriptconfig.config Config.cls_from_argparse
+
+        Example:
+            >>> import scriptconfig as scfg
+            >>> import argparse
+            >>> parser = argparse.ArgumentParser(description='my argparse')
+            >>> parser.add_argument('pos_arg1')
+            >>> parser.add_argument('pos_arg2', nargs='*')
+            >>> parser.add_argument('-t', '--true_dataset', '--test_dataset', help='path to the groundtruth dataset', required=True)
+            >>> parser.add_argument('-p', '--pred_dataset', help='path to the predicted dataset', required=True)
+            >>> parser.add_argument('--eval_dpath', help='path to dump results')
+            >>> parser.add_argument('--draw_curves', default='auto', help='flag to draw curves or not')
+            >>> parser.add_argument('--score_space', default='video', help='can score in image or video space')
+            >>> parser.add_argument('--workers', default='auto', help='number of parallel scoring workers')
+            >>> parser.add_argument('--draw_workers', default='auto', help='number of parallel drawing workers')
+            >>> group1 = parser.add_argument_group('mygroup1')
+            >>> group1.add_argument('--group1_opt1', action='store_true')
+            >>> group1.add_argument('--group1_opt2')
+            >>> group2 = parser.add_argument_group()
+            >>> group2.add_argument('--group2_opt1', action='store_true')
+            >>> group2.add_argument('--group2_opt2')
+            >>> mutex_group3 = parser.add_mutually_exclusive_group()
+            >>> mutex_group3.add_argument('--mgroup3_opt1')
+            >>> mutex_group3.add_argument('--mgroup3_opt2')
+            >>> DynamicClass = scfg.DataConfig.cls_from_argparse(parser)
+            >>> print(f'DynamicClass.__default__ = {ub.urepr(DynamicClass.__default__, nl=1)}')
+            >>> self = DynamicClass()
+            >>> print(f'self = {ub.urepr(self, nl=1)}')
+            >>> # Check to see if ithis roundtrips nicelyprint(self.port_to_argparse())
+            >>> print(self.port_to_argparse())
+            >>> parser = self.argparse()
+        """
+
+        if name is None:
+            name = 'Dynamic' + cls.__name__
+
+        # Extract the appropriate values from the parser
+        values = cls._values_from_argparse(parser, for_text=False)
+
+        bases = (cls,)  # Base classes, object is the default base class
+        attributes = {
+            '__doc__': description or parser.description,
+            '__default__': dict(values),
+        }
+
+        # Dynamically create the class (
+        # note, cls.__class__ should be MetaConfig)
+        DynamicClass = cls.__class__(name, bases, attributes)
+        return DynamicClass
+
+    @classmethod
+    def _values_from_argparse(cls, parser, for_text=True):
+        """
+        Port argparse options to a list of key / values.
+        """
         # This logic should be able to be used statically or dynamically
         # to transition argparse to ScriptConfig code.
         pos_counter = it.count(1)
@@ -1465,12 +1549,14 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 continue
             value = Value._from_action(
                 action, actionid_to_groupkey, actionid_to_mgroupkey, pos_counter)
-            value_kw = value._to_value_kw()
-            entries.append((key, value_kw))
-
-        description = parser.description
-        text = cls._write_code(entries, name, style, description)
-        return text
+            if for_text:
+                # Use for the text reconstruction of the argparser, this is
+                # very hacky.
+                value_kw = value._to_value_kw()
+                entries.append((key, value_kw))
+            else:
+                entries.append((key, value))
+        return entries
 
     # Backwards compatibility, deprecate and remove
     port_argparse = port_from_argparse

@@ -88,7 +88,14 @@ class Value(ub.NiceRepr):
     def __init__(self, value=None, type=None, help=None, choices=None,
                  position=None, isflag=False, nargs=None, alias=None,
                  required=False, short_alias=None, group=None,
-                 mutex_group=None, tags=None):
+                 mutex_group=None, tags=None, *, default=None):
+
+        if default is not None:
+            if value is not None:
+                raise ValueError('Error: only one of default or value should be specified')
+            else:
+                value = default
+
         self.value = None
         self.type = type
         self.alias = alias
@@ -123,7 +130,9 @@ class Value(ub.NiceRepr):
 
     def cast(self, value):
         if isinstance(value, str):
-            value = smartcast_mod.smartcast(value, self.type)
+            # FIXME: We want to move away from allow_split=True
+            value = smartcast_mod.smartcast(value, self.type,
+                                            allow_split='auto')
         return value
 
     def copy(self):
@@ -258,6 +267,10 @@ class Path(Value):
     """
     Note this is mean to be used only with scriptconfig.Config.
     It does NOT represent a pathlib object.
+
+    NOTE:
+        Not well maintained or used, may be removed or refactored in the
+        future.
     """
     def __init__(self, value=None, help=None, alias=None):
         super(Path, self).__init__(value, str, help=help, alias=alias)
@@ -271,6 +284,10 @@ class Path(Value):
 class PathList(Value):
     """
     Can be specified as a list or as a globstr
+
+    NOTE:
+        Not well maintained or used, may be removed or refactored in the
+        future.
 
     FIXME:
         will fail if there are any commas in the path name
@@ -299,7 +316,7 @@ class PathList(Value):
         return value
 
 
-def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=0):
+def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphens=False):
     """
     POC for a new simplified way for a value to add itself as an argument to a
     parser.
@@ -307,6 +324,10 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     Args:
         value (Any): the unwrapped default value
         _value (Value): the value metadata
+        self (Config): the parent scriptconfig object
+        parser (ArgumentParser): the parser to add to
+        key (str) : the name or destination
+        fuzzy_hyphens (bool): enable fuzzy hyphens or not
     """
     # import argparse
     from scriptconfig import argparse_ext
@@ -365,7 +386,7 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
     if isflag:
         # Can we support both flag and setitem methods of cli
         # parsing?
-        argkw.pop('type', None)
+        # argkw.pop('type', None)
         argkw.pop('choices', None)
         argkw.pop('action', None)
         argkw.pop('nargs', None)
@@ -376,10 +397,24 @@ def _value_add_argument_to_parser(value, _value, self, parser, key, fuzzy_hyphen
         else:
             argkw['action'] = argparse_ext.BooleanFlagOrKeyValAction
 
+    if isinstance(argkw.get('type', None), str):
+        # Coerce the type into a callable. We may need to do this in other
+        # places if so, we should factor out common code.
+        if argkw['type'] == 'smartcast':
+            argkw['type'] = smartcast_mod.smartcast
+        elif argkw['type'] == 'smartcast:v1':
+            from functools import partial
+            argkw['type'] = partial(smartcast_mod.smartcast, allow_split=False)
+        elif argkw['type'] == 'smartcast:legacy':
+            from functools import partial
+            argkw['type'] = partial(smartcast_mod.smartcast, allow_split=True)
+        else:
+            raise KeyError(f'Unknown special type key: {argkw["type"]}')
+
     try:
         parent.add_argument(*option_strings, required=required, **argkw)
     except Exception:
-        print('ERROR: Failed to add argument')
+        print('ERROR: Failed to add argument (in _value_add_argument_to_parser / Config.argparse)')
         print('argkw = {}'.format(ub.urepr(argkw, nl=1)))
         print('required = {}'.format(ub.urepr(required, nl=1)))
         print('option_strings = {}'.format(ub.urepr(option_strings, nl=1)))

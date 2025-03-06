@@ -1,6 +1,10 @@
 
 
 def test_inheritence():
+    """
+    Test that a inheriting from a dataconfig unions existing config options
+    with new ones.
+    """
     from scriptconfig import DataConfig
     import ubelt as ub
 
@@ -62,6 +66,10 @@ def test_inheritence():
 
 
 def test_multiple_inheritence():
+    """
+    Ensure that a class can inherit from multiple DataConfigs and become the
+    union of them.
+    """
     from scriptconfig import DataConfig
 
     class Fooable(DataConfig):
@@ -80,6 +88,7 @@ def test_multiple_inheritence():
         foo_arg2 = ...
         bar_arg2 = ...
         foobarg2 = ...
+        new_arg = 'NEW'
 
     config = Foobarable()
     import ubelt as ub
@@ -94,11 +103,15 @@ def test_multiple_inheritence():
             'foobarg2': Ellipsis,
             'bar_arg1': 'a',
             'bar_arg2': Ellipsis,
+            'new_arg': 'NEW',
         })
         ''')
 
 
-def test_multiple_inheritence_diag():
+def test_multiple_inheritence_diamond():
+    """
+    Test that diamond inheritence diagrams union options correctly.
+    """
     from scriptconfig import DataConfig
 
     class Base(DataConfig):
