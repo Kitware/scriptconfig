@@ -139,6 +139,11 @@ class Value(ub.NiceRepr):
         import copy
         return copy.copy(self)
 
+    @property
+    def help(self):
+        # I'm not sure if I want to expose everything in parsekw or not.
+        return self.parsekw['help']
+
     def _to_value_kw(self):
         """
         Used in port-to-dataconf and port-to-argparse
