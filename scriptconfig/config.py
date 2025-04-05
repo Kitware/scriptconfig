@@ -756,23 +756,34 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if data is None:
             user_config = {}
         elif isinstance(data, (str, os.PathLike)) or hasattr(data, 'readable'):
-            if mode is None:
-                if isinstance(data, str):
-                    if data.lower().endswith('.json'):
-                        mode = 'json'
-                elif isinstance(data, os.PathLike):
-                    if data.name.lower().endswith('.json'):
-                        mode = 'json'
-            if mode is None:
-                # Default to yaml
-                mode = 'yaml'
-            with FileLike(data, 'r') as file:
-                if mode == 'yaml':
+            if isinstance(data, str) and ('\n' in data or not os.path.exists(data)):
+                # Interpret this data as a raw json/YAML string
+                import json
+                try:
+                    user_config = json.loads(data)
+                except Exception:
                     import yaml
+                    import io
+                    file = io.StringIO(data)
                     user_config = yaml.load(file, Loader=yaml.SafeLoader)
-                elif mode == 'json':
-                    import json
-                    user_config = json.load(file)
+            else:
+                if mode is None:
+                    if isinstance(data, str):
+                        if data.lower().endswith('.json'):
+                            mode = 'json'
+                    elif isinstance(data, os.PathLike):
+                        if data.name.lower().endswith('.json'):
+                            mode = 'json'
+                if mode is None:
+                    # Default to yaml
+                    mode = 'yaml'
+                with FileLike(data, 'r') as file:
+                    if mode == 'yaml':
+                        import yaml
+                        user_config = yaml.load(file, Loader=yaml.SafeLoader)
+                    elif mode == 'json':
+                        import json
+                        user_config = json.load(file)
         elif isinstance(data, dict):
             user_config = data
         elif scfg_isinstance(data, Config):

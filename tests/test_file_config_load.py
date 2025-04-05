@@ -3,6 +3,14 @@ import os
 import ubelt as ub
 
 
+def mark_requires_yaml():
+    try:
+        import yaml  # NOQA
+    except ImportError:
+        import pytest
+        pytest.skip('requires yaml')
+
+
 def test_json_dump():
     import json
     dpath = ub.Path.appdir('scriptconfig', 'tests', 'test_file_config').ensuredir()
@@ -19,12 +27,7 @@ def test_json_dump():
 
 
 def test_yaml_dump():
-    try:
-        import yaml  # NOQA
-    except ImportError:
-        import pytest
-        pytest.skip('requires yaml')
-
+    mark_requires_yaml()
     dpath = ub.Path.appdir('scriptconfig', 'tests', 'test_file_config').ensuredir()
     class MyConfig(scfg.DataConfig):
         option1 = 'a'
@@ -39,11 +42,7 @@ def test_yaml_dump():
 
 
 def test_yaml_load():
-    try:
-        import yaml  # NOQA
-    except ImportError:
-        import pytest
-        pytest.skip('requires yaml')
+    mark_requires_yaml()
     dpath = ub.Path.appdir('scriptconfig', 'tests', 'test_file_config').ensuredir()
     class MyConfig(scfg.DataConfig):
         option1 = 'a'
@@ -88,6 +87,7 @@ def test_json_load():
 
 
 def test_config_dumps_load_cli():
+    mark_requires_yaml()
     dpath = ub.Path.appdir('scriptconfig', 'tests', 'test_file_config').ensuredir()
     class MyConfig(scfg.DataConfig):
         option1 = 'a'
@@ -104,3 +104,30 @@ def test_config_dumps_load_cli():
 
     config = MyConfig.cli(argv=['--config', os.fspath(fpath)])
     assert config['option1'] == 'dumped'
+
+
+def test_config_load_from_json_text():
+    """
+    Check that the config can load from raw text on the command line
+    """
+    class MyConfig(scfg.DataConfig):
+        option1 = 'a'
+        option2 = 'b'
+        option3 = 'c'
+    config = MyConfig(option1=3, option2='baz')
+    config2 = MyConfig.cli(argv=['--config', config.dumps(mode='json')])
+    assert dict(config2) == dict(config)
+
+
+def test_config_load_from_yaml_text():
+    """
+    Check that the config can load from raw text on the command line
+    """
+    mark_requires_yaml()
+    class MyConfig(scfg.DataConfig):
+        option1 = 'a'
+        option2 = 'b'
+        option3 = 'c'
+    config = MyConfig(option1=3, option2='baz')
+    config2 = MyConfig.cli(argv=['--config', config.dumps(mode='yaml')])
+    assert dict(config2) == dict(config)
