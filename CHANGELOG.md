@@ -11,6 +11,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Add expose Value help property
 
+### Changed
+* Loaded YAML configs can now contain top level dunder or dotted keys that are
+  ignored by the strict parser, which can be useful for YAML anchors.
+* Config load can now use JSON or YAML.
+
+### Fixed
+* dump with json mode now works.
+
 
 ## Version 0.8.2 - Released 2025-03-06
 
