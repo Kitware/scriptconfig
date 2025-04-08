@@ -58,6 +58,7 @@ def smartcast(item, astype=None, strict=False, allow_split='auto'):
         ['[1]', 2, 'abc', 4]
 
     Example:
+        >>> from scriptconfig.smartcast import *
         >>> assert smartcast('?') == '?'
         >>> assert smartcast('1') == 1
         >>> assert smartcast('1.0') == 1.0
@@ -69,6 +70,8 @@ def smartcast(item, astype=None, strict=False, allow_split='auto'):
         >>> assert smartcast('1', eval) == 1
         >>> assert smartcast('1', bool) is True
         >>> assert smartcast('[1,2]', eval) == [1, 2]
+        >>> assert smartcast('a,b', allow_split=False) == 'a,b'
+        >>> assert smartcast('a,b', allow_split=True) == ['a', 'b']
 
     Example:
         >>> def check_typed_value(item, want, astype=None):
