@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   ignored by the strict parser, which can be useful for YAML anchors.
 * Config load can now use JSON or YAML.
 * Can now specify `--config` as raw YAML / JSON text
+* Added an internal diagnostics module.
 
 ### Fixed
 * dump with json mode now works.

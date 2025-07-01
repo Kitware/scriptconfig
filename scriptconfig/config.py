@@ -93,6 +93,7 @@ from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
+from scriptconfig import diagnostics
 # from scriptconfig.util.util_class import class_or_instancemethod
 
 __all__ = ['Config', 'define']
@@ -181,7 +182,8 @@ class MetaConfig(type):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
-        # print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
+        if diagnostics.DEBUG_META_CONFIG:
+            print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         if 'default' in namespace and '__default__' not in namespace:
             # Ensure the user updates to the newer "__default__" paradigm
@@ -228,7 +230,8 @@ class MetaConfig(type):
             # Backport to the older non-dunder normalize
             namespace['normalize'] = namespace['__post_init__']
 
-        # print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
+        if diagnostics.DEBUG_META_CONFIG:
+            print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         return cls
 
@@ -420,6 +423,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> config = MyConfig.cli(argv=False, verbose='auto')
             >>> config = MyConfig.cli(argv=False, data=dict(verbose=1), verbose='auto')
         """
+        if diagnostics.DEBUG_CONFIG:
+            print(f'[scriptconfig] Call {cls.__name__}.cli')
+            print(f'argv={argv}, cmdline={cmdline}')
         if transition_helpers and hasattr(data, 'pop'):
             argv = data.pop('cmdline', argv)  # helper for cmdline->argv transition
         if cmdline and argv is not None:
@@ -449,6 +455,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 print('config = ' + ub.urepr(self, nl=1))
             else:
                 rich.print('config = ' + escape(ub.urepr(self, nl=1)))
+        if diagnostics.DEBUG_CONFIG:
+            print(f'[scriptconfig] Return {cls.__name__}.cli')
         return self
 
     @classmethod
@@ -746,6 +754,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> assert config2['opt2'] == 'bar'
             >>> assert 'arg2' not in config2
         """
+        if diagnostics.DEBUG_CONFIG:
+            print(f'[scriptconfig] Call {self.__class__.__name__}.load')
+            print(f'cmdline={cmdline}, strict={strict}, special_options={special_options}')
+
         if default:
             self.update_defaults(default)
 
