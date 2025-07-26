@@ -6,7 +6,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.3 - Unreleased
 
-
 ### Added
 
 * Add expose Value help property
@@ -20,6 +19,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 * dump with json mode now works.
+* help and text markup is now disabled, which prevents rendering issues when `rich_argparse` is versus isn't installed.
 
 
 ## Version 0.8.2 - Released 2025-03-06

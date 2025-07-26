@@ -246,6 +246,11 @@ class RawDescriptionDefaultsHelpFormatter(
 
     group_name_formatter = str  # revert rich-argparse title change
 
+    # Set these classvars to prevent rich_argparase from interpreting user data
+    # as rich markup, and could lead to things like lists not being rendered.
+    help_markup = False
+    text_markup = False
+
     def _concise_option_strings(self, action):
         # When working with fuzzy hyphens only show one variant of each
         # possibility.
