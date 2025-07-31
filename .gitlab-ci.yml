@@ -477,25 +477,25 @@ test/full-strict/cp313-linux-x86_64:
   - build/cp313-linux-x86_64
 build/cp314-linux-x86_64:
   <<: *build_wheel_template
-  image: python:3.14.0-rc.1
+  image: python:3.14-rc
 test/minimal-loose/cp314-linux-x86_64:
   <<: *test_minimal-loose_template
-  image: python:3.14.0-rc.1
+  image: python:3.14-rc
   needs:
   - build/cp314-linux-x86_64
 test/full-loose/cp314-linux-x86_64:
   <<: *test_full-loose_template
-  image: python:3.14.0-rc.1
+  image: python:3.14-rc
   needs:
   - build/cp314-linux-x86_64
 test/minimal-strict/cp314-linux-x86_64:
   <<: *test_minimal-strict_template
-  image: python:3.14.0-rc.1
+  image: python:3.14-rc
   needs:
   - build/cp314-linux-x86_64
 test/full-strict/cp314-linux-x86_64:
   <<: *test_full-strict_template
-  image: python:3.14.0-rc.1
+  image: python:3.14-rc
   needs:
   - build/cp314-linux-x86_64
 lint:
