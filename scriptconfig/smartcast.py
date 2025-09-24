@@ -91,8 +91,25 @@ def smartcast(item, astype=None, strict=False, allow_split='auto'):
         >>> check_typed_value(1.0, 1.0)
         >>> check_typed_value([1.0], (1.0,), 'tuple')
     """
-    if callable(astype) and getattr(astype, '__name__', '') in {'smartcast', '_smart_type'}:
-        astype = None
+    if callable(astype):
+        if getattr(astype, '__name__', '') in {'smartcast', '_smart_type'}:
+            astype = None
+        else:
+            _strastype = str(astype)
+            # Pathological case, where we have astype specified as a partial
+            # version of ourself, which happens with boolean values.
+            # need to fix this more robustly.
+            if '.partial' in _strastype and 'smartcast' in _strastype:
+                return astype(item)
+
+    # Hack handling the smartcast:v1 type should have been taken care of
+    # elsewhere, but it is apparently not, so do it here too as a quick fix.
+    if isinstance(astype, str) and astype == 'smartcast:v1':
+        if allow_split == 'auto':
+            allow_split = False
+            astype = None
+        else:
+            raise Exception
 
     if isinstance(item, str):
         if astype is None:
