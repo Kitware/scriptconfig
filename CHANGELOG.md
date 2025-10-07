@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 
 * Add expose Value help property
+* Added scriptconfig CLI that helps generate templates
 
 ### Changed
 * Loaded YAML configs can now contain top level dunder or dotted keys that are

@@ -224,27 +224,34 @@ class ModalCLI(metaclass=MetaModalCLI):
         return self._instance_subconfigs
 
     @class_or_instancemethod
-    def register(cls_or_self, cli_cls):
+    def register(cls_or_self, cli_cls=None, command=None):
         """
         Add a sub-CLI to this modal CLI
 
         Args:
-            cli_cli (scriptconfig.Config):
-                A CLI-aware config object to register as a sub CLI
+            input (scriptconfig.Config | None):
+                A CLI-aware config object to register as a sub CLI.
+                If None, then this is called as a wrapped closure
 
         # TODO: ability to specify alias when registering the modal command
         """
-        # Note: the order or registration is how it will appear in the CLI help
-        # Hack for older scriptconfig
-        # if not hasattr(cli_cls, 'default'):
-        #     cli_cls.default = cli_cls.__default__
-        if isinstance(cls_or_self, type):
-            # Called as a class method
-            cls_or_self.__subconfigs__.append(cli_cls)
+
+        def _wrapper(cli_cls):
+            # Note: the order or registration is how it will appear in the CLI help
+            # Hack for older scriptconfig
+            # if not hasattr(cli_cls, 'default'):
+            #     cli_cls.default = cli_cls.__default__
+            if isinstance(cls_or_self, type):
+                # Called as a class method
+                cls_or_self.__subconfigs__.append(cli_cls)
+            else:
+                # Called as an instance method
+                cls_or_self._instance_subconfigs.append(cli_cls)
+
+        if cli_cls is None:
+            return _wrapper
         else:
-            # Called as an instance method
-            cls_or_self._instance_subconfigs.append(cli_cls)
-        return cli_cls
+            return _wrapper(cli_cls)
 
     def _build_subcmd_infos(self):
         cmdinfo_list = []

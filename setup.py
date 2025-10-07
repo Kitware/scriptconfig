@@ -251,9 +251,15 @@ if __name__ == "__main__":
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
     ]
     setupkw["package_data"] = {
         "": ["requirements/*.txt"],
         "scriptconfig": ["py.typed", "*.pyi"],
+    }
+    setupkw["entry_points"] = {
+        "console_scripts": [
+            "scriptconfig=scriptconfig.__main__:main",
+        ],
     }
     setup(**setupkw)
