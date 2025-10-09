@@ -49,6 +49,7 @@ Example
 
 import ubelt as ub
 from scriptconfig.util.util_class import class_or_instancemethod
+from typing import List, Dict
 # from scriptconfig.config import MetaConfig
 
 
@@ -173,18 +174,16 @@ class ModalCLI(metaclass=MetaModalCLI):
         >>> class MyModalCLI(scfg.ModalCLI):
         >>>     ...
         >>> #
-        >>> @MyModalCLI.register
+        >>> @MyModalCLI.register(command='command1')
         >>> class Command1(scfg.DataConfig):
-        >>>     __command__ = 'command1'
         >>>     foo = scfg.Value('spam', help='spam spam spam spam')
         >>>     @classmethod
         >>>     def main(cls, cmdline=1, **kwargs):
         >>>         config = cls.cli(cmdline=cmdline, data=kwargs)
         >>>         print('config1 = {}'.format(ub.urepr(dict(config), nl=1)))
         >>> #
-        >>> @MyModalCLI.register
+        >>> @MyModalCLI.register(command='command2')
         >>> class Command2(scfg.DataConfig):
-        >>>     __command__ = 'command2'
         >>>     foo = 'eggs'
         >>>     baz = 'biz'
         >>>     @classmethod
@@ -206,7 +205,15 @@ class ModalCLI(metaclass=MetaModalCLI):
         else:
             self.description = description
 
-        self._instance_subconfigs = sub_clis + self.__subconfigs__
+        _instance_subconfigs = sub_clis + self.__subconfigs__
+
+        # On the instance level we ensure all subconfigs are transformed into a
+        # table of dictionaries containing the class and its overridden
+        # metadata.
+        self._subconfig_metadata: List[Dict] = [
+            self._init_subconfig_metadata(cls)
+            for cls in _instance_subconfigs
+        ]
 
         if version is None:
             version = getattr(self.__class__, '__version__', None)
@@ -214,22 +221,116 @@ class ModalCLI(metaclass=MetaModalCLI):
             version = getattr(self.__class__, 'version', None)
         self.version = version
 
+    @staticmethod
+    def _init_subconfig_metadata(cli_cls) -> Dict:
+        """
+        Rectifies a subconfig subclass into a table of metadata, which can be
+        modified on a per-instance level. This is slightly redundant, but it
+        allows reuse of CLIs in different contexts.
+
+        Args:
+            cli_cls (type): the subconfig class
+        """
+        if isinstance(cli_cls, dict):
+            # Input given as a dictionary, must correspond to specific structure:
+            metadata = cli_cls
+            assert 'cls' in metadata
+        else:
+            metadata = {
+                'cls': cli_cls,
+            }
+        return metadata
+
+    @staticmethod
+    def _update_metadata(metadata: Dict):
+        """
+        Given a metadata dictionary (which must contain a "cls" item) we
+        introspect and fill in other unspecified items. To make initialization
+        faster we only do this when we need to build the argparse object
+        explicitly.
+
+        Args:
+            metadata (dict): modified inplace
+        """
+        cli_cls = metadata['cls']
+
+        if not hasattr(cli_cls, 'main'):
+            raise ValueError(ub.paragraph(
+                f'''
+                The ModalCLI expects that registered subconfigs have a
+                ``main`` classmethod with the signature
+                ``main(cls, cmdline: bool, **kwargs)``,
+                but {cli_cls} is missing one.
+            '''))
+
+        if metadata.get('command') is None:
+            command = getattr(cli_cls, '__command__', None)
+            if command is None:
+                command = cli_cls.__name__
+            if command is None:
+                raise ValueError(ub.paragraph(
+                    f'''
+                    The ModalCLI expects that registered subconfigs have a
+                    ``__command__: str`` attribute, but {cli_cls} is missing one.
+                '''))
+            metadata['command'] = command
+
+        if metadata.get('alias') is None:
+            metadata['alias'] = getattr(cli_cls, '__alias__', [])
+
+        if metadata.get('group') is None:
+            metadata['group'] = getattr(cli_cls, '__group__', DEFAULT_GROUP)
+
+        parserkw = {}
+        if metadata['alias']:
+            if isinstance(metadata['alias'], str):
+                metadata['alias'] = [metadata['alias']]
+            parserkw['aliases'] = metadata['alias']
+
+        # group = 'FOO'
+        # print(f'cli_cls={cli_cls}')
+        # print(isinstance(cli_cls, ModalCLI))
+        # print('cli_cls.__bases__ = {}'.format(ub.urepr(cli_cls.__bases__, nl=1)))
+        # print('ModalCLI = {}'.format(ub.urepr(ModalCLI, nl=1)))
+
+        if isinstance(cli_cls, ModalCLI) or issubclass(cli_cls, ModalCLI):
+            # Another modal layer
+            if isinstance(cli_cls, type):
+                modal = cli_cls()
+            else:
+                modal = cli_cls
+            parserkw.update(modal._parserkw())
+            parserkw['help'] = parserkw['description'].split('\n')[0]
+            metadata.update({
+                'is_modal': True,
+                'parserkw': parserkw,
+                'main_func': cli_cls.main,
+                'subconfig': modal,
+            })
+        else:
+            # A leaf Config CLI
+            subconfig = cli_cls()
+            parserkw.update(subconfig._parserkw())
+            parserkw['help'] = parserkw['description'].split('\n')[0]
+            metadata.update({
+                'is_modal': False,
+                'parserkw': parserkw,
+                'main_func': cli_cls.main,
+                'subconfig': subconfig,
+            })
+
     def __call__(self, cli_cls):
         """ alias of register """
         return self.register(cli_cls)
 
-    @property
-    def sub_clis(self):
-        # backwards compat
-        return self._instance_subconfigs
-
     @class_or_instancemethod
-    def register(cls_or_self, cli_cls=None, command=None):
+    def register(cls_or_self, cli_cls=None, command=None, alias=None,
+                 group=None):
         """
         Add a sub-CLI to this modal CLI
 
         Args:
-            input (scriptconfig.Config | None):
+            cli_cls (scriptconfig.Config | None):
                 A CLI-aware config object to register as a sub CLI.
                 If None, then this is called as a wrapped closure
 
@@ -243,78 +344,22 @@ class ModalCLI(metaclass=MetaModalCLI):
             #     cli_cls.default = cli_cls.__default__
             if isinstance(cls_or_self, type):
                 # Called as a class method
-                cls_or_self.__subconfigs__.append(cli_cls)
+                metadata = cls_or_self._init_subconfig_metadata(cli_cls)
+                cls_or_self.__subconfigs__.append(metadata)
             else:
                 # Called as an instance method
-                cls_or_self._instance_subconfigs.append(cli_cls)
+                metadata = cls_or_self._init_subconfig_metadata(cli_cls)
+                cls_or_self._subconfig_metadata.append(metadata)
+
+            if command is not None:
+                metadata['command'] = command
+            if alias is not None:
+                metadata['alias'] = alias
 
         if cli_cls is None:
             return _wrapper
         else:
             return _wrapper(cli_cls)
-
-    def _build_subcmd_infos(self):
-        cmdinfo_list = []
-        for cli_cls in self.sub_clis:
-            cmdname = getattr(cli_cls, '__command__', None)
-            if cmdname is None:
-                cmdname = cli_cls.__name__
-            if cmdname is None:
-                raise ValueError(ub.paragraph(
-                    f'''
-                    The ModalCLI expects that registered subconfigs have a
-                    ``__command__: str`` attribute, but {cli_cls} is missing one.
-                '''))
-
-            if not hasattr(cli_cls, 'main'):
-                raise ValueError(ub.paragraph(
-                    f'''
-                    The ModalCLI expects that registered subconfigs have a
-                    ``main`` classmethod with the signature
-                    ``main(cls, cmdline: bool, **kwargs)``,
-                    but {cli_cls} is missing one.
-                '''))
-
-            parserkw = {}
-            __alias__ = getattr(cli_cls, '__alias__', [])
-            if __alias__:
-                parserkw['aliases']  = __alias__
-
-            group = getattr(cli_cls, '__group__', DEFAULT_GROUP)
-            # group = 'FOO'
-
-            # print(f'cli_cls={cli_cls}')
-            # print(isinstance(cli_cls, ModalCLI))
-            # print('cli_cls.__bases__ = {}'.format(ub.urepr(cli_cls.__bases__, nl=1)))
-            # print('ModalCLI = {}'.format(ub.urepr(ModalCLI, nl=1)))
-
-            if isinstance(cli_cls, ModalCLI) or issubclass(cli_cls, ModalCLI):
-                # Another modal layer
-                modal = cli_cls()
-                parserkw.update(modal._parserkw())
-                parserkw['help'] = parserkw['description'].split('\n')[0]
-                cmdinfo_list.append({
-                    'is_modal': True,
-                    'cmdname': cmdname,
-                    'parserkw': parserkw,
-                    'main_func': cli_cls.main,
-                    'subconfig': modal,
-                    'group': group,
-                })
-            else:
-                # A leaf Config CLI
-                subconfig = cli_cls()
-                parserkw.update(subconfig._parserkw())
-                parserkw['help'] = parserkw['description'].split('\n')[0]
-                cmdinfo_list.append({
-                    'is_modal': False,
-                    'cmdname': cmdname,
-                    'parserkw': parserkw,
-                    'main_func': cli_cls.main,
-                    'subconfig': subconfig,
-                    'group': group,
-                })
-        return cmdinfo_list
 
     def _parserkw(self):
         """
@@ -347,7 +392,9 @@ class ModalCLI(metaclass=MetaModalCLI):
                                 help='show version number and exit')
 
         # Prepare information to be added to the subparser before it is created
-        cmdinfo_list = self._build_subcmd_infos()
+        for metadata in self._subconfig_metadata:
+            self._update_metadata(metadata)
+        cmdinfo_list = self._subconfig_metadata
 
         # Build a list of primary command names to display as the valid options
         # for subparsers. This avoids cluttering the screen with all aliases
@@ -360,7 +407,7 @@ class ModalCLI(metaclass=MetaModalCLI):
         # TODO: groups?
         # https://stackoverflow.com/questions/32017020/grouping-argparse-subparser-arguments
 
-        _command_choices = [d['cmdname'] for d in cmdinfo_list]
+        _command_choices = [d['command'] for d in cmdinfo_list]
         _metavar = '{' + ','.join(_command_choices) + '}'
         command_subparsers = parser.add_subparsers(
             title='commands', help='specify a command to run', metavar=_metavar)
@@ -385,14 +432,17 @@ class ModalCLI(metaclass=MetaModalCLI):
             # group = cmdinfo['group']
             # Add a new command to subparser_group
 
-            main_cmd, aliases = fuzzy_cmd_names(cmdinfo['cmdname'])
+            main_cmd, aliases = fuzzy_cmd_names(cmdinfo['command'])
 
             # TODO: enable alternate hyphen/underscore aliases, but suppress
             # them from the help output. Even better would be to handle
             # argument completion so they aren't clobbered.
 
             aliases = []
-            parserkw = cmdinfo['parserkw']
+
+            # copy so we dont have inplace issues
+            # could just make this part of the update metadata method
+            parserkw = {**cmdinfo['parserkw']}
 
             if 'aliases' in parserkw:
                 parserkw['aliases'] = list(parserkw['aliases']) + list(aliases)
@@ -415,16 +465,7 @@ class ModalCLI(metaclass=MetaModalCLI):
 
     build_parser = argparse
 
-    @class_or_instancemethod
-    def main(self, argv=None, strict=True, autocomplete='auto'):
-        """
-        Execute the modal CLI as the main script
-        """
-        if isinstance(self, type):
-            self = self()
-
-        parser = self.argparse()
-
+    def _handle_autocomplete(self, parser, autocomplete='auto'):
         if autocomplete:
             try:
                 import argcomplete
@@ -442,25 +483,84 @@ class ModalCLI(metaclass=MetaModalCLI):
         if argcomplete is not None:
             argcomplete.autocomplete(parser)
 
-        if strict:
-            ns = parser.parse_args(args=argv)
-        else:
-            ns, _ = parser.parse_known_args(args=argv)
+    @class_or_instancemethod
+    def main(self, argv=None, strict=True, autocomplete='auto', _noexit=False):
+        """
+        Execute the modal CLI as the main script
+        """
+        if isinstance(self, type):
+            self = self()
+
+        parser = self.argparse()
+        self._handle_autocomplete(parser=parser, autocomplete=autocomplete)
+
+        try:
+            if strict:
+                ns = parser.parse_args(args=argv)
+            else:
+                ns, _ = parser.parse_known_args(args=argv)
+        except SystemExit:
+            print(f'_noexit={_noexit}')
+            if _noexit:
+                return 1
+            raise
 
         kw = ns.__dict__
 
-        if kw.pop('version', None):
-            print(self.version)
-            return 0
+        # Not sure if removing this will cause issues.
+        # But if a subconfig has a --version parameter, then this breaks.  so
+        # removing it.
+        # TODO: only do this if we are a modal CLI? Will that work?
+        # if kw.pop('version', None):
+        #     print(self.version)
+        #     return 0
 
         sub_main = kw.pop('main', None)
         if sub_main is None:
             parser.print_help()
-            raise ValueError('no command given')
+            if not _noexit:
+                raise ValueError('no command given')
             return 1
 
+        # If the submain is another modal, we know that we were not given any
+        # leaf commands.
         try:
-            ret = sub_main(cmdline=False, **kw)
+            if issubclass(sub_main.__self__, ModalCLI):
+                # need to print the help of the correct submodal.
+                # does not seem to be a nice way to do it, so lets hack it.
+                if argv is None:
+                    import sys
+                    argv = sys.argv[1:]
+                argv = argv + ['--help']
+                try:
+                    if strict:
+                        ns = parser.parse_args(args=argv)
+                    else:
+                        ns, _ = parser.parse_known_args(args=argv)
+                except SystemExit:
+                    ...
+                raise ValueError('no command given')
+                return 1
+        except AttributeError:
+            print('Unexpected attribute error')
+            # raise
+            ...  # safety catch, not sure if necessary
+
+        # Check how main wants to be invoked
+        # TODO: should ensure this works in a standardized way
+        import inspect
+        main_sig = inspect.signature(sub_main)
+        control_kw = {}
+        if 'argv' in main_sig.parameters:
+            # Use current standard argument control
+            control_kw['argv'] = False
+        elif 'cmdline' in main_sig.parameters:
+            # Use legacy cmdline argument control
+            control_kw['cmdline'] = False
+
+        try:
+            ret = sub_main(**control_kw, **kw)
+            # cmdline=False, **kw)
         except Exception as ex:
             print('ERROR ex = {!r}'.format(ex))
             raise

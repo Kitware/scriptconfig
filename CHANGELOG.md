@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Add expose Value help property
 * Added scriptconfig CLI that helps generate templates
+* Modal register can now take command, alias, and group as an argument to control behavior for different modals.
 
 ### Changed
 * Loaded YAML configs can now contain top level dunder or dotted keys that are
@@ -22,6 +23,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * dump with json mode now works.
 * help and text markup is now disabled, which prevents rendering issues when `rich_argparse` is versus isn't installed.
 * Fix issue with type "smartcast:v1" not being respected
+* Issue with nested modals where they did not correctly show errors when given submodals with no commands
+* Disabled version handling in modal, which was causing issues, might cause different issues now.
 
 
 ## Version 0.8.2 - Released 2025-03-06
