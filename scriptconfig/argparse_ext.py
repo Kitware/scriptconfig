@@ -676,11 +676,10 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
         try:
             return super().parse_args(args, namespace=namespace)
         except argparse.ArgumentError as ex:
-            print(f'ex={ex}')
             deepest = self._deepest_subparser_for_argv(args)
             if deepest is None:
                 deepest = self
-            deepest.print_usage()
+            # deepest.print_usage()
             deepest.error(ex.message)
 
     # Helper: find deepest subparser matched by tokens.
