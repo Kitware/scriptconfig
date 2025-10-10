@@ -18,6 +18,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Config load can now use JSON or YAML.
 * Can now specify `--config` as raw YAML / JSON text
 * Added an internal diagnostics module.
+* When specifying modal CLI attributes, the name of the class attribute is the
+  default the command name for the modal CLI unless __command__ is specified.
+* Modal CLIs now print the deepest usage on errors
 
 ### Fixed
 * dump with json mode now works.

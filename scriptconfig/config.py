@@ -1221,6 +1221,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 'scriptconfig', 'prog', 'attribute of Config classes',
                 migration='Use __prog__ instead',
                 deprecate='0.7.11', error='0.10.0', remove='1.0.0')
+        # Should probably use __command__ instead? And will need to fixup?
         prog = getattr(self, '__prog__', getattr(self, 'prog', None))
         if prog is None:
             prog = self.__class__.__name__

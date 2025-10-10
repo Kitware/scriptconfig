@@ -48,6 +48,7 @@ Example
 """
 
 import ubelt as ub
+import sys
 from scriptconfig.util.util_class import class_or_instancemethod
 from scriptconfig import diagnostics
 from typing import List, Dict
@@ -67,14 +68,18 @@ class MetaModalCLI(type):
         # Note: this code has an impact on startuptime efficiency.
         # optimizations here can help.
 
-        # Iterate over class attributes and register any Configs in the
-        # __subconfigs__ dictionary.
+        # Iterate over class attributes and register any Config or ModalCLI
+        # objects in the __subconfigs__ dictionary the attribute names
+        # will be used as the command name.
         attr_subconfigs = {
             k: v for k, v in namespace.items()
             if not k.startswith('_') and isinstance(v, type)
         }
 
-        final_subconfigs = list(attr_subconfigs.values())
+        final_subconfigs = [
+            {'command': getattr(v, '__command__', None) or k, 'cls': v}
+            for k, v in attr_subconfigs.items()
+        ]
         cls_subconfigs = namespace.get('__subconfigs__', [])
         if cls_subconfigs:
             final_subconfigs.extend(cls_subconfigs)
@@ -384,9 +389,11 @@ class ModalCLI(metaclass=MetaModalCLI):
         """
 
         if parser is None:
-            import argparse as argparse_mod
             parserkw = self._parserkw()
-            parser = argparse_mod.ArgumentParser(**parserkw)
+            # import argparse as argparse_mod
+            # parser = argparse_mod.ArgumentParser(**parserkw)
+            from scriptconfig import argparse_ext
+            parser = argparse_ext.ExtendedArgumentParser(**parserkw)
 
         if hasattr(self, 'version') and self.version is not None:
             # NOTE: having a --version argument for the modal CLI causes
@@ -397,6 +404,7 @@ class ModalCLI(metaclass=MetaModalCLI):
             parser.add_argument('--version', action='store_true',
                                 dest='__modal_version_request__',
                                 help='show version number and exit')
+        parser.set_defaults(__submodal__=self)
 
         # Prepare information to be added to the subparser before it is created
         for metadata in self._subconfig_metadata:
@@ -460,6 +468,8 @@ class ModalCLI(metaclass=MetaModalCLI):
                     parserkw['aliases'] = aliases
 
             if cmdinfo['is_modal']:
+                # Note sure if we need to do the prog modification here
+                # parserkw['prog'] = ' '.join([parser.prog, main_cmd])
                 modal_inst = cmdinfo['subconfig']
                 modal_parser = command_subparsers.add_parser(
                     main_cmd, **parserkw)
@@ -467,10 +477,15 @@ class ModalCLI(metaclass=MetaModalCLI):
                 modal_parser.set_defaults(__main_function__=cmdinfo['main_func'])
                 modal_parser.set_defaults(__submodal__=modal_inst)
             else:
+                # When an error occurs we want usage to print out the command
+                # the user used to invoke the subparser. has a few corner
+                # cases, but this works better than defaults
+                parserkw['prog'] = ' '.join([parser.prog, main_cmd])
                 subparser = command_subparsers.add_parser(
                     main_cmd, **parserkw)
                 subparser = cmdinfo['subconfig'].argparse(subparser)
                 subparser.set_defaults(__main_function__=cmdinfo['main_func'])
+                subparser.set_defaults(__submodal__=None)  # indicate to the parser that we parsed a leaf command
         return parser
 
     build_parser = argparse
@@ -499,14 +514,21 @@ class ModalCLI(metaclass=MetaModalCLI):
         Execute the modal CLI as the main script
         """
         if diagnostics.DEBUG_MODAL:
-            print(f'[scriptconfig.modal.ModalCLI.main] Calling main of {self} with argv={argv}')
+            if argv is None:
+                print(f'[scriptconfig.modal.ModalCLI.main] Calling main of {self} with argv={argv}, sys.argv={sys.argv}')
+            else:
+                print(f'[scriptconfig.modal.ModalCLI.main] Calling main of {self} with argv={argv}')
 
         if isinstance(self, type):
             self = self()
 
         parser = self.argparse()
+        # parser.exit_on_error = False
         self._handle_autocomplete(parser=parser, autocomplete=autocomplete)
 
+        if diagnostics.DEBUG_MODAL:
+            _dump_parser(parser)
+            print('[scriptconfig.modal.ModalCLI.main] parsing args')
         try:
             if strict:
                 ns = parser.parse_args(args=argv)
@@ -524,39 +546,40 @@ class ModalCLI(metaclass=MetaModalCLI):
             print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} parsed arguments: ' + ub.urepr(kw, nl=1))
 
         # NOTE: This is a funky way of handling allowing modals to requst
-        # versions.
-        if kw.pop('__modal_version_request__', None):
-            submodal = kw.pop('__submodal__', None)
-            if submodal is None:
+        # versions. There are special variable we assume only modal CLIs
+        # define. If a subcli defines them, then our assumptions break.
+        version_request = kw.pop('__modal_version_request__', None)
+        sub_modal = kw.pop('__submodal__', None)
+        sub_main = kw.pop('__main_function__', None)
+        if version_request:
+            if sub_modal is None:
                 if diagnostics.DEBUG_MODAL:
                     print('[scriptconfig.modal.ModalCLI.main] Our modal CLI got a modal version request for the root modal')
                 print(self.version)
             else:
                 if diagnostics.DEBUG_MODAL:
-                    print(f'[scriptconfig.modal.ModalCLI.main] Our modal CLI got a modal version request for a submodal {submodal}')
-                print(submodal.version)
+                    print(f'[scriptconfig.modal.ModalCLI.main] Our modal CLI got a modal version request for a submodal {sub_modal}')
+                print(sub_modal.version)
             return 0
 
-        sub_main = kw.pop('__main_function__', None)
+        if sub_modal is not None:
+            # This case happens when a submodal is not given any commands
+            if diagnostics.DEBUG_MODAL:
+                print(f'[scriptconfig.modal.ModalCLI.main] returned main, but it belongs to a different ModalCLI {sub_modal}, using our hack to print help and exit')
+            # sub_modal.argparse().print_usage()
+            sub_modal.argparse().print_help()
+            if not _noexit:
+                raise NoCommandError('A submodal CLI was executed but no command was given.')
+            return 1
+
         if sub_main is None:
             # This case happens when the root modal is not given any commands
             if diagnostics.DEBUG_MODAL:
                 print('[scriptconfig.modal.ModalCLI.main] returned modal options did not specify the main function, printing help and exiting')
+            # parser.print_usage()
             parser.print_help()
             if not _noexit:
-                raise ValueError('no command given')
-            return 1
-
-        # If the submain is another modal, we know that we were not given any
-        # leaf commands.
-        submodal = kw.pop('__submodal__', None)
-        if submodal is not None:
-            # This case happens when a submodal is not given any commands
-            # TODO: can we combine this with the root modal no command logic?
-            if diagnostics.DEBUG_MODAL:
-                print(f'[scriptconfig.modal.ModalCLI.main] returned main, but it belongs to a different ModalCLI {submodal}, using our hack to print help and exit')
-            submodal.argparse().print_help()
-            raise ValueError('no command given')
+                raise NoCommandError('A modal CLI was executed but no command was given.')
             return 1
 
         # Check how main wants to be invoked
@@ -588,3 +611,23 @@ class ModalCLI(metaclass=MetaModalCLI):
             return ret
 
     run = main  # alias for backwards compatibility, TODO: deprecate and remove
+
+
+def _dump_parser(parser, indent=0):
+    import argparse
+    pad = "  " * indent
+    print(f"{pad}Parser: {parser.prog!r}")
+    for a in parser._actions:
+        opts = ", ".join(a.option_strings) if a.option_strings else a.dest
+        print(f"{pad}  Arg: {opts}  (action={a.__class__.__name__})")
+
+    # Find subparsers (if any)
+    for a in parser._actions:
+        if isinstance(a, argparse._SubParsersAction):
+            for name, sp in a.choices.items():
+                print(f"{pad}  Subcommand: {name}")
+                _dump_parser(sp, indent + 1)
+
+
+class NoCommandError(SystemExit):
+    ...

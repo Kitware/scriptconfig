@@ -662,3 +662,44 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
         >>>     print(f'result = {ub.urepr(result, nl=1)}')
         >>>     assert result.__dict__ == case['expected']
     """
+
+    # Public parse that applies the "print leaf help on error" policy.
+    def parse_args(self, args=None, namespace=None):
+        if args is None:
+            args = sys.argv[1:]
+        # If the caller wants default behavior, defer entirely to argparse.
+        if not self.exit_on_error:
+            return super().parse_args(args, namespace=namespace)
+
+        # Otherwise, intercept errors to help for the appropriate submodal
+        self.exit_on_error = False
+        try:
+            return super().parse_args(args, namespace=namespace)
+        except argparse.ArgumentError as ex:
+            print(f'ex={ex}')
+            deepest = self._deepest_subparser_for_argv(args)
+            if deepest is None:
+                deepest = self
+            deepest.print_usage()
+            deepest.error(ex.message)
+
+    # Helper: find deepest subparser matched by tokens.
+    def _deepest_subparser_for_argv(self, tokens):
+        parser = self
+        i = 0
+        deepest = None
+        while True:
+            sub_action = None
+            for act in parser._actions:
+                if isinstance(act, argparse._SubParsersAction):
+                    sub_action = act
+                    break
+            if sub_action is None:
+                break
+            if i < len(tokens) and tokens[i] in sub_action.choices:
+                parser = sub_action.choices[tokens[i]]
+                deepest = parser
+                i += 1
+            else:
+                break
+        return deepest

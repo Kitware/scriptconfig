@@ -223,6 +223,7 @@ def test_submodals():
         xdoctest -m tests/test_modal.py test_submodals
     """
     import scriptconfig as scfg
+    from scriptconfig.modal import NoCommandError
 
     class Modal1(scfg.ModalCLI):
         ...
@@ -269,8 +270,8 @@ def test_submodals():
     with ub.CaptureStdout(suppress=0) as cap:
         try:
             Modal1.main(argv=[])
-        except ValueError as ex:
-            assert 'no command given' in str(ex)
+        except NoCommandError as ex:
+            assert 'no command was given' in str(ex)
         else:
             assert False
     assert 'modal2' in cap.text
@@ -278,8 +279,8 @@ def test_submodals():
     with ub.CaptureStdout(suppress=0) as cap:
         try:
             Modal1.main(argv=['modal2'])
-        except ValueError as ex:
-            assert 'no command given' in str(ex)
+        except NoCommandError as ex:
+            assert 'no command was given' in str(ex)
         else:
             assert False
     assert 'modal3' in cap.text
@@ -287,8 +288,8 @@ def test_submodals():
     with ub.CaptureStdout(suppress=0) as cap:
         try:
             Modal1.main(argv=['modal2', 'modal3'])
-        except ValueError as ex:
-            assert 'no command given' in str(ex)
+        except NoCommandError as ex:
+            assert 'no command was given' in str(ex)
         else:
             assert False
     assert 'command4' in cap.text
@@ -325,6 +326,37 @@ def test_modal_version():
     with ub.CaptureStdout(suppress=0) as cap:
         Modal1.main(argv=['Modal2', 'Modal3', '--version'])
     assert '3.3.3' in cap.text
+
+
+def test_modal_command_name_resolution():
+    """
+    The user should be able to specify the command using the variable name of
+    the command unless a __command__ attribute is explicitly given.
+    """
+    import scriptconfig as scfg
+
+    class Command1(scfg.DataConfig):
+        __command__ = 'command1'
+        @classmethod
+        def main(cls, argv=1, **kwargs):
+            cls.cli(argv=argv, data=kwargs)
+
+    class Command2(scfg.DataConfig):
+        @classmethod
+        def main(cls, argv=1, **kwargs):
+            cls.cli(argv=argv, data=kwargs)
+
+    class Modal1(scfg.ModalCLI):
+        __version__ = '1.1.1'
+
+        wont_use_this_key = Command1
+        will_use_this_key = Command2
+
+    help_text = Modal1().argparse().format_help()
+    assert 'will_use_this_key' in help_text
+    assert 'wont_use_this_key' not in help_text
+    assert 'Command2' not in help_text
+    assert 'command1' in help_text
 
 
 if __name__ == '__main__':
