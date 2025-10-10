@@ -755,8 +755,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> assert 'arg2' not in config2
         """
         if diagnostics.DEBUG_CONFIG:
-            print(f'[scriptconfig] Call {self.__class__.__name__}.load')
-            print(f'cmdline={cmdline}, strict={strict}, special_options={special_options}')
+            print(f'[scriptconfig.config.Config] Call {self.__class__.__name__}.load',
+                  f'cmdline={cmdline}, strict={strict}, special_options={special_options}')
 
         if default:
             self.update_defaults(default)
@@ -823,7 +823,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                         unknown_keys.append(a)
             if unknown_keys:
                 if strict:
-                    raise KeyError('Unknown data options {}'.format(unknown_keys))
+                    if diagnostics.DEBUG_CONFIG:
+                        print(f'[scriptconfig.config.Config] Error: data={data}')
+
+                    raise KeyError(f'Unknown data options {unknown_keys}')
                 else:
                     for k in unknown_keys:
                         user_config.pop(k, None)

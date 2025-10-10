@@ -299,7 +299,7 @@ def test_modal_version():
     Modal CLIs should be able to cause the version to print
 
     CommandLine:
-        xdoctest -m tests/test_modal.py test_submodals
+        DEBUG_SCRIPTCONFIG=1 xdoctest -m tests/test_modal.py test_submodals
     """
     import scriptconfig as scfg
     from scriptconfig import diagnostics

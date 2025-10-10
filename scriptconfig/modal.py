@@ -389,7 +389,13 @@ class ModalCLI(metaclass=MetaModalCLI):
             parser = argparse_mod.ArgumentParser(**parserkw)
 
         if hasattr(self, 'version') and self.version is not None:
+            # NOTE: having a --version argument for the modal CLI causes
+            # some issues because when we parse the arguments, we dont
+            # know if version should be passed to the subcommand or not.
+            # We work around this by using a special destination for
+            # the modal version flag.
             parser.add_argument('--version', action='store_true',
+                                dest='__modal_version_request__',
                                 help='show version number and exit')
 
         # Prepare information to be added to the subparser before it is created
@@ -411,7 +417,9 @@ class ModalCLI(metaclass=MetaModalCLI):
         _command_choices = [d['command'] for d in cmdinfo_list]
         _metavar = '{' + ','.join(_command_choices) + '}'
         command_subparsers = parser.add_subparsers(
-            title='commands', help='specify a command to run', metavar=_metavar)
+            title='commands',
+            # dest='__command__',
+            help='specify a command to run', metavar=_metavar)
 
         # group_to_subparser = {}
         # for group, cmdinfos in group_to_cmdinfos.items():
@@ -456,13 +464,13 @@ class ModalCLI(metaclass=MetaModalCLI):
                 modal_parser = command_subparsers.add_parser(
                     main_cmd, **parserkw)
                 modal_parser = modal_inst.argparse(parser=modal_parser)
-                modal_parser.set_defaults(main=cmdinfo['main_func'])
-                modal_parser.set_defaults(submodal=modal_inst)
+                modal_parser.set_defaults(__main_function__=cmdinfo['main_func'])
+                modal_parser.set_defaults(__submodal__=modal_inst)
             else:
                 subparser = command_subparsers.add_parser(
                     main_cmd, **parserkw)
                 subparser = cmdinfo['subconfig'].argparse(subparser)
-                subparser.set_defaults(main=cmdinfo['main_func'])
+                subparser.set_defaults(__main_function__=cmdinfo['main_func'])
         return parser
 
     build_parser = argparse
@@ -491,7 +499,7 @@ class ModalCLI(metaclass=MetaModalCLI):
         Execute the modal CLI as the main script
         """
         if diagnostics.DEBUG_MODAL:
-            print(f'[modal.ModalCLI.main] Calling main of {self} with argv={argv}')
+            print(f'[scriptconfig.modal.ModalCLI.main] Calling main of {self} with argv={argv}')
 
         if isinstance(self, type):
             self = self()
@@ -506,25 +514,34 @@ class ModalCLI(metaclass=MetaModalCLI):
                 ns, _ = parser.parse_known_args(args=argv)
         except SystemExit as ex:
             if diagnostics.DEBUG_MODAL:
-                print(f'[modal.ModalCLI.main] Modal main {self} caught an SystemExit error {ex}')
+                print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} caught an SystemExit error {ex}')
             if _noexit:
                 return 1
             raise
 
         kw = ns.__dict__
         if diagnostics.DEBUG_MODAL:
-            print(f'[modal.ModalCLI.main] Modal main {self} parsed arguments: ' + ub.urepr(kw, nl=1))
+            print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} parsed arguments: ' + ub.urepr(kw, nl=1))
 
-        sub_main = kw.pop('main', None)
-        if sub_main is None:
-            # FIXME: I'm not sure this is the right way to handle a --version argument to a modal CLI.
-            if kw.pop('version', None):
+        # NOTE: This is a funky way of handling allowing modals to requst
+        # versions.
+        if kw.pop('__modal_version_request__', None):
+            submodal = kw.pop('__submodal__', None)
+            if submodal is None:
                 if diagnostics.DEBUG_MODAL:
-                    print('[modal.ModalCLI.main] returned modal options did not specify the main function, but we do have a version string, so we shouldprint that')
+                    print('[scriptconfig.modal.ModalCLI.main] Our modal CLI got a modal version request for the root modal')
                 print(self.version)
-                return 0
+            else:
+                if diagnostics.DEBUG_MODAL:
+                    print(f'[scriptconfig.modal.ModalCLI.main] Our modal CLI got a modal version request for a submodal {submodal}')
+                print(submodal.version)
+            return 0
+
+        sub_main = kw.pop('__main_function__', None)
+        if sub_main is None:
+            # This case happens when the root modal is not given any commands
             if diagnostics.DEBUG_MODAL:
-                print('[modal.ModalCLI.main] returned modal options did not specify the main function, printing help and exiting')
+                print('[scriptconfig.modal.ModalCLI.main] returned modal options did not specify the main function, printing help and exiting')
             parser.print_help()
             if not _noexit:
                 raise ValueError('no command given')
@@ -532,37 +549,21 @@ class ModalCLI(metaclass=MetaModalCLI):
 
         # If the submain is another modal, we know that we were not given any
         # leaf commands.
-        try:
-            submodal = kw.pop('submodal', None)
-            if submodal is not None:
-                if diagnostics.DEBUG_MODAL:
-                    print(f'[modal.ModalCLI.main] returned main, but it belongs to a different ModalCLI {submodal}, using our hack to print help and exit')
-                if kw.pop('version', None):
-                    if diagnostics.DEBUG_MODAL:
-                        print('[modal.ModalCLI.main] the submodal seemed to request a version, so handle that')
-                    print(submodal.version)
-                    return 0
-                # need to print the help of the correct submodal.
-                # does not seem to be a nice way to do it, so lets hack it.
-                if argv is None:
-                    import sys
-                    argv = sys.argv[1:]
-                argv = argv + ['--help']
-                try:
-                    if strict:
-                        ns = parser.parse_args(args=argv)
-                    else:
-                        ns, _ = parser.parse_known_args(args=argv)
-                except SystemExit:
-                    ...
-                raise ValueError('no command given')
-                return 1
-        except AttributeError:
-            print('Unexpected attribute error')
-            # raise
-            ...  # safety catch, not sure if necessary
+        submodal = kw.pop('__submodal__', None)
+        if submodal is not None:
+            # This case happens when a submodal is not given any commands
+            # TODO: can we combine this with the root modal no command logic?
+            if diagnostics.DEBUG_MODAL:
+                print(f'[scriptconfig.modal.ModalCLI.main] returned main, but it belongs to a different ModalCLI {submodal}, using our hack to print help and exit')
+            submodal.argparse().print_help()
+            raise ValueError('no command given')
+            return 1
 
         # Check how main wants to be invoked
+        # We are making the assumption that subcommands register a main
+        # classmethod, which will have a control argument that will tell it to
+        # use the given input arguments instead of reparsing the CLI (which we
+        # already did).
         # TODO: should ensure this works in a standardized way
         import inspect
         main_sig = inspect.signature(sub_main)
@@ -586,4 +587,4 @@ class ModalCLI(metaclass=MetaModalCLI):
                 ret = 0
             return ret
 
-    run = main  # alias for backwards compatibility
+    run = main  # alias for backwards compatibility, TODO: deprecate and remove
