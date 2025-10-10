@@ -16,14 +16,15 @@ Notes:
 
     # need to edit the conf.py
 
+    # Remove any old auto docs folder and regenerate it.
+    rm -rf ~/code/scriptconfig/docs/source/auto
     cd ~/code/scriptconfig/docs
     sphinx-apidoc --private --separate --force --output-dir ~/code/scriptconfig/docs/source/auto ~/code/scriptconfig/scriptconfig
+    git add source/auto/*.rst
 
     # Note: the module should importable before running this
     # (e.g. install it in developer mode or munge the PYTHONPATH)
     make html
-
-    git add source/auto/*.rst
 
     Also:
         To turn on PR checks
@@ -83,6 +84,7 @@ Notes:
                 push events,
                 tag push events,
                 merge request events
+                release events
 
             Click the "Add webhook" button.
 
@@ -136,7 +138,7 @@ def parse_version(fpath):
     return visitor.version
 
 project = 'scriptconfig'
-copyright = '2024, Kitware Inc. Jon Crall'
+copyright = '2025, Kitware Inc. Jon Crall'
 author = 'Kitware Inc. Jon Crall'
 modname = 'scriptconfig'
 
@@ -193,6 +195,9 @@ autosummary_mock_imports = [
     'geowatch.tasks.depth_pcd.model',
     'geowatch.tasks.cold.export_change_map',
 ]
+
+autodoc_default_options = {  # Document callable classes
+    'special-members': '__call__'}
 
 autodoc_member_order = 'bysource'
 autoclass_content = 'both'

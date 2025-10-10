@@ -1,12 +1,13 @@
 from os.path import exists
+import os
 
 
-class FileLike(object):
+class FileLike:
     """
     Allows input to be a path or a file object
     """
     def __init__(self, path_or_file, mode='r'):
-        if isinstance(path_or_file, str):
+        if isinstance(path_or_file, (str, os.PathLike)):
             _input_type = 'path'
             if not exists(path_or_file):
                 raise ValueError('Path {} does not exist'.format(path_or_file))

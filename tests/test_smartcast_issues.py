@@ -48,3 +48,27 @@ def test_smartcast_interaction_with_isflag_flagform_still_works():
     config = dict(MyConfig.cli(argv='--no-param1 --no-param3'))
     print(f'config = {ub.urepr(config, nl=1)}')
     assert config == {'param1': False, 'param3': False}
+
+
+def test_smartcast_v1_respected():
+    import scriptconfig as scfg
+    import ubelt as ub
+
+    class MyConfig(scfg.DataConfig):
+        param1 = scfg.Value(0, type='smartcast:legacy')
+        param2 = scfg.Value(0, type='smartcast:v1')
+        param3 = scfg.Value(0, type='smartcast:legacy', isflag=True)
+        param4 = scfg.Value(0, type='smartcast:v1', isflag=True)
+    config = dict(MyConfig.cli(argv=' '.join([
+        '--param1 "foo,bar"',
+        '--param2 "foo,bar"',
+        '--param3 "foo,bar"',
+        '--param4 "foo,bar"',
+    ])))
+    print(f'config = {ub.urepr(config, nl=1)}')
+    assert config == {
+        'param1': ['foo', 'bar'],
+        'param2': 'foo,bar',
+        'param3': ['foo', 'bar'],
+        'param4': 'foo,bar',
+    }

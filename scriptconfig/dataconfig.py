@@ -58,6 +58,7 @@ from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
 import warnings
 import ubelt as ub
+from scriptconfig import diagnostics
 
 
 def dataconf(cls):
@@ -181,7 +182,8 @@ class MetaDataConfig(MetaConfig):
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
         # Defining a new class that inherits from DataConfig
-        # print(f'MetaDataConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
+        if diagnostics.DEBUG_META_DATA_CONFIG:
+            print(f'MetaDataConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         # Only do this for children of DataConfig, skip this for DataConfig
         # itself. This is a hacky way to do this. Can we make this check more

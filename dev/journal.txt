@@ -1,0 +1,51 @@
+# 2025-08-05
+
+Here is the schema for handling nested configs. It is very similar to jsonargparse, but I think it may be distinct. Need to write it out.
+
+Each key could have type: `Value | Any | DataConfig`
+
+The top level config will look like this:
+
+
+
+from scriptconfig import DataConfig, Value
+
+class TopLevel(DataConfig):
+    key : [Value | Any | DataConfig] = None
+
+e.g.
+
+
+class SubConfig1(DataConfig):
+    key1 = 'value1'
+    key2 = 'value2'
+
+class SubConfig2(DataConfig):
+    key1 = 'value1'
+    key2 = 'value2'
+
+
+class TopLevel(DataConfig):
+    sub1 = SubConfig1()  # creating an instance could be done automatically
+    sub2 = SubConfig2()
+
+
+config = TopLevel()
+
+And you can call `config.update(...)` with dot-dict nested arguments (which
+does mean resolved config option names cannot have "." in them, which they
+never could in scriptconfig).
+
+
+So we could also call like:
+
+python main.py --sub1.key1=cli-value3 --sub2.key1=cli-value4
+
+
+# But perhaps this is valid as well:
+
+python main.py --sub1 "
+    key1: yaml-value1
+    key2: yaml-value2
+" \
+--sub2 "{key1: yaml-value3}"

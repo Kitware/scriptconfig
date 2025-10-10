@@ -4,7 +4,33 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.8.2 - Unreleased
+## Version 0.8.3 - Unreleased
+
+### Added
+
+* Add expose Value help property
+* Added scriptconfig CLI that helps generate templates
+* Modal register can now take command, alias, and group as an argument to control behavior for different modals.
+
+### Changed
+* Loaded YAML configs can now contain top level dunder or dotted keys that are
+  ignored by the strict parser, which can be useful for YAML anchors.
+* Config load can now use JSON or YAML.
+* Can now specify `--config` as raw YAML / JSON text
+* Added an internal diagnostics module.
+* When specifying modal CLI attributes, the name of the class attribute is the
+  default the command name for the modal CLI unless __command__ is specified.
+* Modal CLIs now print the deepest usage on errors
+
+### Fixed
+* dump with json mode now works.
+* help and text markup is now disabled, which prevents rendering issues when `rich_argparse` is versus isn't installed.
+* Fix issue with type "smartcast:v1" not being respected
+* Issue with nested modals where they did not correctly show errors when given submodals with no commands
+* Disabled version handling in modal, which was causing issues, might cause different issues now.
+
+
+## Version 0.8.2 - Released 2025-03-06
 
 ### Added
 

@@ -84,6 +84,7 @@ TODO:
     - [ ] Integrate with Hyrda
     - [x] Dataclass support - See DataConfig
 """
+import os
 import ubelt as ub
 import itertools as it
 from collections import OrderedDict
@@ -92,6 +93,7 @@ from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
 from scriptconfig.file_like import FileLike
 from scriptconfig.value import Value
+from scriptconfig import diagnostics
 # from scriptconfig.util.util_class import class_or_instancemethod
 
 __all__ = ['Config', 'define']
@@ -180,7 +182,8 @@ class MetaConfig(type):
 
     @staticmethod
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
-        # print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
+        if diagnostics.DEBUG_META_CONFIG:
+            print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
         if 'default' in namespace and '__default__' not in namespace:
             # Ensure the user updates to the newer "__default__" paradigm
@@ -227,7 +230,8 @@ class MetaConfig(type):
             # Backport to the older non-dunder normalize
             namespace['normalize'] = namespace['__post_init__']
 
-        # print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
+        if diagnostics.DEBUG_META_CONFIG:
+            print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
         cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
         return cls
 
@@ -419,6 +423,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> config = MyConfig.cli(argv=False, verbose='auto')
             >>> config = MyConfig.cli(argv=False, data=dict(verbose=1), verbose='auto')
         """
+        if diagnostics.DEBUG_CONFIG:
+            print(f'[scriptconfig] Call {cls.__name__}.cli')
+            print(f'argv={argv}, cmdline={cmdline}')
         if transition_helpers and hasattr(data, 'pop'):
             argv = data.pop('cmdline', argv)  # helper for cmdline->argv transition
         if cmdline and argv is not None:
@@ -448,6 +455,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 print('config = ' + ub.urepr(self, nl=1))
             else:
                 rich.print('config = ' + escape(ub.urepr(self, nl=1)))
+        if diagnostics.DEBUG_CONFIG:
+            print(f'[scriptconfig] Return {cls.__name__}.cli')
         return self
 
     @classmethod
@@ -745,6 +754,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> assert config2['opt2'] == 'bar'
             >>> assert 'arg2' not in config2
         """
+        if diagnostics.DEBUG_CONFIG:
+            print(f'[scriptconfig.config.Config] Call {self.__class__.__name__}.load',
+                  f'cmdline={cmdline}, strict={strict}, special_options={special_options}')
+
         if default:
             self.update_defaults(default)
 
@@ -752,21 +765,37 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         import copy
         _default = copy.deepcopy(self._default)
 
-        if mode is None:
-            if isinstance(data, str):
-                if data.lower().endswith('.json'):
-                    mode = 'json'
-        if mode is None:
-            # Default to yaml
-            mode = 'yaml'
-
         if data is None:
             user_config = {}
-        elif isinstance(data, str) or hasattr(data, 'readable'):
-            import yaml
-            with FileLike(data, 'r') as file:
-                user_config = yaml.load(file, Loader=yaml.SafeLoader)
-            user_config.pop('__heredoc__', None)  # ignore special heredoc key
+        elif isinstance(data, (str, os.PathLike)) or hasattr(data, 'readable'):
+            if isinstance(data, str) and ('\n' in data or not os.path.exists(data)):
+                # Interpret this data as a raw json/YAML string
+                import json
+                try:
+                    user_config = json.loads(data)
+                except Exception:
+                    import yaml
+                    import io
+                    file = io.StringIO(data)
+                    user_config = yaml.load(file, Loader=yaml.SafeLoader)
+            else:
+                if mode is None:
+                    if isinstance(data, str):
+                        if data.lower().endswith('.json'):
+                            mode = 'json'
+                    elif isinstance(data, os.PathLike):
+                        if data.name.lower().endswith('.json'):
+                            mode = 'json'
+                if mode is None:
+                    # Default to yaml
+                    mode = 'yaml'
+                with FileLike(data, 'r') as file:
+                    if mode == 'yaml':
+                        import yaml
+                        user_config = yaml.load(file, Loader=yaml.SafeLoader)
+                    elif mode == 'json':
+                        import json
+                        user_config = json.load(file)
         elif isinstance(data, dict):
             user_config = data
         elif scfg_isinstance(data, Config):
@@ -786,9 +815,21 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     k = _alias_map[a]
                     user_config[k] = user_config.pop(a)
                 else:
-                    unknown_keys.append(a)
+                    # Ignore any unknown dunder or dotted keys as they can't be
+                    # config keys in the first place.
+                    if a.startswith('.') or a.startswith('__') and a.endswith('__'):
+                        user_config.pop(a, None)
+                    else:
+                        unknown_keys.append(a)
             if unknown_keys:
-                raise KeyError('Unknown data options {}'.format(unknown_keys))
+                if strict:
+                    if diagnostics.DEBUG_CONFIG:
+                        print(f'[scriptconfig.config.Config] Error: data={data}')
+
+                    raise KeyError(f'Unknown data options {unknown_keys}')
+                else:
+                    for k in unknown_keys:
+                        user_config.pop(k, None)
 
         self._data = _default.copy()
         self.update(user_config)
@@ -796,7 +837,6 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if isinstance(cmdline, str):
             # allow specification using the actual command line arg string
             import shlex
-            import os
             cmdline = shlex.split(os.path.expandvars(cmdline))
 
         if cmdline or ub.iterable(cmdline):
@@ -1112,11 +1152,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             def order_rep(dumper, data):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
             yaml.add_representer(OrderedDict, order_rep)
-            return yaml.safe_dump(dict(self.items()), stream)
+            yaml.safe_dump(dict(self.items()), stream)
         elif mode == 'json':
             import json
-            json_text = json.dumps(OrderedDict(self.items()), indent=4)
-            return json_text
+            json.dump(OrderedDict(self.items()), stream, indent=4)
         else:
             raise KeyError(mode)
 
@@ -1130,7 +1169,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         Returns:
             str - the configuration as a string
         """
-        return self.dump(mode=mode)
+        import io
+        stream = io.StringIO()
+        self.dump(stream=stream, mode=mode)
+        return stream.getvalue()
 
     def __getattr__(self, key):
         # Handle aliasing of old "default" and new "__default__"
@@ -1179,6 +1221,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 'scriptconfig', 'prog', 'attribute of Config classes',
                 migration='Use __prog__ instead',
                 deprecate='0.7.11', error='0.10.0', remove='1.0.0')
+        # Should probably use __command__ instead? And will need to fixup?
         prog = getattr(self, '__prog__', getattr(self, 'prog', None))
         if prog is None:
             prog = self.__class__.__name__

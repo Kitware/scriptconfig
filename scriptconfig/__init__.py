@@ -145,7 +145,7 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.8.2'
+__version__ = '0.8.3'
 
 __submodules__ = {
     'modal': None,
@@ -155,6 +155,7 @@ __submodules__ = {
     'dataconfig': None,
 }
 
+from . import diagnostics  # NOQA
 from .modal import (ModalCLI,)
 from .config import (Config, define,)
 from .value import (Path, PathList, Value, Flag)
