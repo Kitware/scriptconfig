@@ -49,6 +49,7 @@ Example
 
 import ubelt as ub
 from scriptconfig.util.util_class import class_or_instancemethod
+from scriptconfig import diagnostics
 from typing import List, Dict
 # from scriptconfig.config import MetaConfig
 
@@ -456,6 +457,7 @@ class ModalCLI(metaclass=MetaModalCLI):
                     main_cmd, **parserkw)
                 modal_parser = modal_inst.argparse(parser=modal_parser)
                 modal_parser.set_defaults(main=cmdinfo['main_func'])
+                modal_parser.set_defaults(submodal=modal_inst)
             else:
                 subparser = command_subparsers.add_parser(
                     main_cmd, **parserkw)
@@ -488,6 +490,9 @@ class ModalCLI(metaclass=MetaModalCLI):
         """
         Execute the modal CLI as the main script
         """
+        if diagnostics.DEBUG_MODAL:
+            print(f'[modal.ModalCLI.main] Calling main of {self} with argv={argv}')
+
         if isinstance(self, type):
             self = self()
 
@@ -499,24 +504,27 @@ class ModalCLI(metaclass=MetaModalCLI):
                 ns = parser.parse_args(args=argv)
             else:
                 ns, _ = parser.parse_known_args(args=argv)
-        except SystemExit:
-            print(f'_noexit={_noexit}')
+        except SystemExit as ex:
+            if diagnostics.DEBUG_MODAL:
+                print(f'[modal.ModalCLI.main] Modal main {self} caught an SystemExit error {ex}')
             if _noexit:
                 return 1
             raise
 
         kw = ns.__dict__
-
-        # Not sure if removing this will cause issues.
-        # But if a subconfig has a --version parameter, then this breaks.  so
-        # removing it.
-        # TODO: only do this if we are a modal CLI? Will that work?
-        # if kw.pop('version', None):
-        #     print(self.version)
-        #     return 0
+        if diagnostics.DEBUG_MODAL:
+            print(f'[modal.ModalCLI.main] Modal main {self} parsed arguments: ' + ub.urepr(kw, nl=1))
 
         sub_main = kw.pop('main', None)
         if sub_main is None:
+            # FIXME: I'm not sure this is the right way to handle a --version argument to a modal CLI.
+            if kw.pop('version', None):
+                if diagnostics.DEBUG_MODAL:
+                    print('[modal.ModalCLI.main] returned modal options did not specify the main function, but we do have a version string, so we shouldprint that')
+                print(self.version)
+                return 0
+            if diagnostics.DEBUG_MODAL:
+                print('[modal.ModalCLI.main] returned modal options did not specify the main function, printing help and exiting')
             parser.print_help()
             if not _noexit:
                 raise ValueError('no command given')
@@ -525,7 +533,15 @@ class ModalCLI(metaclass=MetaModalCLI):
         # If the submain is another modal, we know that we were not given any
         # leaf commands.
         try:
-            if issubclass(sub_main.__self__, ModalCLI):
+            submodal = kw.pop('submodal', None)
+            if submodal is not None:
+                if diagnostics.DEBUG_MODAL:
+                    print(f'[modal.ModalCLI.main] returned main, but it belongs to a different ModalCLI {submodal}, using our hack to print help and exit')
+                if kw.pop('version', None):
+                    if diagnostics.DEBUG_MODAL:
+                        print('[modal.ModalCLI.main] the submodal seemed to request a version, so handle that')
+                    print(submodal.version)
+                    return 0
                 # need to print the help of the correct submodal.
                 # does not seem to be a nice way to do it, so lets hack it.
                 if argv is None:

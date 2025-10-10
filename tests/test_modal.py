@@ -218,6 +218,9 @@ def test_submodals():
     """
     We should be able to reuse the same subconfig in different modals but
     have them be under different commands.
+
+    CommandLine:
+        xdoctest -m tests/test_modal.py test_submodals
     """
     import scriptconfig as scfg
 
@@ -289,6 +292,39 @@ def test_submodals():
         else:
             assert False
     assert 'command4' in cap.text
+
+
+def test_modal_version():
+    """
+    Modal CLIs should be able to cause the version to print
+
+    CommandLine:
+        xdoctest -m tests/test_modal.py test_submodals
+    """
+    import scriptconfig as scfg
+    from scriptconfig import diagnostics
+    diagnostics.DEBUG_MODAL = 1
+
+    class Modal1(scfg.ModalCLI):
+        __version__ = '1.1.1'
+
+        class Modal2(scfg.ModalCLI):
+            __version__ = '2.2.2'
+
+            class Modal3(scfg.ModalCLI):
+                __version__ = '3.3.3'
+
+    with ub.CaptureStdout(suppress=0) as cap:
+        Modal1.main(argv=['--version'])
+    assert '1.1.1' in cap.text
+
+    with ub.CaptureStdout(suppress=0) as cap:
+        Modal1.main(argv=['Modal2', '--version'])
+    assert '2.2.2' in cap.text
+
+    with ub.CaptureStdout(suppress=0) as cap:
+        Modal1.main(argv=['Modal2', 'Modal3', '--version'])
+    assert '3.3.3' in cap.text
 
 
 if __name__ == '__main__':
