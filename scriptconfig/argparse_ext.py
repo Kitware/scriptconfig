@@ -672,6 +672,7 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
             return super().parse_args(args, namespace=namespace)
 
         # Otherwise, intercept errors to help for the appropriate submodal
+        # Note this will only work in 3.9+
         self.exit_on_error = False
         try:
             return super().parse_args(args, namespace=namespace)

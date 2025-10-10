@@ -267,32 +267,26 @@ def test_submodals():
     assert Modal1.main(argv=['command1']) == 0
 
     # What happens when modals are given no args?
-    with ub.CaptureStdout(suppress=0) as cap:
-        try:
-            Modal1.main(argv=[])
-        except NoCommandError as ex:
-            assert 'no command was given' in str(ex)
-        else:
-            assert False
-    assert 'modal2' in cap.text
+    try:
+        Modal1.main(argv=[])
+    except NoCommandError as ex:
+        assert 'no command was given' in str(ex)
+    else:
+        assert False
 
-    with ub.CaptureStdout(suppress=0) as cap:
-        try:
-            Modal1.main(argv=['modal2'])
-        except NoCommandError as ex:
-            assert 'no command was given' in str(ex)
-        else:
-            assert False
-    assert 'modal3' in cap.text
+    try:
+        Modal1.main(argv=['modal2'])
+    except NoCommandError as ex:
+        assert 'no command was given' in str(ex)
+    else:
+        assert False
 
-    with ub.CaptureStdout(suppress=0) as cap:
-        try:
-            Modal1.main(argv=['modal2', 'modal3'])
-        except NoCommandError as ex:
-            assert 'no command was given' in str(ex)
-        else:
-            assert False
-    assert 'command4' in cap.text
+    try:
+        Modal1.main(argv=['modal2', 'modal3'])
+    except NoCommandError as ex:
+        assert 'no command was given' in str(ex)
+    else:
+        assert False
 
 
 def test_modal_version():
@@ -303,8 +297,8 @@ def test_modal_version():
         DEBUG_SCRIPTCONFIG=1 xdoctest -m tests/test_modal.py test_submodals
     """
     import scriptconfig as scfg
-    from scriptconfig import diagnostics
-    diagnostics.DEBUG_MODAL = 1
+    # from scriptconfig import diagnostics
+    # diagnostics.DEBUG_MODAL = 1
 
     class Modal1(scfg.ModalCLI):
         __version__ = '1.1.1'
@@ -357,6 +351,68 @@ def test_modal_command_name_resolution():
     assert 'wont_use_this_key' not in help_text
     assert 'Command2' not in help_text
     assert 'command1' in help_text
+
+
+def test_submodal_usage_improvement():
+    """
+    We print the deepest usage helps unlike default argparse
+    """
+    import scriptconfig as scfg
+    import pytest
+    import sys
+
+    if sys.version_info[0:2] < (3, 13):
+        pytest.skip('Does not work on older pythons')
+
+    # from scriptconfig import diagnostics
+    # diagnostics.DEBUG_MODAL = 1
+
+    class Modal1(scfg.ModalCLI):
+        __version__ = '1.1.1'
+
+        class Modal2(scfg.ModalCLI):
+
+            class Modal3(scfg.ModalCLI):
+
+                class Command1(scfg.DataConfig):
+                    arg1 = 'foobar'
+
+                    @classmethod
+                    def main(cls, argv=1, **kwargs):
+                        cls.cli(argv=argv, data=kwargs)
+
+    assert Modal1().main(argv=['Modal2', 'Modal3', 'Command1', '--arg1=32']) == 0
+
+    from contextlib import redirect_stderr
+    from xdoctest.utils import util_str
+    import io
+    stderr_capture = io.StringIO()
+    # Redirect stderr to the StringIO object within this context
+    with redirect_stderr(stderr_capture):
+        Modal1().main(argv=['Modal2', 'Modal3', 'Command1', '--arg2=32'], _noexit=True)
+    text = util_str.strip_ansi(stderr_capture.getvalue())
+    print(text)
+    assert 'Modal2 Modal3 Command1 [' in text
+    assert 'arg1' in text
+
+    stderr_capture = io.StringIO()
+    # Redirect stderr to the StringIO object within this context
+    with redirect_stderr(stderr_capture):
+        Modal1().main(argv=['Modal2', 'Modal3', '--arg2=32'], _noexit=True)
+    text = stderr_capture.getvalue()
+    text = util_str.strip_ansi(stderr_capture.getvalue())
+    print(text)
+    assert 'Modal2 Modal3 [' in text
+    assert 'arg1' not in text
+    assert '--version' not in text
+
+    stderr_capture = io.StringIO()
+    # Redirect stderr to the StringIO object within this context
+    with redirect_stderr(stderr_capture):
+        Modal1().main(argv=[], _noexit=True)
+    text = util_str.strip_ansi(stderr_capture.getvalue())
+    print(text)
+    assert '--version' in text
 
 
 if __name__ == '__main__':

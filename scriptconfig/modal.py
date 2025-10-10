@@ -566,8 +566,8 @@ class ModalCLI(metaclass=MetaModalCLI):
             # This case happens when a submodal is not given any commands
             if diagnostics.DEBUG_MODAL:
                 print(f'[scriptconfig.modal.ModalCLI.main] returned main, but it belongs to a different ModalCLI {sub_modal}, using our hack to print help and exit')
-            # sub_modal.argparse().print_usage()
-            sub_modal.argparse().print_help()
+            sub_modal.argparse().print_usage(sys.stderr)
+            # sub_modal.argparse().print_help(sys.stderr)
             if not _noexit:
                 raise NoCommandError('A submodal CLI was executed but no command was given.')
             return 1
@@ -576,8 +576,8 @@ class ModalCLI(metaclass=MetaModalCLI):
             # This case happens when the root modal is not given any commands
             if diagnostics.DEBUG_MODAL:
                 print('[scriptconfig.modal.ModalCLI.main] returned modal options did not specify the main function, printing help and exiting')
-            # parser.print_usage()
-            parser.print_help()
+            parser.print_usage(sys.stderr)
+            # parser.print_help(sys.stderr)
             if not _noexit:
                 raise NoCommandError('A modal CLI was executed but no command was given.')
             return 1
