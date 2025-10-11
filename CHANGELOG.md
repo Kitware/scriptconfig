@@ -9,9 +9,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.4 - Released 2025-10-10
 
-
-## Version 0.8.3 - Released 2025-10-10
-
 ### Added
 
 * Add expose Value help property
