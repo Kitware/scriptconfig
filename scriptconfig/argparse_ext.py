@@ -684,7 +684,9 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
             deepest.error(ex.message)
 
     # Helper: find deepest subparser matched by tokens.
-    def _deepest_subparser_for_argv(self, tokens):
+    def _deepest_subparser_for_argv(self, tokens=None):
+        if tokens is None:
+            tokens = sys.argv[1:]
         parser = self
         i = 0
         deepest = None

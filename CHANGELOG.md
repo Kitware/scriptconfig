@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add expose Value help property
 * Added scriptconfig CLI that helps generate templates
 * Modal register can now take command, alias, and group as an argument to control behavior for different modals.
+* Modals can now handle opaque CLIs
 
 ### Changed
 * Loaded YAML configs can now contain top level dunder or dotted keys that are

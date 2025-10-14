@@ -114,27 +114,27 @@ def main():
 if __name__ == "__main__":
     """
     # Use your native command: strict parsing (unknown flags cause errors)
-    python extern_argparse.py sum 1 2 3 --start 10
+    python opaque_argparse_wrapper.py sum 1 2 3 --start 10
     16
 
     # Unknown flag for 'sum' -> argparse error (as desired)
-    python extern_argparse.py sum 1 2 --bogus
+    python opaque_argparse_wrapper.py sum 1 2 --bogus
 
-    usage: extern_argparse sum [-h] [--start START] numbers [numbers ...]
-    extern_argparse sum: error: unrecognized arguments: --bogus
+    usage: opaque_argparse_wrapper sum [-h] [--start START] numbers [numbers ...]
+    opaque_argparse_wrapper sum: error: unrecognized arguments: --bogus
 
     # Opaque pass-through: everything after 'opaque' goes to the external CLI
-    python extern_argparse.py opaque -n Alice
+    python opaque_argparse_wrapper.py opaque -n Alice
 
     hello, Alice
 
-    python extern_argparse.py opaque -n Bob greet --times 2
+    python opaque_argparse_wrapper.py opaque -n Bob greet --times 2
 
     hello, Bob
     hello, Bob
 
     # Exit code propagation still works
-    python extern_argparse.py opaque -n fail || echo "exit=$?"
+    python opaque_argparse_wrapper.py opaque -n fail || echo "exit=$?"
     exit=2
 
     """

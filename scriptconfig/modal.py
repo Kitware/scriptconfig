@@ -240,7 +240,7 @@ class ModalCLI(metaclass=MetaModalCLI):
         if isinstance(cli_cls, dict):
             # Input given as a dictionary, must correspond to specific structure:
             metadata = cli_cls
-            assert 'cls' in metadata
+            # assert 'cls' in metadata
         else:
             metadata = {
                 'cls': cli_cls,
@@ -259,6 +259,11 @@ class ModalCLI(metaclass=MetaModalCLI):
             metadata (dict): modified inplace
         """
         cli_cls = metadata['cls']
+        if cli_cls is None:
+            # cant introspect anything, will assume the user specified
+            # enough information and call the main as an opaque function
+            metadata['is_opaque'] = True
+            return
 
         if not hasattr(cli_cls, 'main'):
             raise ValueError(ub.paragraph(
@@ -331,7 +336,7 @@ class ModalCLI(metaclass=MetaModalCLI):
 
     @class_or_instancemethod
     def register(cls_or_self, cli_cls=None, command=None, alias=None,
-                 group=None):
+                 group=None, main=None):
         """
         Add a sub-CLI to this modal CLI
 
@@ -361,6 +366,8 @@ class ModalCLI(metaclass=MetaModalCLI):
                 metadata['command'] = command
             if alias is not None:
                 metadata['alias'] = alias
+            if main is not None:
+                metadata['main_func'] = main
 
         if cli_cls is None:
             return _wrapper
@@ -451,6 +458,12 @@ class ModalCLI(metaclass=MetaModalCLI):
 
             main_cmd, aliases = fuzzy_cmd_names(cmdinfo['command'])
 
+            if cmdinfo.get('is_opaque'):
+                external_parser = command_subparsers.add_parser(
+                    main_cmd, add_help=False, **parserkw)
+                external_parser.set_defaults(__opaque_main__=cmdinfo['main_func'])
+                continue
+
             # TODO: enable alternate hyphen/underscore aliases, but suppress
             # them from the help output. Even better would be to handle
             # argument completion so they aren't clobbered.
@@ -519,6 +532,7 @@ class ModalCLI(metaclass=MetaModalCLI):
             else:
                 print(f'[scriptconfig.modal.ModalCLI.main] Calling main of {self} with argv={argv}')
 
+        # Create an instance of we called as a classmethod
         if isinstance(self, type):
             self = self()
 
@@ -529,21 +543,59 @@ class ModalCLI(metaclass=MetaModalCLI):
         if diagnostics.DEBUG_MODAL:
             _dump_parser(parser)
             print('[scriptconfig.modal.ModalCLI.main] parsing args')
+
+        # To handle opaque sub commands we always parse known arguments but we
+        # will raise an error if strict and the subcommand is not opqaue
         try:
-            if strict:
-                ns = parser.parse_args(args=argv)
-            else:
-                ns, _ = parser.parse_known_args(args=argv)
+            ns, unknown_args = parser.parse_known_args(args=argv)
         except SystemExit as ex:
             if diagnostics.DEBUG_MODAL:
                 print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} caught an SystemExit error {ex}')
             if _noexit:
                 return 1
             raise
-
         kw = ns.__dict__
+
         if diagnostics.DEBUG_MODAL:
             print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} parsed arguments: ' + ub.urepr(kw, nl=1))
+            if unknown_args:
+                print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} unknown args: ' + ub.urepr(unknown_args, nl=1))
+
+        __opaque_main__ = kw.pop('__opaque_main__', None)
+        if __opaque_main__ is not None:
+            # If we are calling an opaque function we are going to invoke it
+            # directly which means it will reparse the arguments. We patch
+            # sys.argv while this happens.
+            if diagnostics.DEBUG_MODAL:
+                print(f'Want to call __opaque_main__={__opaque_main__}')
+            forwarded = unknown_args[1:] if unknown_args[:1] == ["--"] else unknown_args
+            # TODO: need a better leading arg for the command name, we can
+            # probably add one to the metadata.
+            their_argv = ['opaque-script-name'] + forwarded
+            with _temp_argv(their_argv):
+                return __opaque_main__()
+
+        if strict and unknown_args:
+            from gettext import gettext
+            msg = gettext('unrecognized arguments: %s') % ' '.join(unknown_args)
+            try:
+                if getattr(parser, 'exit_on_error', True):
+                    # Also use the extended deepest parser logic we added to
+                    # the extended parser here.
+                    deepest = parser._deepest_subparser_for_argv(argv)
+                    if deepest is None:
+                        deepest = self
+                    # deepest.print_usage()
+                    deepest.error(msg)
+                else:
+                    from argparse import ArgumentError
+                    raise ArgumentError(None, msg)
+            except SystemExit as ex:
+                if diagnostics.DEBUG_MODAL:
+                    print(f'[scriptconfig.modal.ModalCLI.main] Modal main {self} caught an SystemExit error {ex}')
+                if _noexit:
+                    return 1
+                raise
 
         # NOTE: This is a funky way of handling allowing modals to requst
         # versions. There are special variable we assume only modal CLIs
@@ -631,3 +683,16 @@ def _dump_parser(parser, indent=0):
 
 class NoCommandError(SystemExit):
     ...
+
+
+from contextlib import contextmanager  # NOQA
+
+
+@contextmanager
+def _temp_argv(argv):
+    old = sys.argv[:]
+    sys.argv[:] = argv
+    try:
+        yield
+    finally:
+        sys.argv[:] = old
