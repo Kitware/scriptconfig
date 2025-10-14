@@ -114,11 +114,28 @@ class Value(ub.NiceRepr):
         self.tags = tags
         self.update(value)
 
+        # if __debug__:
+        #     self._check_values()
+
         # TODO: opposite
         # for use with flags, this indicates that there is another variable
         # that should always be the opposite of this one.
         # i.e. force / dry
         # i.e. verbose / quiet
+
+    def _check_values(self):
+        """
+        We try to avoid runtime checks as much as possible, but they can be
+        useful to enable in some circumstances. But we put them in a separate
+        function so they are easy to enable / disable.
+        """
+        if self.short_alias is not None:
+            short_alias = self.short_alias
+            _short_alias = [short_alias] if isinstance(short_alias, str) else short_alias
+            for v in _short_alias:
+                if v.startswith('-'):
+                    import warnings
+                    warnings.warn('Do not prefix short aliases with a -, it is implicit')
 
     def __nice__(self):
         # return '{!r}: {!r}'.format(self.type, self.value)
@@ -536,6 +553,7 @@ def _resolve_alias(name, _value, fuzzy_hyphens):
         short_aliases = [short_aliases]
     long_names = [name] + list((aliases or []))
     short_names = list(short_aliases or [])
+
     if fuzzy_hyphens:
         # Do we want to allow for people to use hyphens on the CLI?
         # Maybe, we can make it optional.
