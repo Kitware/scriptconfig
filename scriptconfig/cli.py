@@ -1,3 +1,8 @@
+"""
+Note: this module may be deprecated / repurposed for the actual command line
+interface scriptconfig will use.
+"""
+
 
 def quick_cli(default, name=None):
     """

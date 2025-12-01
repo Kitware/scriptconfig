@@ -113,14 +113,3 @@ if __name__ == '__main__':
         python -m scriptconfig._cli.template
     """
     __cli__.main()
-
-__cli__ = TemplateCLI
-
-if __name__ == '__main__':
-    """
-
-    CommandLine:
-        python ~/code/scriptconfig/scriptconfig/_cli/template.py
-        python -m scriptconfig._cli.template
-    """
-    __cli__.main()
