@@ -153,18 +153,42 @@ class BooleanFlagOrKeyValAction(_Base):
         parser._explicitly_given.add(action.dest)
 
     def __call__(action, parser, namespace, values, option_string=None):
+        """
+        Args:
+            parser (argparse.ArgumentParser): Parser instance.
+
+            namespace (argparse.Namespace): Namespace to update.
+
+            values (Any): Parsed value or `None` for bare flags.
+
+            option_string (str | None):
+                The option used (e.g. '--flag', '--no-flag').  This should
+                always be a string in normal usage, but could be None
+                in a positional argument. This lets us know if we are
+                setting the value of the "negative" option or not. If
+                not specified, we always assume the "positive" version.
+        """
+        key_is_negative = False
         if option_string in action.option_strings:
             # Was the positive or negated key given?
-            key_default = not option_string.startswith('--no-')
+            key_is_negative = option_string.startswith('--no-')
+        else:
+            raise Exception('Cannot use a BooleanFlagOrKeyValAction as a positional argument')
+
         # Was there a value or was the flag specified by itself?
         if values is None:
-            value = key_default
+            # Case where no value is given (treat as a flag)
+            value = not key_is_negative
         else:
+            # Case where no value is given, parse it and use it.
             # Allow for non-boolean values (i.e. auto) to be passed
             from scriptconfig import smartcast as smartcast_mod
-            value = smartcast_mod.smartcast(values, action.type)
+            if action.type is None:
+                value = smartcast_mod.smartcast(values)
+            else:
+                value = values
             # value = smartcast_mod._smartcast_bool(values)
-            if not key_default:
+            if key_is_negative:
                 value = not value
         setattr(namespace, action.dest, value)
         action._mark_parsed_argument(parser)
