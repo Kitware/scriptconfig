@@ -38,25 +38,30 @@ class TemplateCLI(scfg.DataConfig):
 
 def _build_single_template(config):
 
-    classname = f'{config.name}Modal'
+    classname = f'{config.name}Config'
 
     text = ub.codeblock(
         f'''
         #!/usr/bin/env python3
+        # PYTHON_ARGCOMPLETE_OK
         import scriptconfig as scfg
-        import ubelt as ub
 
 
         class {classname}(scfg.DataConfig):
-            # param1 = scfg.Value(None, help='param1')
+            """
+            Write your documentation here
+            """
+
+            # List your default parameters here
+            # param1 = scfg.Value(None, help='your parameter help string')
 
             @classmethod
             def main(cls, argv=1, **kwargs):
                 """
                 Example:
                     >>> # xdoctest: +SKIP
-                    >>> from modname import *  # NOQA
-                    >>> argv = 0
+                    >>> # It's a good idea to setup a doctest.
+                    >>> argv = False
                     >>> kwargs = dict()
                     >>> cls = {classname}
                     >>> config = cls(**kwargs)
