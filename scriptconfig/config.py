@@ -342,20 +342,27 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             aware config instance..
         """
         # The _data attribute holds
-        self._data = None
+        self._data = OrderedDict()
         self._default = OrderedDict()
+        self._subconfig_meta = {}
+        self._has_subconfigs = False
+        self._scfg_post_init_done = False
         cls_default = getattr(self, '__default__', getattr(self, 'default', None))
         if cls_default:
             # allow for class attributes to specify the default
             self._default.update(cls_default)
         self._alias_map = None
+        # Normalize SubConfig-like defaults early
+        from scriptconfig.subconfig import wrap_subconfig_defaults
+        wrap_subconfig_defaults(self, _dont_call_post_init=_dont_call_post_init)
         self.load(data, cmdline=cmdline, default=default,
                   _dont_call_post_init=_dont_call_post_init)
 
     @classmethod
     def cli(cls, data=None, default=None, argv=None, strict=True,
             cmdline=True, autocomplete='auto', special_options=True,
-            transition_helpers=True, verbose=False):
+            transition_helpers=True, verbose=False, allow_import=True,
+            allow_subconfig_overrides=True, localns=None, stacklevel=0):
         """
         Create a command-line aware config instance.
 
@@ -405,10 +412,25 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
             verbose (bool | str):
                 If true, then perform a rich print of the config after it is
-                parsed. This is a convenience to reduce script boilerplate.
-                If "auto", it will default to true in most cases, except when
-                we can infer special behavior from the user-defined config via
-                standard keys: verbose, quiet, and silent.
+                parsed. If "auto", it will default to true in most cases,
+                except when we can infer special behavior from the
+                user-defined config via standard keys: verbose, quiet, silent.
+            allow_import (bool):
+                If True, allow module path selectors like
+                ``pkg.mod.ClassName``
+                for SubConfig selection. Defaults to True.
+            allow_subconfig_overrides (bool):
+                If True, enable multipass CLI parsing to allow SubConfig
+                selection overrides. If False, only the default realized tree
+                is parsed and selector args error at parse time.
+            localns (dict | None):
+                Namespace used to resolve SubConfig class names. If None and
+                ``stacklevel`` is not None, a namespace is derived from the
+                caller's frame.
+            stacklevel (int | None):
+                Number of frames above the caller to use when deriving the
+                namespace for SubConfig class name resolution. Use None to
+                disable caller introspection.
 
         Example:
             >>> import scriptconfig as scfg
@@ -432,15 +454,14 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             cmdline = argv
         if default is None:
             default = {}
-        # Note: hack to avoid calling  __post_init__ twice
-        # We may want to refactor this to be a bit nicer.
-        # Might require a major version bump and breaking of backwards compat.
-        # avoid this. The thing that makes this difficult is the DataConfig
-        # init method taking in keyword args corresponding to the config which
-        # prevents adding clean options for control flow.
+        # Note: hack to avoid calling __post_init__ twice
         self = cls(_dont_call_post_init=True)
+        next_stacklevel = None if stacklevel is None else stacklevel + 1
         self.load(data, cmdline=cmdline, default=default, strict=strict,
-                  autocomplete=autocomplete, special_options=special_options)
+                  autocomplete=autocomplete, special_options=special_options,
+                  allow_import=allow_import,
+                  allow_subconfig_overrides=allow_subconfig_overrides,
+                  localns=localns, stacklevel=next_stacklevel)
 
         if isinstance(verbose, str) and verbose == 'auto':
             verbose = self.get('verbose', verbose)
@@ -545,7 +566,19 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return data
 
     def __nice__(self):
-        return str(self.asdict())
+        data = self.asdict()
+        if isinstance(data, dict):
+            data = dict(data)
+        return str(data)
+
+    def asdict(self):
+        if getattr(self, '_has_subconfigs', False):
+            from scriptconfig.subconfig import config_to_nested_dict
+            return config_to_nested_dict(self, include_class=False)
+        return super().asdict()
+
+    def to_dict(self):
+        return self.asdict()
 
     def getitem(self, key):
         """
@@ -557,6 +590,21 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         Returns:
             Any : the associated value
         """
+        if isinstance(key, str) and '.' in key and getattr(self, '_has_subconfigs', False):
+            parts = key.split('.')
+            node = self
+            for part in parts:
+                if not isinstance(node, Config):
+                    raise KeyError(key)
+                try:
+                    value = node._data[part]
+                except KeyError:
+                    part = node._normalize_alias_key(part)
+                    value = node._data[part]
+                node = value
+            if isinstance(node, Value):
+                node = node.value
+            return node
         try:
             value = self._data[key]
         except KeyError:
@@ -576,6 +624,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             key (str): the key
             value (Any): the new value
         """
+        if isinstance(key, str) and '.' in key and getattr(self, '_has_subconfigs', False):
+            parts = key.split('.')
+            parent_key, leaf = parts[:-1], parts[-1]
+            from scriptconfig.subconfig import _ensure_parent_node
+            parent = _ensure_parent_node(self, parent_key)
+            parent[leaf] = value
+            return
         if key not in self._data:
             key = self._normalize_alias_key(key)
             if key not in self._data:
@@ -632,10 +687,13 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         self._default.update(default)
         self._alias_map = None
+        from scriptconfig.subconfig import wrap_subconfig_defaults
+        wrap_subconfig_defaults(self, _dont_call_post_init=True)
 
     def load(self, data=None, cmdline=False, mode=None, default=None,
              strict=False, autocomplete=False, _dont_call_post_init=False,
-             special_options=True):
+             special_options=True, allow_import=True,
+             allow_subconfig_overrides=True, localns=None, stacklevel=0):
         """
         Updates the configuration from a given data source.
 
@@ -681,6 +739,22 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             special_options (bool, default=False):
                 adds special scriptconfig options, namely: --config, --dumps,
                 and --dump. Prefer using this over cmdline.
+            allow_import (bool):
+                If True, allow module path selectors like
+                ``pkg.mod.ClassName``
+                for SubConfig selection. Defaults to True.
+            allow_subconfig_overrides (bool):
+                If True, enable multipass CLI parsing to allow SubConfig
+                selection overrides. If False, only the default realized tree
+                is parsed and selector args error at parse time.
+            localns (dict | None):
+                Namespace used to resolve SubConfig class names. If None and
+                ``stacklevel`` is not None, a namespace is derived from the
+                caller's frame.
+            stacklevel (int | None):
+                Number of frames above the caller to use when deriving the
+                namespace for SubConfig class name resolution. Use None to
+                disable caller introspection.
 
         Note:
             if cmdline=True, this will create an argument parser.
@@ -815,10 +889,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     k = _alias_map[a]
                     user_config[k] = user_config.pop(a)
                 else:
-                    # Ignore any unknown dunder or dotted keys as they can't be
-                    # config keys in the first place.
+                    # Ignore any unknown dunder keys or allow dotted keys when
+                    # subconfigs are enabled (they may be nested updates).
                     if a.startswith('.') or a.startswith('__') and a.endswith('__'):
                         user_config.pop(a, None)
+                    elif getattr(self, '_has_subconfigs', False) and '.' in a:
+                        continue
                     else:
                         unknown_keys.append(a)
             if unknown_keys:
@@ -831,8 +907,24 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     for k in unknown_keys:
                         user_config.pop(k, None)
 
+        from scriptconfig import subconfig as _subcfg_mod
+        localns = _subcfg_mod.resolve_localns(localns, stacklevel)
         self._data = _default.copy()
-        self.update(user_config)
+        pending_updates = None
+        if getattr(self, '_has_subconfigs', False):
+            _subcfg_mod.ensure_subconfigs_instantiated(self, _dont_call_post_init=_dont_call_post_init)
+            if cmdline:
+                pending_updates = _subcfg_mod.coerce_data_updates(user_config)
+            else:
+                _subcfg_mod.apply_dot_updates(
+                    self,
+                    user_config,
+                    allow_import=allow_import,
+                    localns=localns,
+                    stacklevel=None,
+                )
+        else:
+            self.update(user_config)
 
         if isinstance(cmdline, str):
             # allow specification using the actual command line arg string
@@ -840,15 +932,17 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             cmdline = shlex.split(os.path.expandvars(cmdline))
 
         if cmdline or ub.iterable(cmdline):
-            # TODO: if user_config is specified, then we should probably not
-            # override any values in user_config with the defaults? The CLI
-            # should override them IF they exist on in sys.argv, but not if
-            # they don't?
+            next_stacklevel = None if stacklevel is None else stacklevel + 1
             read_argv_kwargs = {
                 'special_options': special_options,
                 'strict': strict,
                 'autocomplete': autocomplete,
                 'argv': None,
+                'allow_import': allow_import,
+                'allow_subconfig_overrides': allow_subconfig_overrides,
+                'pending_updates': pending_updates,
+                'localns': localns,
+                'stacklevel': next_stacklevel,
             }
             if isinstance(cmdline, dict):
                 ub.schedule_deprecation('scriptconfig', 'cmdline', 'parameter as a dictionary',
@@ -868,7 +962,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                         if v.required:
                             if self[k] == v.value:
                                 raise Exception('Required variable {!r} still has default value'.format(k))
-            self.__post_init__()
+            if getattr(self, '_has_subconfigs', False):
+                _subcfg_mod.finalize_post_init(self)
+            else:
+                self.__post_init__()
         return self
 
     def _normalize_alias_key(self, key):
@@ -903,7 +1000,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     _alias_map[a] = k
         return _alias_map
 
-    def _read_argv(self, argv=None, special_options=True, strict=False, autocomplete=False):
+    def _read_argv(self, argv=None, special_options=True, strict=False, autocomplete=False,
+                   allow_import=True, allow_subconfig_overrides=True, pending_updates=None,
+                   localns=None, stacklevel=0):
         """
         Example:
             >>> import scriptconfig as scfg
@@ -995,6 +1094,30 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> self = MyConfig()
             >>> self._read_argv(argv='p1 p2 p3!')
             >>> print('self = {}'.format(self))
+
+        Example:
+            >>> # SubConfig case: staged parsing + dotted overrides
+            >>> import scriptconfig as scfg
+            >>> import pytest
+            >>> class Adam(scfg.Config):
+            ...     __default__ = {'lr': 1e-3}
+            >>> class Sgd(scfg.Config):
+            ...     __default__ = {'momentum': 0.9}
+            >>> class TrainCfg(scfg.Config):
+            ...     __default__ = {
+            ...         'optim': scfg.SubConfig(Adam, choices={'adam': Adam, 'sgd': Sgd}),
+            ...     }
+            >>> cfg = TrainCfg()
+            >>> cfg._read_argv(argv='--optim=sgd --optim.momentum=0.8')
+            >>> assert isinstance(cfg['optim'], Sgd) and cfg['optim']['momentum'] == 0.8
+            >>> print('Test error case:')
+            >>> with pytest.raises(SystemExit) as ex:
+            ...     cfg._read_argv(argv='--optim.unknown=1', strict=True)
+            >>> print(f'Got expected error: {ex}')
+            >>> print('Test success case:')
+            >>> cfg._read_argv(argv='--optim=sgd --optim.momentum=0.8')
+            >>> print(cfg.dumps())
+            >>> assert isinstance(cfg['optim'], Sgd) and cfg['optim']['momentum'] == 0.8
         """
         if isinstance(argv, str):
             import shlex
@@ -1002,6 +1125,23 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         # TODO: warn about any unused flags
         parser = self.argparse(special_options=special_options)
+        has_subconfigs = getattr(self, '_has_subconfigs', False)
+        if has_subconfigs:
+            # Subconfig argv parsing is staged: realize selector overrides first,
+            # then rebuild a parser for the realized tree before parsing values.
+            from scriptconfig import subconfig as _subcfg_mod
+            localns = _subcfg_mod.resolve_localns(localns, stacklevel)
+            parser, argv = _subcfg_mod.expand_multipass_parser(
+                self,
+                parser=parser,
+                argv=argv,
+                special_options=special_options,
+                allow_import=allow_import,
+                allow_subconfig_overrides=allow_subconfig_overrides,
+                pending_updates=pending_updates,
+                localns=localns,
+                stacklevel=None,
+            )
 
         if autocomplete:
             try:
@@ -1017,7 +1157,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 ns = parser.parse_args(argv).__dict__
             else:
                 ns = parser.parse_known_args(argv)[0].__dict__
-        except (ValueError, TypeError) as ex:
+        except (ValueError, TypeError, KeyError) as ex:
             # For errors (like ValueError) where its probably a programmer
             # error and not a user error, give the debugger some information
             # about the scriptconfig object.
@@ -1047,7 +1187,36 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         # We might remove code under this if using action casting proves to be
         # stable.
         RELY_ON_ACTION_SMARTCAST = True
-
+        if has_subconfigs:
+            # Subconfig selectors need special handling, but regular values
+            # can use the standard Config setitem logic.
+            from scriptconfig import subconfig as _subcfg_mod
+            explicit = getattr(parser, '_explicitly_given', set())
+            subconfig_paths = set(_subcfg_mod.find_subconfig_paths(self))
+            if explicit:
+                selector_keys = {
+                    k for k in explicit
+                    if k.endswith('.__class__') or k in subconfig_paths
+                }
+                if selector_keys:
+                    selector_updates = {k: ns[k] for k in selector_keys if k in ns}
+                    _subcfg_mod.apply_dot_updates(
+                        self,
+                        selector_updates,
+                        allow_import=allow_import,
+                        localns=localns,
+                        stacklevel=None,
+                    )
+                    for key in selector_keys:
+                        ns.pop(key, None)
+                    parser._explicitly_given = explicit - selector_keys
+            if subconfig_paths:
+                for key in subconfig_paths:
+                    ns.pop(key, None)
+                parser._explicitly_given = {
+                    key for key in parser._explicitly_given
+                    if key not in subconfig_paths
+                }
         # First load argparse defaults in first
         _not_given = set(ns.keys()) - parser._explicitly_given
         # print('_not_given = {!r}'.format(_not_given))
@@ -1147,15 +1316,20 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         if mode is None:
             mode = 'yaml'
+        if getattr(self, '_has_subconfigs', False):
+            from scriptconfig.subconfig import config_to_nested_dict
+            payload = config_to_nested_dict(self, include_class=True)
+        else:
+            payload = OrderedDict(self.items())
         if mode == 'yaml':
             import yaml
             def order_rep(dumper, data):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
-            yaml.add_representer(OrderedDict, order_rep)
-            yaml.safe_dump(dict(self.items()), stream)
+            yaml.add_representer(OrderedDict, order_rep, Dumper=yaml.SafeDumper)
+            yaml.safe_dump(payload, stream)
         elif mode == 'json':
             import json
-            json.dump(OrderedDict(self.items()), stream, indent=4)
+            json.dump(payload, stream, indent=4)
         else:
             raise KeyError(mode)
 
@@ -1722,7 +1896,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         oconf = OmegaConf.create(self.to_dict())
         return oconf
 
-    def argparse(self, parser=None, special_options=False):
+    def argparse(self, parser=None, special_options=False, allow_subconfig_overrides=False):
         """
         construct or update an argparse.ArgumentParser CLI parser
 
@@ -1733,6 +1907,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             special_options (bool, default=False):
                 adds special scriptconfig options, namely: --config, --dumps,
                 and --dump.
+            allow_subconfig_overrides (bool):
+                If True, allow SubConfig selector overrides. SubConfig
+                selection requires multipass parsing; use ``cli`` instead.
 
         Returns:
             argparse.ArgumentParser : a new or updated argument parser
@@ -1880,6 +2057,16 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> self._read_argv(argv=[])
         """
         from scriptconfig import argparse_ext
+        if getattr(self, '_has_subconfigs', False):
+            if allow_subconfig_overrides:
+                raise RuntimeError(
+                    'SubConfig selection overrides require multipass parsing; use cli()'
+                )
+            from scriptconfig import subconfig as _subcfg_mod
+            flat_helper = _subcfg_mod.flat_config_from_tree(self, include_class_options=False)
+            parser = flat_helper.argparse(parser=parser, special_options=special_options)
+            _subcfg_mod.add_forbidden_selector_args(parser, self)
+            return parser
 
         if parser is None:
             parserkw = self._parserkw()

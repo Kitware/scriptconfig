@@ -161,6 +161,7 @@ from .config import (Config, define,)
 from .value import (Path, PathList, Value, Flag)
 from .cli import (quick_cli,)
 from .dataconfig import (DataConfig, dataconf,)
+from .subconfig import (SubConfig,)
 
 __all__ = ['Config', 'DataConfig', 'Path', 'PathList', 'Value', 'dataconf',
-           'define', 'quick_cli', 'Flag', 'ModalCLI']
+           'define', 'quick_cli', 'Flag', 'ModalCLI', 'SubConfig']

@@ -56,9 +56,14 @@ Notes:
 from collections import OrderedDict
 from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
+import inspect
 import warnings
 import ubelt as ub
 from scriptconfig import diagnostics
+from scriptconfig.subconfig import SubConfig, wrap_subconfig_defaults
+
+
+__all__ = ['dataconf', 'DataConfig', 'MetaDataConfig', 'SubConfig']
 
 
 def dataconf(cls):
@@ -204,6 +209,9 @@ class MetaDataConfig(MetaConfig):
                 cls_default = {}
 
             this_default.update(cls_default)
+
+            if '__class__' in this_default:
+                raise ValueError('The name "__class__" is reserved for nested DataConfig meta keys')
             # Helps make the class pickleable. Pretty hacky though.
             for k in attr_default:
                 namespace.pop(k)
@@ -315,9 +323,14 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             ).format(unknown_args, list(self._default)))
         self._default.update(new_defaults)
         self._data = self._default.copy()
+        self._subconfig_meta = {}
+        self._has_subconfigs = False
+        wrap_subconfig_defaults(self, _dont_call_post_init=_dont_call_post_init)
         self._enable_setattr = True
+        self._scfg_post_init_done = False
         if not _dont_call_post_init:
             self.__post_init__()
+            self._scfg_post_init_done = True
 
     def __getattr__(self, key):
         # Note: attributes that mirror the public API will be suppressed
@@ -397,6 +410,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             raise NotImplementedError(
                 'namespaces are not handled in scriptconfig')
         return cls.cli(argv=args, strict=False)
+
 
     @property
     def default(self):

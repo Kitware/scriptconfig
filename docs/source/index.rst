@@ -18,6 +18,7 @@ ScriptConfig's documentation
    auto/scriptconfig
    auto/modules
    manual/getting_started
+   manual/nested_configs
 
 
 Indices and tables

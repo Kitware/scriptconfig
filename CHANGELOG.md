@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.8.5 - Unreleased
 
+### Added
+* SubConfig support for nested Config/DataConfig trees with selector-aware CLI parsing and nested overrides.
+* Documentation for nested configs and SubConfig usage under the manual.
+
 ### Fixed
 * Corner case for BooleanFlagOrKeyValAction, only smartcast if type is not specified
 * BooleanFlagOrKeyValAction will now error if you use it with positional arguments to prevent unintended usage.
