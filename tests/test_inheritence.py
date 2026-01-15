@@ -97,12 +97,12 @@ def test_multiple_inheritence():
     assert text == ub.codeblock(
         '''
         Foobarable(**{
-            'foo_arg1': 1,
-            'foo_arg2': Ellipsis,
-            'foobarg1': 'c',
-            'foobarg2': Ellipsis,
             'bar_arg1': 'a',
             'bar_arg2': Ellipsis,
+            'foobarg1': 3,
+            'foobarg2': Ellipsis,
+            'foo_arg1': 1,
+            'foo_arg2': Ellipsis,
             'new_arg': 'NEW',
         })
         ''')
@@ -143,12 +143,12 @@ def test_multiple_inheritence_diamond():
         '''
         Joined(**{
             'base_arg1': 'B1',
-            'base_arg2': 'B2',
-            'base_arg3': 'R_B3',
+            'base_arg2': 'L_B2',
+            'base_arg3': 'B3',
             'base_arg4': 'J3',
-            'left_arg1': 'L1',
-            'left_arg2': 'J1',
             'right_arg1': 'R1',
             'right_arg2': 'J2',
+            'left_arg1': 'L1',
+            'left_arg2': 'J1',
         })
         ''')

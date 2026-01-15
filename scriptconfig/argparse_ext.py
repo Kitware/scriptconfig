@@ -1,9 +1,13 @@
 """
 Argparse Extensions
 """
+from __future__ import annotations
+
+from typing import Any, List, Optional, Sequence, Tuple, cast
 import argparse
 import os
 import sys
+
 _FALSY = {'0', 'false', 'f', 'no', ''}
 SCRIPTCONFIG_NORICH = os.environ.get('SCRIPTCONFIG_NORICH', '').lower() not in _FALSY
 
@@ -15,6 +19,9 @@ _Base = argparse._StoreAction
 _RawDescriptionHelpFormatter = argparse.RawDescriptionHelpFormatter
 _ArgumentDefaultsHelpFormatter = argparse.ArgumentDefaultsHelpFormatter
 """
+
+_RawDescriptionHelpFormatter: type[argparse.HelpFormatter]
+_ArgumentDefaultsHelpFormatter: type[argparse.HelpFormatter]
 
 try:
     if SCRIPTCONFIG_NORICH:
@@ -105,8 +112,13 @@ class BooleanFlagOrKeyValAction(_Base):
         >>>     print(f'args={args} -> {ns}')
         >>>     assert ns['flag'] == want
     """
-    def __init__(self, option_strings, dest, default=None, required=False,
-                 help=None, type=None):
+    def __init__(self,
+                 option_strings: Sequence[str],
+                 dest: str,
+                 default: Any = None,
+                 required: bool = False,
+                 help: Optional[str] = None,
+                 type: Optional[type] = None) -> None:
 
         _option_strings = []
         for option_string in option_strings:
@@ -132,7 +144,7 @@ class BooleanFlagOrKeyValAction(_Base):
         argparse.Action.__init__(self, **actionkw)
         # super().__init__(**actionkw)
 
-    def format_usage(self):
+    def format_usage(self) -> str:
         # I thought this was used in formatting the help, but it seems like
         # we dont have much control over that here.
         if self.default is False:
@@ -142,29 +154,59 @@ class BooleanFlagOrKeyValAction(_Base):
                 if not option_string.startswith('--no'):
                     _option_strings.append(option_string)
         else:
-            _option_strings = self.option_strings
+            _option_strings = list(self.option_strings)
         return ' | '.join(_option_strings)
 
-    def _mark_parsed_argument(action, parser):
+    def _mark_parsed_argument(action, parser: argparse.ArgumentParser) -> None:
         if not hasattr(parser, '_explicitly_given'):
             # We might be given a subparser / parent parser
             # and not the original one we created.
-            parser._explicitly_given = set()
-        parser._explicitly_given.add(action.dest)
+            parser._explicitly_given = set()  # type: ignore[attr-defined]
+        parser._explicitly_given.add(action.dest)  # type: ignore[attr-defined]
 
-    def __call__(action, parser, namespace, values, option_string=None):
+    def __call__(action,
+                 parser: argparse.ArgumentParser,
+                 namespace: argparse.Namespace,
+                 values: Any,
+                 option_string: Optional[str] = None) -> None:
+        """
+        Args:
+            parser (argparse.ArgumentParser): Parser instance.
+
+            namespace (argparse.Namespace): Namespace to update.
+
+            values (Any): Parsed value or `None` for bare flags.
+
+            option_string (str | None):
+                The option used (e.g. '--flag', '--no-flag').  This should
+                always be a string in normal usage, but could be None
+                in a positional argument. This lets us know if we are
+                setting the value of the "negative" option or not. If
+                not specified, we always assume the "positive" version.
+        """
+        key_is_negative = False
+        if option_string is None:
+            raise Exception('Cannot use a BooleanFlagOrKeyValAction as a positional argument')
         if option_string in action.option_strings:
             # Was the positive or negated key given?
-            key_default = not option_string.startswith('--no-')
+            key_is_negative = option_string.startswith('--no-')
+        else:
+            raise Exception('Cannot use a BooleanFlagOrKeyValAction as a positional argument')
+
         # Was there a value or was the flag specified by itself?
         if values is None:
-            value = key_default
+            # Case where no value is given (treat as a flag)
+            value = not key_is_negative
         else:
+            # Case where no value is given, parse it and use it.
             # Allow for non-boolean values (i.e. auto) to be passed
             from scriptconfig import smartcast as smartcast_mod
-            value = smartcast_mod.smartcast(values, action.type)
+            if action.type is None:
+                value = smartcast_mod.smartcast(values)
+            else:
+                value = values
             # value = smartcast_mod._smartcast_bool(values)
-            if not key_default:
+            if key_is_negative:
                 value = not value
         setattr(namespace, action.dest, value)
         action._mark_parsed_argument(parser)
@@ -216,7 +258,13 @@ class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
         >>>     print(f'args={args} -> {ns}')
         >>>     assert ns['flag'] == want
     """
-    def __call__(action, parser, namespace, values, option_string=None):
+    def __call__(action,
+                 parser: argparse.ArgumentParser,
+                 namespace: argparse.Namespace,
+                 values: Any,
+                 option_string: Optional[str] = None) -> None:
+        if option_string is None:
+            raise Exception('Cannot use a CounterFlagOrKeyValAction as a positional argument')
         if option_string in action.option_strings:
             # Was the positive or negated key given?
             key_default = not option_string.startswith('--no-')
@@ -240,9 +288,9 @@ class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
         action._mark_parsed_argument(parser)
 
 
-class RawDescriptionDefaultsHelpFormatter(
-        _RawDescriptionHelpFormatter,
-        _ArgumentDefaultsHelpFormatter):
+class RawDescriptionDefaultsHelpFormatter(  # type: ignore[misc,valid-type]
+        _RawDescriptionHelpFormatter,  # type: ignore[misc,valid-type]
+        _ArgumentDefaultsHelpFormatter):  # type: ignore[misc,valid-type]
 
     group_name_formatter = str  # revert rich-argparse title change
 
@@ -352,28 +400,32 @@ class CompatArgumentParser(argparse.ArgumentParser):
     Python 3.6 - 3.8
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.exit_on_error = kwargs.pop('exit_on_error', True)
         super().__init__(*args, **kwargs)
 
-    def parse_known_args(self, args=None, namespace=None):
+    def parse_known_args(self,  # type: ignore[override]
+                         args: Optional[Sequence[str]] = None,
+                         namespace: Optional[argparse.Namespace] = None) -> Tuple[argparse.Namespace, List[str]]:
         """
         This is the Python 3.10 implementation of this function.
         We define this for Python 3.6-3.8 compatibility where the exit_on_error
         flag does not exist.
         """
         # This is the version from Python 3.10
-        from argparse import _sys, Namespace, SUPPRESS, ArgumentError
+        import sys
+        from argparse import Namespace, SUPPRESS, ArgumentError
         from argparse import _UNRECOGNIZED_ARGS_ATTR
         import os
         if args is None:
             # args default to the system args
-            args = _sys.argv[1:]
+            args = sys.argv[1:]
         else:
             # make sure that args are mutable
             args = list(args)
             # Allow Paths objects
-            args = [os.fspath(a) if isinstance(a, os.PathLike) else a for a in args]
+            args_list = [os.fspath(a) if isinstance(a, os.PathLike) else a for a in args]
+            args = cast(List[str], args_list)
 
         # default Namespace built from parser defaults
         if namespace is None:
@@ -395,17 +447,17 @@ class CompatArgumentParser(argparse.ArgumentParser):
         if self.exit_on_error:
             try:
                 if HAS_ARGPARSE_GH_125355:
-                    namespace, args = self._parse_known_args(args, namespace, intermixed=False)
+                    namespace, args = self._parse_known_args(args, namespace, intermixed=False)  # type: ignore[call-arg]
                 else:
-                    namespace, args = self._parse_known_args(args, namespace)
+                    namespace, args = self._parse_known_args(args, namespace)  # type: ignore[call-arg,arg-type]
             except ArgumentError:
-                err = _sys.exc_info()[1]
+                err = sys.exc_info()[1]
                 self.error(str(err))
         else:
             if HAS_ARGPARSE_GH_125355:
-                namespace, args = self._parse_known_args(args, namespace, intermixed=False)
+                namespace, args = self._parse_known_args(args, namespace, intermixed=False)  # type: ignore[call-arg]
             else:
-                namespace, args = self._parse_known_args(args, namespace)
+                namespace, args = self._parse_known_args(args, namespace)  # type: ignore[call-arg,arg-type]
 
         if hasattr(namespace, _UNRECOGNIZED_ARGS_ATTR):
             args.extend(getattr(namespace, _UNRECOGNIZED_ARGS_ATTR))
@@ -581,13 +633,14 @@ class ExtendedArgumentParser_POST_GH_114180(CompatArgumentParser):
         return result
 
 
+_ExtendedArgumentParserBase: type[CompatArgumentParser]
 if HAS_ARGPARSE_GH_114180:
     _ExtendedArgumentParserBase = ExtendedArgumentParser_POST_GH_114180
 else:
     _ExtendedArgumentParserBase = ExtendedArgumentParser_PRE_GH_114180
 
 
-class ExtendedArgumentParser(_ExtendedArgumentParserBase):
+class ExtendedArgumentParser(_ExtendedArgumentParserBase):  # type: ignore[misc,valid-type]
     """
     Extends the compatible argument parser to add minor new features.
     Namely: allowing options in argv to interchangeably use "_" or "-".
@@ -684,7 +737,9 @@ class ExtendedArgumentParser(_ExtendedArgumentParserBase):
             deepest.error(ex.message)
 
     # Helper: find deepest subparser matched by tokens.
-    def _deepest_subparser_for_argv(self, tokens):
+    def _deepest_subparser_for_argv(self, tokens=None):
+        if tokens is None:
+            tokens = sys.argv[1:]
         parser = self
         i = 0
         deepest = None

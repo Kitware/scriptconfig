@@ -145,7 +145,7 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.8.4'
+__version__ = '0.9.0'
 
 __submodules__ = {
     'modal': None,
@@ -161,6 +161,7 @@ from .config import (Config, define,)
 from .value import (Path, PathList, Value, Flag)
 from .cli import (quick_cli,)
 from .dataconfig import (DataConfig, dataconf,)
+from .subconfig import (SubConfig,)
 
 __all__ = ['Config', 'DataConfig', 'Path', 'PathList', 'Value', 'dataconf',
-           'define', 'quick_cli', 'Flag', 'ModalCLI']
+           'define', 'quick_cli', 'Flag', 'ModalCLI', 'SubConfig']

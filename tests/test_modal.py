@@ -386,6 +386,11 @@ def test_submodal_usage_improvement():
     from contextlib import redirect_stderr
     from xdoctest.utils import util_str
     import io
+
+    if 0:
+        from scriptconfig import diagnostics
+        diagnostics.DEBUG_MODAL = 1
+
     stderr_capture = io.StringIO()
     # Redirect stderr to the StringIO object within this context
     with redirect_stderr(stderr_capture):
@@ -415,9 +420,56 @@ def test_submodal_usage_improvement():
     assert '--version' in text
 
 
+def test_arbitrary_opaque_subparser():
+    import scriptconfig as scfg
+    # import pytest
+    import sys
+
+    def opaque_main():
+        import argparse
+        print(f'sys.argv={sys.argv}')
+        parser = argparse.ArgumentParser(
+            description='This is the opaque main help message')
+        parser.add_argument('--foo', default='bar')
+        ns = parser.parse_args()
+        print(f'Successfully called the opaque main and got ns={ns}')
+
+    class MyModal(scfg.ModalCLI):
+        __version__ = '1.1.1'
+
+    modal = MyModal()
+    modal.register(command='extern_cli', main=opaque_main)(None)
+    modal._subconfig_metadata
+
+    # from scriptconfig import diagnostics
+    # diagnostics.DEBUG_MODAL = 1
+
+    print('--------------')
+    print('* default help')
+    print('--------------')
+    try:
+        modal.main(argv=['--help'], strict=False)
+    except SystemExit:
+        ...
+
+    print('--------------')
+    print('* try to print extern help')
+    print('--------------')
+    try:
+        modal.main(argv=['extern_cli', '--help'], strict=False)
+    except SystemExit:
+        ...
+
+    print('--------------')
+    print('* invoke trigger cli')
+    print('--------------')
+    modal.main(argv=['extern_cli'], strict=False)
+
+
 if __name__ == '__main__':
     """
     CommandLine:
         python ~/code/scriptconfig/tests/test_modal.py
     """
-    test_modal_fuzzy_hyphens()
+    # test_modal_fuzzy_hyphens()
+    test_arbitrary_opaque_subparser()

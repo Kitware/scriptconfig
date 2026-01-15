@@ -60,3 +60,7 @@ Of course you can disable smart parsing by doing something like:
 Specifying the type forces the argument into a standardized type, but the
 default under the hood is actually:
 ``argname1 = scfg.Value('default1', type=scfg.smartcast)``
+
+Nested configuration trees can be built using :class:`scriptconfig.SubConfig`,
+which lets you swap nested implementations and override leaf values via dotted
+CLI arguments. See :doc:`manual/nested_configs` for the full guide.
