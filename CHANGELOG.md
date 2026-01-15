@@ -20,6 +20,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * BooleanFlagOrKeyValAction will now error if you use it with positional arguments to prevent unintended usage.
 * Resolve mypy typing issues in config, modal, and argparse helpers.
 * Config inheritance now uses python class MRO composition rules (i.e. new defaults do not overwrite previous ones). This change is backwards incompatible, but is likely not externally used.
+* Preserve DataConfig defaults that point at Config/DataConfig subclasses so they are wrapped as SubConfig metadata.
 
 
 ## Version 0.8.4 - Released 2025-10-10

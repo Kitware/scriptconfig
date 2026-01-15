@@ -287,6 +287,45 @@ def test_value_wrapped_config_upgrades_to_subconfig():
     assert isinstance(cfg['inner_dc'], InnerDataConfig)
 
 
+def test_dataconfig_class_default_selector_by_classname():
+    class OptimizerConfig(scfg.DataConfig):
+        lr = 1e-3
+
+    class Adam(OptimizerConfig):
+        beta1 = 0.9
+
+    class Sgd(OptimizerConfig):
+        momentum = 0.9
+
+    class TrainCfg(scfg.DataConfig):
+        optim = Adam
+        epochs = scfg.Value(10, type=int)
+
+    cfg = TrainCfg.cli(
+        argv='--optim=Sgd --optim.momentum=0.8 --epochs=20',
+        allow_subconfig_overrides=True,
+    )
+    assert isinstance(cfg._subconfig_meta['optim'], scfg.SubConfig)
+    assert isinstance(cfg.optim, Sgd)
+    assert cfg.optim.momentum == pytest.approx(0.8)
+    assert cfg.epochs == 20
+
+
+def test_dataconfig_value_wrapped_subconfig():
+    class OptimizerConfig(scfg.DataConfig):
+        lr = 1e-3
+
+    class Adam(OptimizerConfig):
+        beta1 = 0.9
+
+    class TrainCfg(scfg.DataConfig):
+        optim = scfg.Value(Adam)
+
+    cfg = TrainCfg()
+    assert isinstance(cfg._subconfig_meta['optim'], scfg.SubConfig)
+    assert isinstance(cfg.optim, Adam)
+
+
 def test_subconfig_config_string_cases():
     class OptimizerConfig(scfg.DataConfig):
         lr = scfg.Value(0.01, type=float)

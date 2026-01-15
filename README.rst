@@ -23,6 +23,8 @@ ScriptConfig
 
 * Can generate equivalent argparse (can help to prototype and be replaced with pure-argparse).
 
+* Nested configuration trees (although flat configuration is recommended when possible).
+
 With ``scriptconfig``, define a flat key/value CLI with defaults using a
 dictionary or dataclass-like syntax. Values can simply be the default value, or
 a special ``scriptconfig.Value`` class that allows for metadata storage (e.g.
@@ -542,6 +544,46 @@ the ``__default__`` attribute is always available if you have an existing
 dictionary you want to wrap with scriptconfig.
 
 
+Nested Configs
+--------------
+
+As of version 0.9.0 scriptconfig supports **nested configuration trees**.
+This lets you build hierarchical Config/DataConfig structures while keeping
+selector-aware CLI parsing and simple dotted overrides.
+
+Nested configs are experimental, and some details may be subject to change.
+
+.. code-block:: python
+
+    import scriptconfig as scfg
+
+    class Adam(scfg.DataConfig):
+        lr = 1e-3
+        beta1 = 0.9
+
+    class Sgd(scfg.DataConfig):
+        lr = 1e-2
+        momentum = 0.9
+
+    class TrainCfg(scfg.DataConfig):
+        optim = Adam
+        epochs = scfg.Value(10, type=int)
+
+    if __name__ == '__main__':
+        config = TrainCfg.cli(verbose=True)
+
+The idea is that when the value of a config option is another Config class,
+that indicates a nested config.  You can swap the nested node *and* override
+leaf values from the CLI:
+
+.. code-block:: bash
+
+    python train.py --optim=Sgd --optim.momentum=0.8 --epochs=20
+
+For a longer walkthrough (including YAML/JSON examples), see
+``docs/source/manual/nested_configs.rst``.
+
+
 Gotchas
 -------
 
@@ -554,8 +596,9 @@ know this can end up with some weird behavior. The case where that happens here
 is when you pass a value that contains commas on the command line. If you don't
 specify the default value as a ``scriptconfig.Value`` with a specified
 ``type``, if will interpret your input as a list of values. In the future we
-may change the behavior of ``smartcast``, or prevent it from being used as a
-default.
+will change the behavior of ``smartcast``, or prevent it from being used as a
+default. This new behavior can be achived by explicitly passing the keyword
+argument ``type='smartcast:v1'`` to ``Value``.
 
 **Boolean flags and positional arguments:**
 
@@ -577,9 +620,9 @@ For ``--flag 1`` We cannot determine if you wanted
 
 This is fixable by either using strict key/value arguments, expressing all
 positional arguments before using flag arguments, or using the `` -- ``
-construct and putting all positional arguments at the end. In the future we may
-raise an AmbiguityError when specifying arguments like this, but for now we
-leave the behavior undefined.
+construct and putting all positional arguments at the end. As of version 0.9.0,
+this ambiguous combination is rejected (an error is raised) to prevent
+unintended usage.
 
 
 FAQ
@@ -609,11 +652,13 @@ to its implementation and there are better options (like jsonargparse). It also
 does not support the use case of calling the CLI as a Python function very
 well.
 
-The jsonargparse library is newer than this one, and looks very compelling.  I
-feel like the definition of CLIs in this library are complementary and I'm
-considering adding support in this library for jsonargparse because it solves
-the problem of nested configurations and I would like to inherit from that.
-Keep an eye out for this feature in future work.
+The jsonargparse library is newer than this one, and looks very compelling.  It
+has strong support for hierarchical configs and is worth a look. However, its
+type strictness has caused issues, thus we implement a similar but slightly
+different solution.  In Version 0.9.0, scriptconfig now supports nested config
+trees via ``SubConfig`` (including selector-aware CLI parsing and dotted
+overrides), so choose whichever fits your project's constraints and style.
+See ``docs/source/manual/nested_configs.rst`` for more details.
 
 
 Hydra - https://hydra.cc/docs/intro/
@@ -638,15 +683,13 @@ Typer - https://typer.tiangolo.com/
 TODO
 ----
 
-- [ ] Nested Modal CLI's
+- [x] Nested Modal CLI's
 
 - [ ] Fuzzy hyphens in ModelCLIs
 
-- [X] Policy on nested hierarchies (currently disallowed) - jsonargparse will be the solution here.
+- [X] Policy on nested hierarchies - (selector-aware CLI + dotted overrides, similar to jsonargparse)
 
-  - [ ] How to best integrate with jsonargparse
-
-- [ ] Policy on smartcast (currently enabled)
+- [ ] Policy on smartcast (currently enabled, behavior will change in version 1.0)
 
   - [ ] Find a way to gracefully way to make smartcast do less. (e.g. no list parsing, but int is ok, we may think about accepting YAML)
 

@@ -17,18 +17,14 @@ defaults.
     import scriptconfig as scfg
 
 
-    class Adam(scfg.Config):
-        __default__ = {
-            'lr': 1e-3,
-            'beta1': 0.9,
-        }
+    class Adam(scfg.DataConfig):
+        lr = 1e-3
+        beta1 = 0.9
 
 
-    class Sgd(scfg.Config):
-        __default__ = {
-            'lr': 1e-2,
-            'momentum': 0.9,
-        }
+    class Sgd(scfg.DataConfig):
+        lr = 1e-2
+        momentum = 0.9
 
 
     class TrainCfg(scfg.DataConfig):
@@ -39,10 +35,33 @@ defaults.
         epochs = scfg.Value(10, type=int)
 
 
+Declaring SubConfigs
+-------------------
+
+You can declare a subconfig in three equivalent ways. All forms are normalized
+into a :class:`scriptconfig.SubConfig` at class creation time.
+
+.. code:: python
+
+    class TrainCfg(scfg.DataConfig):
+        # 1) Explicit wrapper
+        optim = scfg.SubConfig(Adam)
+
+        # 2) Value wrapper
+        # optim = scfg.Value(Adam)
+
+        # 3) Raw class default (metaclass auto-wraps)
+        # optim = Adam
+
+        epochs = scfg.Value(10, type=int)
+
+
 Selector overrides
 ------------------
 
-Selectors choose the implementation for a SubConfig node. There are two forms:
+Selectors choose the implementation for a SubConfig node. There are two forms.
+When using ``cli``/``load``, pass ``allow_subconfig_overrides=True`` to enable
+selector overrides.
 
 * Canonical: ``--optim.__class__=sgd``
 * Sugar: ``--optim=sgd`` (only when ``optim`` is a SubConfig)
@@ -52,6 +71,13 @@ The selector is applied before leaf parsing so the realized tree is correct:
 .. code:: bash
 
     python train.py --optim=sgd --optim.momentum=0.8
+
+You can also select by class name when the class is in the local namespace,
+even without explicit ``choices``:
+
+.. code:: bash
+
+    python train.py --optim=Sgd --optim.momentum=0.8
 
 Dotted leaf overrides
 ---------------------
@@ -67,10 +93,14 @@ In Python, you can apply the same updates by passing dotted keys via kwargs or
 
 .. code:: python
 
-    cfg = TrainCfg.cli(argv=False, data={
-        'optim.__class__': 'sgd',
-        'optim.momentum': 0.95,
-    })
+    cfg = TrainCfg.cli(
+        argv=False,
+        data={
+            'optim.__class__': 'sgd',
+            'optim.momentum': 0.95,
+        },
+        allow_subconfig_overrides=True,
+    )
 
 Config files
 ------------
@@ -92,6 +122,9 @@ Or using dotted keys:
     optim.__class__: sgd
     optim.momentum: 0.88
 
+Nested selectors work in deeper trees and are resolved before leaf parsing,
+so dotted overrides always apply to the correct implementation.
+
 Limitations and notes
 ---------------------
 
@@ -101,3 +134,17 @@ Limitations and notes
 * ``DataConfig`` supports both attribute and dict-style access.
 
 For additional details, see the API docs for :class:`scriptconfig.SubConfig`.
+
+Potential Changes
+-----------------
+
+Nested configs are experimental, and details of how subconfig classes are
+exposed to the user may change.
+
+* Currently we return a dictionary with a ``__class__`` value to indicate which subconfig was selected, but we may make this implicit based on the class.  Use of ``__class__`` when specifying command line args or serializing should not change.
+
+* Currently the choices of a SubConfig is specified as dictionary, forcing the definer to enumerate the possible names. We might use similar logic for discovering names as done the ModalCLI. (Or maybe it makes sense to define a SubConfig as a sort of Modal).
+
+* Currently subconfig resolution using "eval" is enabled by default, and we may change that to be disabled by default for security.
+
+* The SubConfig name might change, but if it does we will add a backwards compatible alias.

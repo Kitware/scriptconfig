@@ -1610,9 +1610,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> @click.command()
             >>> @click.option('--dataset', required=True, type=click.Path(exists=True), help='input dataset')
             >>> @click.option('--deployed', required=True, type=click.Path(exists=True), help='weights file')
-            >>> @click.option('--key1', default=123, type=click.Path(exists=True), help='weights file')
-            >>> @click.option('--key2', default='456', type=click.Path(exists=True), help='weights file')
-            >>> def click_main(dataset, deployed):
+            >>> @click.option('--key1', default=123,  help='some key')
+            >>> @click.option('--key2', default='456', help='another key')
+            >>> def click_main(dataset, deployed, key1, key2):
             >>>     ...
             >>> text = scfg.Config.port_from_click(click_main)
             >>> print(text)
@@ -1625,8 +1625,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 ...
                 dataset = scfg.Value(None, required=True, help='input dataset')
                 deployed = scfg.Value(None, required=True, help='weights file')
-                key1 = scfg.Value(123, help='weights file')
-                key2 = scfg.Value(456, help='weights file')
+                key1 = scfg.Value(123, help='some key')
+                key2 = scfg.Value(456, help='another key')
         """
         import click
         ctx = click.Context(click.Command(''))

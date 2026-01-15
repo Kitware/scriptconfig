@@ -56,6 +56,7 @@ Notes:
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple, Type, cast
+import inspect
 
 from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
@@ -151,8 +152,9 @@ def dataconf(cls: Type[Any]) -> Type[Any]:
 
     attr_default = {}
     for k, v in vars(cls).items():
-        if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
-            attr_default[k] = v
+        if not k.startswith('_') and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
+            if not callable(v) or (inspect.isclass(v) and issubclass(v, Config)):
+                attr_default[k] = v
     default = attr_default.copy()
     cls_default = getattr(cls, '__default__', None)
     if cls_default is None:
@@ -209,8 +211,9 @@ class MetaDataConfig(MetaConfig):
             # too, which is slightly cleaner.
             attr_default = {}
             for k, v in namespace.items():
-                if not k.startswith('_') and not callable(v) and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
-                    attr_default[k] = v
+                if not k.startswith('_') and not isinstance(v, classmethod) and not isinstance(v, staticmethod):
+                    if not callable(v) or (inspect.isclass(v) and issubclass(v, Config)):
+                        attr_default[k] = v
             this_default = attr_default.copy()
             cls_default = namespace.get('__default__', None)
             if cls_default is None:
