@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+from typing import Any, Callable, Union
+
 __all__ = ['smartcast']
 
 NoneType = type(None)
 
 
-def smartcast(item, astype=None, strict=False, allow_split='auto'):
+def smartcast(item: Any,
+              astype: Any = None,
+              strict: bool = False,
+              allow_split: Union[bool, str] = 'auto') -> Any:
     r"""
     Converts a string into a standard python type.
 
@@ -169,34 +176,27 @@ def smartcast(item, astype=None, strict=False, allow_split='auto'):
             if astype == eval:
                 return item
             elif isinstance(astype, str):
-                if astype == 'eval':
-                    _astype = _identity
-                elif astype == 'int':
-                    _astype = int
-                elif astype == 'bool':
-                    _astype = bool
-                elif astype == 'float':
-                    _astype = float
-                elif astype == 'complex':
-                    _astype = complex
-                elif astype == 'str':
-                    _astype = str
-                elif astype == 'tuple':
-                    _astype = tuple
-                elif astype == 'list':
-                    _astype = list
-                elif astype == 'set':
-                    _astype = set
-                elif astype == 'frozenset':
-                    _astype = frozenset
-                else:
-                    raise KeyError('unknown string astype={!r}'.format(astype))
-                return _astype(item)
+                cast_map: dict[str, Callable[[Any], Any]] = {
+                    'eval': _identity,
+                    'int': int,
+                    'bool': bool,
+                    'float': float,
+                    'complex': complex,
+                    'str': str,
+                    'tuple': tuple,
+                    'list': list,
+                    'set': set,
+                    'frozenset': frozenset,
+                }
+                try:
+                    return cast_map[astype](item)
+                except KeyError as exc:
+                    raise KeyError('unknown string astype={!r}'.format(astype)) from exc
             else:
                 return astype(item)
 
 
-def _as_smart_type(item, astype):
+def _as_smart_type(item: Any, astype: Any) -> Any:
     """
     casts item to type, and tries to be clever when item is a string, otherwise
     it simply calls `astype(item)`.
@@ -287,7 +287,7 @@ def _smartcast_bool(item):
         raise TypeError('item does not represent boolean')
 
 
-def _smartcast_simple_sequence(item, astype=list):
+def _smartcast_simple_sequence(item: str, astype: Any = list) -> Any:
     """
     Casts only the simplest strings to a sequence. Cannot handle any nesting.
 
@@ -311,7 +311,7 @@ def _smartcast_simple_sequence(item, astype=list):
     return astype(smartcast(p) for p in parts)
 
 
-def _identity(arg):
+def _identity(arg: Any) -> Any:
     """ identity function """
     return arg
 

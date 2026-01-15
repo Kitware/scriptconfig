@@ -1,13 +1,18 @@
-from . import smartcast as smartcast_mod
+from __future__ import annotations
+
 import re
+from typing import Any, Dict, Iterable, List, Optional, Union, cast
+
 import ubelt as ub
+
+from . import smartcast as smartcast_mod
 
 
 long_prefix_pat = re.compile('--[^-].*')
 short_prefix_pat = re.compile('-[^-].*')
 
 
-def normalize_option_str(s):
+def normalize_option_str(s: str) -> str:
     return s.lstrip('-').replace('-', '_')
 
 
@@ -47,8 +52,8 @@ class Value(ub.NiceRepr):
             will cause conflicts. Also note: positions indexes should start
             from 1.
 
-        isflag (bool): if True, args will be parsed as booleans.
-            Default to False.
+        isflag (bool | str): if True, args will be parsed as booleans.
+            Default to False. Can also be "counter".
 
         alias (List[str] | None):
             other long names (that will be prefixed with '--') that will be
@@ -82,13 +87,22 @@ class Value(ub.NiceRepr):
         self.value = 3.3
     """
 
-    # hack to work around isinstance with IPython %autoreload magic
-    __scfg_class__ = 'Value'
-
-    def __init__(self, value=None, type=None, help=None, choices=None,
-                 position=None, isflag=False, nargs=None, alias=None,
-                 required=False, short_alias=None, group=None,
-                 mutex_group=None, tags=None, *, default=None):
+    def __init__(self,
+                 value: Any = None,
+                 type: Optional[type] = None,
+                 help: Optional[str] = None,
+                 choices: Optional[Iterable[Any]] = None,
+                 position: Optional[int] = None,
+                 isflag: Union[bool, str] = False,
+                 nargs: Optional[Any] = None,
+                 alias: Optional[List[str]] = None,
+                 required: bool = False,
+                 short_alias: Optional[List[str]] = None,
+                 group: Optional[str] = None,
+                 mutex_group: Optional[str] = None,
+                 tags: Optional[Any] = None,
+                 *,
+                 default: Any = None) -> None:
 
         if default is not None:
             if value is not None:
@@ -101,7 +115,7 @@ class Value(ub.NiceRepr):
         self.alias = alias
         self.position = position
         self.isflag = isflag
-        self.parsekw = {
+        self.parsekw: Dict[str, Any] = {
             'help': help,
             'type': type,
             'choices': choices,
@@ -137,38 +151,38 @@ class Value(ub.NiceRepr):
                     import warnings
                     warnings.warn('Do not prefix short aliases with a -, it is implicit')
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         # return '{!r}: {!r}'.format(self.type, self.value)
         return f'{self.value!r}'
 
-    def update(self, value):
+    def update(self, value: Any) -> "Value":
         self.value = self.cast(value)
         return self
 
-    def cast(self, value):
+    def cast(self, value: Any) -> Any:
         if isinstance(value, str):
             # FIXME: We want to move away from allow_split=True
             value = smartcast_mod.smartcast(value, self.type,
                                             allow_split='auto')
         return value
 
-    def copy(self):
+    def copy(self) -> "Value":
         import copy
         return copy.copy(self)
 
     @property
-    def help(self):
+    def help(self) -> Optional[str]:
         # I'm not sure if I want to expose everything in parsekw or not.
-        return self.parsekw['help']
+        return cast(Optional[str], self.parsekw['help'])
 
-    def _to_value_kw(self):
+    def _to_value_kw(self) -> Dict[str, Any]:
         """
         Used in port-to-dataconf and port-to-argparse
         """
 
         value = self
-        orig_help = self.parsekw['help']
-        orig_type = self.parsekw['type']
+        orig_help = cast(Optional[str], self.parsekw['help'])
+        orig_type = cast(Optional[Union[str, type]], self.parsekw['type'])
         value_kw = {k: v for k, v in self.__dict__.items() if v}
         value_kw.pop('parsekw')
         value_kw.update(value.parsekw)
@@ -278,7 +292,7 @@ class Flag(Value):
     """
     Exactly the same as a Value except isflag default to True
     """
-    def __init__(self, value=False, **kwargs):
+    def __init__(self, value: bool = False, **kwargs: Any) -> None:
         isflag = kwargs.get('isflag', True)
         assert isflag, 'Cannot disable isflag on a Flag value'
         kwargs['isflag'] = isflag
@@ -294,10 +308,13 @@ class Path(Value):
         Not well maintained or used, may be removed or refactored in the
         future.
     """
-    def __init__(self, value=None, help=None, alias=None):
+    def __init__(self,
+                 value: Any = None,
+                 help: Optional[str] = None,
+                 alias: Optional[List[str]] = None) -> None:
         super(Path, self).__init__(value, str, help=help, alias=alias)
 
-    def cast(self, value):
+    def cast(self, value: Any) -> Any:
         if isinstance(value, str):
             value = ub.expandpath(value)
         return value
@@ -326,7 +343,7 @@ class PathList(Value):
         >>> assert len(PathList(['/a', '/b']).value) == 2
     """
 
-    def cast(self, value=None):
+    def cast(self, value: Any = None) -> Any:
         if isinstance(value, str):
             import glob
             paths1 = sorted(glob.glob(ub.expandpath(value)))
@@ -565,25 +582,6 @@ def _resolve_alias(name, _value, fuzzy_hyphens):
     long_option_strings = ['--' + n for n in long_names]
     option_strings = short_option_strings + long_option_strings
     return option_strings
-
-
-def scfg_isinstance(item, cls):
-    """
-    use instead isinstance for scfg types when reloading
-
-    Args:
-        item (object): instance to check
-        cls (type): class to check against
-
-    Returns:
-        bool
-    """
-    # Note: it is safe to simply use isinstance(item, cls) when
-    # not reloading
-    if hasattr(item, '__scfg_class__')  and hasattr(cls, '__scfg_class__'):
-        return item.__scfg_class__ == cls.__scfg_class__
-    else:
-        return isinstance(item, cls)
 
 
 def _maker_smart_parse_action(self):

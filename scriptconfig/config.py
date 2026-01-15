@@ -80,14 +80,17 @@ Ignore:
     >>> print(ub.urepr(config, nl=1))
 
 TODO:
-    - [ ] Handle Nested Configs?
+    - [x] Handle Nested Configs?
     - [ ] Integrate with Hyrda
     - [x] Dataclass support - See DataConfig
 """
+from __future__ import annotations
+
 import os
 import ubelt as ub
 import itertools as it
-from collections import OrderedDict
+import argparse as argparse_mod
+from typing import IO, Any, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Type, Union, cast
 from scriptconfig import _ubelt_repr_extension
 from scriptconfig import smartcast
 from scriptconfig.dict_like import DictLike
@@ -122,26 +125,7 @@ OmegaConf: object
 #         return ipy.magics_manager.magics['line']['autoreload'].__self__._reloader.enabled
 
 
-def scfg_isinstance(item, cls):
-    """
-    use instead isinstance for scfg types when reloading
-
-    Args:
-        item (object): instance to check
-        cls (type): class to check against
-
-    Returns:
-        bool
-    """
-    # Note: it is safe to simply use isinstance(item, cls) when
-    # not reloading
-    if hasattr(item, '__scfg_class__')  and hasattr(cls, '__scfg_class__'):
-        return item.__scfg_class__ == cls.__scfg_class__
-    else:
-        return isinstance(item, cls)
-
-
-def define(default={}, name=None):
+def define(default: Mapping[str, Any] = {}, name: Optional[str] = None) -> type:
     """
     Alternate method for defining a custom Config type
 
@@ -158,7 +142,7 @@ def define(default={}, name=None):
     if name is None:
         hashid = str(uuid.uuid4()).replace('-', '_')
         name = 'Config_{}'.format(hashid)
-    vals = {'default': default}
+    vals: Dict[str, Any] = {'default': default}
     code = dedent(
         '''
         import scriptconfig as scfg
@@ -167,7 +151,7 @@ def define(default={}, name=None):
         '''.strip('\n').format(name=name))
     exec(code, vals)
     cls = vals[name]
-    return cls
+    return cast(Type["Config"], cls)
 
 
 class MetaConfig(type):
@@ -181,7 +165,12 @@ class MetaConfig(type):
     """
 
     @staticmethod
-    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+    def __new__(mcls: type,
+                name: str,
+                bases: Tuple[type, ...],
+                namespace: Dict[str, Any],
+                *args: Any,
+                **kwargs: Any) -> type:
         if diagnostics.DEBUG_META_CONFIG:
             print(f'MetaConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
 
@@ -232,7 +221,7 @@ class MetaConfig(type):
 
         if diagnostics.DEBUG_META_CONFIG:
             print('FINAL namespace = {}'.format(ub.urepr(namespace, nl=2)))
-        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
+        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)  # type: ignore[misc]
         return cls
 
 
@@ -285,11 +274,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         * load - rewrite the values based on a filepath, dictionary, or command line contents.
 
     Attributes:
-        _data : this protected variable holds the raw state of the config
-            object and is accessed by the dict-like
+        _data : this protected variable holds the instance level raw state of
+            the config object and is accessed by the dict-like
 
-        _default : this protected variable maintains the default values for
-            this config.
+        _default : this protected variable maintains the instance-level default
+            values for this config.
 
         epilog (str): A class attribute that if specified will add an epilog
             section to the help text.
@@ -310,12 +299,14 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         >>> config1 = MyConfig()
         >>> config2 = MyConfig(default=dict(option1='baz'))
     """
-    __scfg_class__ = 'Config'
-    __default__ = {}
+    __default__: Dict[str, Any] = {}
     # __allow_newattr__ = False
 
-    def __init__(self, data=None, default=None, cmdline=False,
-                 _dont_call_post_init=False):
+    def __init__(self,
+                 data: Optional[Union[Dict[str, Any], str]] = None,
+                 default: Optional[Dict[str, Any]] = None,
+                 cmdline: Union[bool, List[str], str, Dict[str, Any]] = False,
+                 _dont_call_post_init: bool = False) -> None:
         """
         Args:
             data (object): filepath, dict, or None
@@ -342,9 +333,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             aware config instance..
         """
         # The _data attribute holds
-        self._data = OrderedDict()
-        self._default = OrderedDict()
-        self._subconfig_meta = {}
+        self._data: Dict[str, Any] = {}
+        self._default: Dict[str, Any] = {}
+        self._subconfig_meta: Dict[str, Any] = {}
         self._has_subconfigs = False
         self._scfg_post_init_done = False
         cls_default = getattr(self, '__default__', getattr(self, 'default', None))
@@ -359,10 +350,20 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                   _dont_call_post_init=_dont_call_post_init)
 
     @classmethod
-    def cli(cls, data=None, default=None, argv=None, strict=True,
-            cmdline=True, autocomplete='auto', special_options=True,
-            transition_helpers=True, verbose=False, allow_import=True,
-            allow_subconfig_overrides=True, localns=None, stacklevel=0):
+    def cli(cls,
+            data: Optional[Union[Dict[str, Any], str]] = None,
+            default: Optional[Dict[str, Any]] = None,
+            argv: Optional[Union[List[str], str, bool]] = None,
+            strict: bool = True,
+            cmdline: bool = True,
+            autocomplete: Union[bool, str] = 'auto',
+            special_options: bool = True,
+            transition_helpers: bool = True,
+            verbose: Union[bool, str] = False,
+            allow_import: bool = True,
+            allow_subconfig_overrides: bool = True,
+            localns: Optional[Dict[str, Any]] = None,
+            stacklevel: Optional[int] = 0) -> "Config":
         """
         Create a command-line aware config instance.
 
@@ -415,18 +416,22 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 parsed. If "auto", it will default to true in most cases,
                 except when we can infer special behavior from the
                 user-defined config via standard keys: verbose, quiet, silent.
+
             allow_import (bool):
                 If True, allow module path selectors like
                 ``pkg.mod.ClassName``
                 for SubConfig selection. Defaults to True.
+
             allow_subconfig_overrides (bool):
                 If True, enable multipass CLI parsing to allow SubConfig
                 selection overrides. If False, only the default realized tree
                 is parsed and selector args error at parse time.
+
             localns (dict | None):
                 Namespace used to resolve SubConfig class names. If None and
                 ``stacklevel`` is not None, a namespace is derived from the
                 caller's frame.
+
             stacklevel (int | None):
                 Number of frames above the caller to use when deriving the
                 namespace for SubConfig class name resolution. Use None to
@@ -448,16 +453,17 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if diagnostics.DEBUG_CONFIG:
             print(f'[scriptconfig] Call {cls.__name__}.cli')
             print(f'argv={argv}, cmdline={cmdline}')
-        if transition_helpers and hasattr(data, 'pop'):
+        if transition_helpers and isinstance(data, dict):
             argv = data.pop('cmdline', argv)  # helper for cmdline->argv transition
+        cmdline_value: Union[bool, List[str], str, Dict[str, Any]] = cmdline
         if cmdline and argv is not None:
-            cmdline = argv
+            cmdline_value = argv
         if default is None:
             default = {}
         # Note: hack to avoid calling __post_init__ twice
         self = cls(_dont_call_post_init=True)
         next_stacklevel = None if stacklevel is None else stacklevel + 1
-        self.load(data, cmdline=cmdline, default=default, strict=strict,
+        self.load(data, cmdline=cmdline_value, default=default, strict=strict,
                   autocomplete=autocomplete, special_options=special_options,
                   allow_import=allow_import,
                   allow_subconfig_overrides=allow_subconfig_overrides,
@@ -481,7 +487,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return self
 
     @classmethod
-    def demo(cls):
+    def demo(cls) -> "Config":
         """
         Create an example config class for test cases
 
@@ -515,7 +521,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self = DemoConfig()
         return self
 
-    def __json__(self):
+    def __json__(self) -> Dict[str, Any]:
         """
         Creates a JSON serializable representation of this config object.
 
@@ -533,6 +539,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> self['option2'] = {(1, 2): 'fds'}
             >>> self.__json__()
         """
+        numpy: Any
         try:
             import numpy
         except ImportError:
@@ -553,10 +560,8 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 walker[path] = list(item)
             elif numpy is not None and isinstance(item, numpy.ndarray):
                 walker[path] = item.tolist()
-            elif isinstance(item, OrderedDict):
-                ...
             elif isinstance(item, dict):
-                walker[path] = OrderedDict(sorted(item.items()))
+                walker[path] = dict(sorted(item.items()))
             else:
                 if hasattr(item, '__json__'):
                     return item.__json__()
@@ -565,22 +570,22 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                         'Unknown JSON serialization for type {!r}'.format(type(item)))
         return data
 
-    def __nice__(self):
+    def __nice__(self) -> str:
         data = self.asdict()
         if isinstance(data, dict):
             data = dict(data)
         return str(data)
 
-    def asdict(self):
+    def asdict(self) -> Dict[str, Any]:
         if getattr(self, '_has_subconfigs', False):
             from scriptconfig.subconfig import config_to_nested_dict
             return config_to_nested_dict(self, include_class=False)
         return super().asdict()
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return self.asdict()
 
-    def getitem(self, key):
+    def getitem(self, key: str) -> Any:
         """
         Dictionary-like method to get the value of a key.
 
@@ -592,7 +597,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         if isinstance(key, str) and '.' in key and getattr(self, '_has_subconfigs', False):
             parts = key.split('.')
-            node = self
+            node: Any = self
             for part in parts:
                 if not isinstance(node, Config):
                     raise KeyError(key)
@@ -612,11 +617,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             key = self._normalize_alias_key(key)
             value = self._data[key]
 
-        if scfg_isinstance(value, Value):
+        if isinstance(value, Value):
             value = value.value
         return value
 
-    def setitem(self, key, value):
+    def setitem(self, key: str, value: Any) -> None:
         """
         Dictionary-like method to set the value of a key.
 
@@ -639,12 +644,12 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                         'Cannot add keys to scriptconfig.Config objects unless '
                         'self.__allow_newattr__ is True'
                     )
-        if scfg_isinstance(value, Value):
+        if isinstance(value, Value):
             # If the new item is a Value object simply overwrite the old one
             self._data[key] = value
         else:
             template = self.__default__.get(key, None)
-            if template is not None and scfg_isinstance(template, Value):
+            if template is not None and isinstance(template, Value):
                 # If the new value is raw data, and we have a underlying Value
                 # object update it.
                 self._data[key] = template.cast(value)
@@ -653,10 +658,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # raw data.
                 self._data[key] = value
 
-    def delitem(self, key):
+    def delitem(self, key: str) -> None:
         raise Exception('cannot delete items from a config')
 
-    def keys(self):
+    def keys(self) -> Iterable[str]:
         """
         Dictionary-like keys method
 
@@ -665,7 +670,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         return self._data.keys()
 
-    def update_defaults(self, default):
+    def update_defaults(self, default: Dict[str, Any]) -> None:
         """
         Update the instance-level default values
 
@@ -680,7 +685,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         # attribute.
         for k, v in default.items():
             old_default = self._default[k]
-            if scfg_isinstance(old_default, Value) and not scfg_isinstance(v, Value):
+            if isinstance(old_default, Value) and not isinstance(v, Value):
                 new_default = copy.deepcopy(old_default)
                 new_default.value = v
                 default[k] = new_default
@@ -690,10 +695,19 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         from scriptconfig.subconfig import wrap_subconfig_defaults
         wrap_subconfig_defaults(self, _dont_call_post_init=True)
 
-    def load(self, data=None, cmdline=False, mode=None, default=None,
-             strict=False, autocomplete=False, _dont_call_post_init=False,
-             special_options=True, allow_import=True,
-             allow_subconfig_overrides=True, localns=None, stacklevel=0):
+    def load(self,
+             data: Optional[Union[Dict[str, Any], str]] = None,
+             cmdline: Union[bool, List[str], str, Dict[str, Any]] = False,
+             mode: Optional[str] = None,
+             default: Optional[Dict[str, Any]] = None,
+             strict: bool = False,
+             autocomplete: Union[bool, str] = False,
+             _dont_call_post_init: bool = False,
+             special_options: bool = True,
+             allow_import: bool = True,
+             allow_subconfig_overrides: bool = True,
+             localns: Optional[Dict[str, Any]] = None,
+             stacklevel: Optional[int] = 0) -> "Config":
         """
         Updates the configuration from a given data source.
 
@@ -739,18 +753,22 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             special_options (bool, default=False):
                 adds special scriptconfig options, namely: --config, --dumps,
                 and --dump. Prefer using this over cmdline.
+
             allow_import (bool):
                 If True, allow module path selectors like
                 ``pkg.mod.ClassName``
                 for SubConfig selection. Defaults to True.
+
             allow_subconfig_overrides (bool):
                 If True, enable multipass CLI parsing to allow SubConfig
                 selection overrides. If False, only the default realized tree
                 is parsed and selector args error at parse time.
+
             localns (dict | None):
                 Namespace used to resolve SubConfig class names. If None and
                 ``stacklevel`` is not None, a namespace is derived from the
                 caller's frame.
+
             stacklevel (int | None):
                 Number of frames above the caller to use when deriving the
                 namespace for SubConfig class name resolution. Use None to
@@ -850,20 +868,20 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 except Exception:
                     import yaml
                     import io
-                    file = io.StringIO(data)
-                    user_config = yaml.load(file, Loader=yaml.SafeLoader)
+                    raw_file = io.StringIO(data)
+                    user_config = yaml.load(raw_file, Loader=yaml.SafeLoader)
             else:
                 if mode is None:
                     if isinstance(data, str):
                         if data.lower().endswith('.json'):
                             mode = 'json'
                     elif isinstance(data, os.PathLike):
-                        if data.name.lower().endswith('.json'):
+                        if os.fspath(data).lower().endswith('.json'):
                             mode = 'json'
                 if mode is None:
                     # Default to yaml
                     mode = 'yaml'
-                with FileLike(data, 'r') as file:
+                with FileLike(cast(Union[str, os.PathLike, IO[Any]], data), 'r') as file:
                     if mode == 'yaml':
                         import yaml
                         user_config = yaml.load(file, Loader=yaml.SafeLoader)
@@ -872,7 +890,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                         user_config = json.load(file)
         elif isinstance(data, dict):
             user_config = data
-        elif scfg_isinstance(data, Config):
+        elif isinstance(data, Config):
             user_config = data.asdict()
         else:
             raise TypeError(
@@ -958,7 +976,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # Check that all required variables are not the same as defaults
                 # Probably a way to make this check nicer
                 for k, v in self._default.items():
-                    if scfg_isinstance(v, Value):
+                    if isinstance(v, Value):
                         if v.required:
                             if self[k] == v.value:
                                 raise Exception('Required variable {!r} still has default value'.format(k))
@@ -1302,11 +1320,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 sys.exit(1)
         return self
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """ overloadable function called after each load """
         ...
 
-    def dump(self, stream=None, mode=None):
+    def dump(self, stream: Optional[Union[FileLike, IO[str]]] = None, mode: Optional[str] = None):
         """
         Write configuration file to a file or stream
 
@@ -1320,20 +1338,20 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             from scriptconfig.subconfig import config_to_nested_dict
             payload = config_to_nested_dict(self, include_class=True)
         else:
-            payload = OrderedDict(self.items())
+            payload = dict(self.items())
         if mode == 'yaml':
             import yaml
             def order_rep(dumper, data):
                 return dumper.represent_mapping('tag:yaml.org,2002:map', data.items(), flow_style=False)
-            yaml.add_representer(OrderedDict, order_rep, Dumper=yaml.SafeDumper)
-            yaml.safe_dump(payload, stream)
+            yaml.add_representer(dict, order_rep, Dumper=yaml.SafeDumper)
+            yaml.safe_dump(payload, stream)  # type: ignore[arg-type]
         elif mode == 'json':
             import json
-            json.dump(payload, stream, indent=4)
+            json.dump(payload, stream, indent=4)  # type: ignore[arg-type]
         else:
             raise KeyError(mode)
 
-    def dumps(self, mode=None):
+    def dumps(self, mode: Optional[str] = None) -> str:
         """
         Write the configuration to a text object and return it
 
@@ -1348,7 +1366,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         self.dump(stream=stream, mode=mode)
         return stream.getvalue()
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         # Handle aliasing of old "default" and new "__default__"
         if key == 'default' and hasattr(self, '__default__'):
             return self.__default__
@@ -1357,7 +1375,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         raise AttributeError(key)
 
     @property
-    def _description(self):
+    def _description(self) -> Optional[str]:
         if hasattr(self, 'description'):
             ub.schedule_deprecation(
                 'scriptconfig', 'description', 'attribute of Config classes',
@@ -1376,7 +1394,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return description
 
     @property
-    def _epilog(self):
+    def _epilog(self) -> Optional[str]:
         if hasattr(self, 'epilog'):
             ub.schedule_deprecation(
                 'scriptconfig', 'epilog', 'attribute of Config classes',
@@ -1389,7 +1407,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return epilog
 
     @property
-    def _prog(self):
+    def _prog(self) -> Optional[str]:
         if hasattr(self, 'prog'):
             ub.schedule_deprecation(
                 'scriptconfig', 'prog', 'attribute of Config classes',
@@ -1401,7 +1419,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             prog = self.__class__.__name__
         return prog
 
-    def _parserkw(self):
+    def _parserkw(self) -> dict:
         """
         Generate the kwargs for making a new argparse.ArgumentParser
         """
@@ -1419,7 +1437,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             parserkw['allow_abbrev'] = self.__allow_abbrev__
         return parserkw
 
-    def port_to_dataconf(self, style='dataconf'):
+    def port_to_dataconf(self, style: str = 'dataconf') -> str:
         """
         Helper that will write the code to express this config as a DataConfig.
 
@@ -1437,7 +1455,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         """
         entries = []
         for key, value in self.__default__.items():
-            if not scfg_isinstance(value, Value):
+            if not isinstance(value, Value):
                 value_kw = Value(value)._to_value_kw()
             else:
                 value_kw = value._to_value_kw()
@@ -1448,7 +1466,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def _write_code(self, entries, name='MyConfig', style='dataconf', description=None):
+    def _write_code(self,
+                    entries: Iterable[tuple[str, Dict[str, Any]]],
+                    name: str = 'MyConfig',
+                    style: str = 'dataconf',
+                    description: Optional[str] = None) -> str:
 
         if style == 'dataconf':
             indent = ' ' * 4
@@ -1514,7 +1536,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def port_from_click(cls, click_main, name=None, style='dataconf'):
+    def port_from_click(cls, click_main, name=None, style='dataconf') -> str:
         """
         Prints scriptconfig code that roughly implements some click CLI.
 
@@ -1577,7 +1599,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return instance.port_to_dataconf(style=style)
 
     @classmethod
-    def port_from_argparse(cls, parser, name='MyConfig', style='dataconf'):
+    def port_from_argparse(cls,
+                           parser: "argparse_mod.ArgumentParser",
+                           name: str = 'MyConfig',
+                           style: str = 'dataconf') -> str:
         """
         Generate the corresponding scriptconfig code from an existing argparse
         instance.
@@ -1642,7 +1667,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         return text
 
     @classmethod
-    def cls_from_argparse(cls, parser, name=None, description=None):
+    def cls_from_argparse(cls, parser, name=None, description=None) -> type:
         """
         Create a full configuration class from an existing argparse parser.
 
@@ -1712,11 +1737,11 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         # Dynamically create the class (
         # note, cls.__class__ should be MetaConfig)
-        DynamicClass = cls.__class__(name, bases, attributes)
+        DynamicClass = cast(type, cls.__class__(name, bases, attributes))  # type: ignore[call-overload]
         return DynamicClass
 
     @classmethod
-    def _values_from_argparse(cls, parser, for_text=True):
+    def _values_from_argparse(cls, parser, for_text=True) -> list:
         """
         Port argparse options to a list of key / values.
         """
@@ -1778,7 +1803,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     # Backwards compatibility, deprecate and remove
     port_argparse = port_from_argparse
 
-    def port_to_argparse(self):
+    def port_to_argparse(self) -> str:
         """
         Attempt to make code for a nearly-equivalent argparse object.
 
@@ -1869,17 +1894,16 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
     #     ...
 
     @property
-    def namespace(self):
+    def namespace(self) -> argparse_mod.Namespace:
         """
         Access a namespace like object for compatibility with argparse
 
         Returns:
             argparse.Namespace
         """
-        from argparse import Namespace
-        return Namespace(**dict(self))
+        return argparse_mod.Namespace(**dict(self))
 
-    def to_omegaconf(self):
+    def to_omegaconf(self) -> Any:
         """
         Creates an omegaconfig version of this.
 
@@ -1896,7 +1920,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         oconf = OmegaConf.create(self.to_dict())
         return oconf
 
-    def argparse(self, parser=None, special_options=False, allow_subconfig_overrides=False):
+    def argparse(self,
+                 parser: Optional[argparse_mod.ArgumentParser] = None,
+                 special_options: bool = False,
+                 allow_subconfig_overrides: bool = False) -> argparse_mod.ArgumentParser:
         """
         construct or update an argparse.ArgumentParser CLI parser
 
@@ -1904,9 +1931,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             parser (None | argparse.ArgumentParser): if specified this
                 parser is updated with options from this config.
 
-            special_options (bool, default=False):
+            special_options (bool):
                 adds special scriptconfig options, namely: --config, --dumps,
-                and --dump.
+                and --dump. Defaults to False.
+
             allow_subconfig_overrides (bool):
                 If True, allow SubConfig selector overrides. SubConfig
                 selection requires multipass parsing; use ``cli`` instead.
@@ -2075,7 +2103,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
 
         # Use custom action used to mark which values were explicitly set on
         # the commandline
-        parser._explicitly_given = set()
+        parser._explicitly_given = set()  # type: ignore[attr-defined,union-attr]
 
         # IRC: this ensures each key has a real Value class
         # This is messy and needs to be rethought
@@ -2102,7 +2130,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             _keyorder = ub.oset(ub.argsort(_positions))
             _keyorder |= (ub.oset(self._default) - _keyorder)
         else:
-            _keyorder = list(self._default.keys())
+            _keyorder = ub.oset(self._default.keys())
 
         FUZZY_HYPHENS = getattr(self, '__fuzzy_hyphens__', 1)
 
@@ -2112,14 +2140,14 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 # Use the metadata in the Value class to enhance argparse
                 _value = _metadata[key]
             else:
-                # _value = value if scfg_isinstance(value, Value) else None
-                if scfg_isinstance(value, Value):
+                # _value = value if isinstance(value, Value) else None
+                if isinstance(value, Value):
                     raise AssertionError('Did not expect {value=} to be a Value')
                 else:
                     # In this case the user did not wrap the default with a
                     # Value, so we can only infer so much about it, but we can
                     # make some educated guesses.
-                    _autokw = {
+                    _autokw: Dict[str, Any] = {
                         'help': '',
                     }
                     if isinstance(value, bool) or isinstance(value, int) and value in {0, 1}:

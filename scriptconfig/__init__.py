@@ -145,7 +145,7 @@ Ignore:
     mkinit ~/code/scriptconfig/scriptconfig/__init__.py --nomods --relative -w
 """
 
-__version__ = '0.8.5'
+__version__ = '0.9.0'
 
 __submodules__ = {
     'modal': None,

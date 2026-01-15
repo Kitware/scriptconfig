@@ -2,9 +2,12 @@
 Note: this module may be deprecated / repurposed for the actual command line
 interface scriptconfig will use.
 """
+from __future__ import annotations
+
+from typing import Any, Mapping, Optional
 
 
-def quick_cli(default, name=None):
+def quick_cli(default: Mapping[str, Any], name: Optional[str] = None) -> Any:
     """
     Quickly create a CLI
 
@@ -26,7 +29,7 @@ def quick_cli(default, name=None):
         name = 'ExpressCLI_{}'.format(hashid)
 
     from textwrap import dedent
-    vals = {}
+    vals: dict[str, Any] = {}
     code = dedent(
         '''
         import scriptconfig as scfg

@@ -255,7 +255,7 @@ if __name__ == "__main__":
     ]
     setupkw["package_data"] = {
         "": ["requirements/*.txt"],
-        "scriptconfig": ["py.typed", "*.pyi"],
+        "scriptconfig": ["py.typed"],
     }
     setupkw["entry_points"] = {
         "console_scripts": [

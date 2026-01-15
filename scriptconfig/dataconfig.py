@@ -53,10 +53,12 @@ Example:
 Notes:
     https://docs.python.org/3/library/dataclasses.html
 """
-from collections import OrderedDict
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Tuple, Type, cast
+
 from scriptconfig.config import Config, MetaConfig
 from scriptconfig.value import Value
-import inspect
 import warnings
 import ubelt as ub
 from scriptconfig import diagnostics
@@ -66,7 +68,7 @@ from scriptconfig.subconfig import SubConfig, wrap_subconfig_defaults
 __all__ = ['dataconf', 'DataConfig', 'MetaDataConfig', 'SubConfig']
 
 
-def dataconf(cls):
+def dataconf(cls: Type[Any]) -> Type[Any]:
     """
     Aims to be similar to the dataclass decorator
 
@@ -160,23 +162,24 @@ def dataconf(cls):
     if issubclass(cls, DataConfig):
         # Helps make the class pickleable. Pretty hacky though.
         # TODO: Remove. This should no longer be necessary. Given the metaclass.
-        SubConfig = cls
-        SubConfig.__default__ = default
+        subconfig_type = cls
+        subconfig_type.__default__ = default
         for k in attr_default:
-            delattr(SubConfig, k)
+            delattr(subconfig_type, k)
     else:
-        # dynamic subclass, this has issues with pickle It would be nice if we
+        # dynamic subclass, this has issues with pickle. It would be nice if we
         # could improve this. There must be a way that dataclasses does it that
         # we could follow.
         class SubConfig(DataConfig):
-            __doc__ = getattr(cls, '__doc__', {})
-            __name__ = getattr(cls, '__name__', {})
+            __doc__ = getattr(cls, '__doc__', None)
+            __name__ = getattr(cls, '__name__', None)
             __default__ = default
-            __description__ = getattr(cls, '__description__', {})
-            __epilog__ = getattr(cls, '__epilog__', {})
+            __description__ = getattr(cls, '__description__', None)
+            __epilog__ = getattr(cls, '__epilog__', None)
             __qualname__ = cls.__qualname__
             __module__ = cls.__module__
-    return SubConfig
+        subconfig_type = SubConfig
+    return subconfig_type
 
 
 class MetaDataConfig(MetaConfig):
@@ -185,7 +188,12 @@ class MetaDataConfig(MetaConfig):
     without the extra boilerplate.
     """
     @staticmethod
-    def __new__(mcls, name, bases, namespace, *args, **kwargs):
+    def __new__(mcls: type,
+                name: str,
+                bases: Tuple[type, ...],
+                namespace: Dict[str, Any],
+                *args: Any,
+                **kwargs: Any) -> type:
         # Defining a new class that inherits from DataConfig
         if diagnostics.DEBUG_META_DATA_CONFIG:
             print(f'MetaDataConfig.__new__ called: {mcls=} {name=} {bases=} {namespace=} {args=} {kwargs=}')
@@ -228,7 +236,7 @@ class MetaDataConfig(MetaConfig):
                         {v!r}, which is a Tuple[Value]. Typically it should be
                         a Value.
                         '''), UserWarning)
-        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
+        cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)  # type: ignore[misc]
 
         # Modify the docstring to include information about the defaults
         if cls.__init__.__doc__ == '__autogenerateme__':
@@ -297,18 +305,18 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     # Not sure if having a docstring for this will break user-configs.
     # No docstring, because user-specified docstring will define the default
     # __description__.
-    __default__ = None
-    __description__ = None
-    __epilog__ = None
+    __default__: Dict[str, Any] = {}
+    __description__: Optional[str] = None
+    __epilog__: Optional[str] = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         "__autogenerateme__"
         # Private internal hack to prevent __post_init__ from being called
         # if we are immediately going to load and call it again.
         _dont_call_post_init = kwargs.pop('_dont_call_post_init', False)
 
-        self._data = None
-        self._default = OrderedDict()
+        self._data: Dict[str, Any] = {}
+        self._default: Dict[str, Any] = {}
         if getattr(self, '__default__', None):
             # allow for class attributes to specify the default
             self._default.update(self.__default__)
@@ -316,7 +324,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         new_defaults = ub.dzip(argkeys, args)
         kwargs = self._normalize_alias_dict(kwargs)
         new_defaults.update(kwargs)
-        unknown_args = ub.dict_diff(new_defaults, self._default)
+        unknown_args: Dict[str, Any] = ub.dict_diff(new_defaults, self._default)  # type: ignore[arg-type]
         if unknown_args:
             raise ValueError((
                 "Unknown Arguments: {}. Expected arguments are: {}"
@@ -332,7 +340,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             self.__post_init__()
             self._scfg_post_init_done = True
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         # Note: attributes that mirror the public API will be suppressed
         # It is generally better to use the dictionary interface instead
         # But we want this to be data-classy, so...
@@ -346,11 +354,11 @@ class DataConfig(Config, metaclass=MetaDataConfig):
                 raise AttributeError(key)
         raise AttributeError(key)
 
-    def __dir__(self):
-        initial = super().__dir__()
+    def __dir__(self) -> List[str]:
+        initial = cast(List[str], super().__dir__())
         return initial + list(self.keys())
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         """
         Forwards setattrs in the configuration to the dictionary interface,
         otherwise passes it through.
@@ -374,7 +382,11 @@ class DataConfig(Config, metaclass=MetaDataConfig):
                 self.__dict__[key] = value
 
     @classmethod
-    def legacy(cls, cmdline=False, data=None, default=None, strict=False):
+    def legacy(cls,
+               cmdline: bool = False,
+               data: Optional[Any] = None,
+               default: Optional[Dict[str, Any]] = None,
+               strict: bool = False) -> "DataConfig":
         """
         Calls the original "load" way of creating non-dataclass config objects.
         This may be refactored in the future.
@@ -392,28 +404,31 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         return self
 
     @classmethod
-    def parse_args(cls, args=None, namespace=None):
+    def parse_args(cls,
+                   args: Optional[List[str]] = None,
+                   namespace: Optional[Any] = None) -> "DataConfig":
         """
         Mimics argparse.ArgumentParser.parse_args
         """
         if namespace is not None:
             raise NotImplementedError(
                 'namespaces are not handled in scriptconfig')
-        return cls.cli(argv=args, strict=True)
+        return cast("DataConfig", cls.cli(argv=args, strict=True))
 
     @classmethod
-    def parse_known_args(cls, args=None, namespace=None):
+    def parse_known_args(cls,
+                         args: Optional[List[str]] = None,
+                         namespace: Optional[Any] = None) -> "DataConfig":
         """
         Mimics argparse.ArgumentParser.parse_known_args
         """
         if namespace is not None:
             raise NotImplementedError(
                 'namespaces are not handled in scriptconfig')
-        return cls.cli(argv=args, strict=False)
-
+        return cast("DataConfig", cls.cli(argv=args, strict=False))
 
     @property
-    def default(self):
+    def default(self) -> Dict[str, Any]:
         import ubelt as ub
         ub.schedule_deprecation(
             'scriptconfig', 'default', 'attribute',
@@ -431,20 +446,24 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         return func
 
 
-def __example__():
+def __example__() -> None:
     """
     Doctests are broken for DataConfigs, so putting them here.
     """
     import scriptconfig as scfg
+    dataclasses: Any
     try:
         import dataclasses
     except ImportError:
         dataclasses = None
 
+    if dataclasses is None:
+        return
+
     @dataclasses.dataclass
     class ExampleDataConfig0:
         x: int = 0
-        y: str = 3
+        y: str = '3'
 
     ### Different variants of the same basic configuration (varying amounts of metadata)
     class ExampleDataConfig1:
@@ -465,9 +484,9 @@ def __example__():
     @dataclasses.dataclass
     class ExampleDataConfig2d:
         chip_dims = scfg.Value((256, 256), help='chip size')
-        time_dim: int = scfg.Value(3, help='number of time steps')
-        channels: str = scfg.Value('*:(red|green|blue)', help='sensor / channel code')
-        time_sampling: str = scfg.Value('soft2')
+        time_dim: Any = scfg.Value(3, help='number of time steps')
+        channels: Any = scfg.Value('*:(red|green|blue)', help='sensor / channel code')
+        time_sampling: Any = scfg.Value('soft2')
 
     class ExampleDataConfig3:
         __default__ = {
