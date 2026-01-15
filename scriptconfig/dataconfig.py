@@ -305,6 +305,8 @@ class DataConfig(Config, metaclass=MetaDataConfig):
     # Not sure if having a docstring for this will break user-configs.
     # No docstring, because user-specified docstring will define the default
     # __description__.
+    # Note: class attributes may be raw literals; the metaclass normalizes
+    # them into Value/SubConfig instances after class creation.
     __default__: Dict[str, Any] = {}
     __description__: Optional[str] = None
     __epilog__: Optional[str] = None
@@ -316,7 +318,7 @@ class DataConfig(Config, metaclass=MetaDataConfig):
         _dont_call_post_init = kwargs.pop('_dont_call_post_init', False)
 
         self._data: Dict[str, Any] = {}
-        self._default: Dict[str, Any] = {}
+        self._default: Dict[str, Value] = {}
         if getattr(self, '__default__', None):
             # allow for class attributes to specify the default
             self._default.update(self.__default__)
@@ -329,8 +331,17 @@ class DataConfig(Config, metaclass=MetaDataConfig):
             raise ValueError((
                 "Unknown Arguments: {}. Expected arguments are: {}"
             ).format(unknown_args, list(self._default)))
+        for key, value in new_defaults.items():
+            template = self._default.get(key)
+            if isinstance(template, Value) and not isinstance(value, Value):
+                new_template = template.copy()
+                new_template.value = value
+                new_defaults[key] = new_template
         self._default.update(new_defaults)
-        self._data = self._default.copy()
+        self._data = {
+            key: (value.value if isinstance(value, Value) else value)
+            for key, value in self._default.items()
+        }
         self._subconfig_meta = {}
         self._has_subconfigs = False
         wrap_subconfig_defaults(self, _dont_call_post_init=_dont_call_post_init)

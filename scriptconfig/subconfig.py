@@ -224,6 +224,8 @@ def wrap_subconfig_defaults(cfg, _dont_call_post_init=False):
         elif isinstance(v, Value) and not isinstance(v, SubConfig):
             inner = v.value
             if isinstance(inner, SubConfig):
+                if v.help and not inner.help:
+                    inner.parsekw['help'] = v.help
                 meta = inner
             elif isinstance(inner, Config):
                 meta = SubConfig(inner, help=v.help)
@@ -332,7 +334,7 @@ def coerce_data_updates(data, mode=None):
             try:
                 user_config = json.loads(data)
             except Exception:
-                import yaml
+                import yaml  # type: ignore[import-untyped]
                 import io
                 file = io.StringIO(data)
                 user_config = yaml.load(file, Loader=yaml.SafeLoader)

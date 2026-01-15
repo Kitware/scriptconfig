@@ -609,11 +609,7 @@ def _maker_smart_parse_action(self):
                 def _smart_type(value):
                     key = self.dest
                     template = scfg_object.default[key]
-                    if not isinstance(template, Value):
-                        # smartcast non-valued params from commandline
-                        value = smartcast_mod.smartcast(value)
-                    else:
-                        value = template.cast(value)
+                    value = template.cast(value)
                     return value
 
                 self.type = _smart_type

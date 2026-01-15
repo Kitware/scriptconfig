@@ -15,6 +15,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Replace OrderedDict usage with standard dicts across the codebase.
 * Move type annotations into implementation modules and remove stub files.
 * Replace scfg_isinstance autoreload checks with standard isinstance usage.
+* Normalize Config/DataConfig defaults at class creation to ensure Value/SubConfig metadata is present.
 
 ### Fixed
 * Corner case for BooleanFlagOrKeyValAction, only smartcast if type is not specified
