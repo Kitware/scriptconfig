@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.0 - Unreleased
+## Version 0.9.1 - Unreleased
+
+
+## Version 0.9.0 - Released 2026-01-15
 
 ### Added
 * SubConfig support for nested Config/DataConfig trees with selector-aware CLI parsing and nested overrides.
