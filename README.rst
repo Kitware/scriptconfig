@@ -551,6 +551,8 @@ As of version 0.9.0 scriptconfig supports **nested configuration trees**.
 This lets you build hierarchical Config/DataConfig structures while keeping
 selector-aware CLI parsing and simple dotted overrides.
 
+Nested configs are experimental, and some details may be subject to change.
+
 .. code-block:: python
 
     import scriptconfig as scfg
@@ -568,8 +570,7 @@ selector-aware CLI parsing and simple dotted overrides.
         epochs = scfg.Value(10, type=int)
 
     if __name__ == '__main__':
-        config = TrainCfg.cli()
-        print(f'config={config}')
+        config = TrainCfg.cli(verbose=True)
 
 The idea is that when the value of a config option is another Config class,
 that indicates a nested config.  You can swap the nested node *and* override
@@ -581,7 +582,6 @@ leaf values from the CLI:
 
 For a longer walkthrough (including YAML/JSON examples), see
 ``docs/source/manual/nested_configs.rst``.
-
 
 
 Gotchas
@@ -596,8 +596,9 @@ know this can end up with some weird behavior. The case where that happens here
 is when you pass a value that contains commas on the command line. If you don't
 specify the default value as a ``scriptconfig.Value`` with a specified
 ``type``, if will interpret your input as a list of values. In the future we
-may change the behavior of ``smartcast``, or prevent it from being used as a
-default.
+will change the behavior of ``smartcast``, or prevent it from being used as a
+default. This new behavior can be achived by explicitly passing the keyword
+argument ``type='smartcast:v1'`` to ``Value``.
 
 **Boolean flags and positional arguments:**
 

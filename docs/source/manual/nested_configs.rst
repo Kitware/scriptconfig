@@ -134,3 +134,17 @@ Limitations and notes
 * ``DataConfig`` supports both attribute and dict-style access.
 
 For additional details, see the API docs for :class:`scriptconfig.SubConfig`.
+
+Potential Changes
+-----------------
+
+Nested configs are experimental, and details of how subconfig classes are
+exposed to the user may change.
+
+* Currently we return a dictionary with a ``__class__`` value to indicate which subconfig was selected, but we may make this implicit based on the class.  Use of ``__class__`` when specifying command line args or serializing should not change.
+
+* Currently the choices of a SubConfig is specified as dictionary, forcing the definer to enumerate the possible names. We might use similar logic for discovering names as done the ModalCLI. (Or maybe it makes sense to define a SubConfig as a sort of Modal).
+
+* Currently subconfig resolution using "eval" is enabled by default, and we may change that to be disabled by default for security.
+
+* The SubConfig name might change, but if it does we will add a backwards compatible alias.
