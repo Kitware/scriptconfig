@@ -43,6 +43,7 @@
   ```bash
   python run_tests.py
   ```
+* Tests should always be run for changes.
 
 * Lint:
 
@@ -60,7 +61,7 @@
 #### 5) Contribution Rules / Invariants
 
 * Prefer **`DataConfig`** for new features; maintain backwards compatibility for `Config` when touching shared logic.
-* Keep `.pyi` stubs and `py.typed` aligned with public API changes.
 * Preserve existing CLI behaviors (aliases, positional handling, counter flags); update/add tests when changing parsing/casting.
 * Optional deps (e.g., rich argparse / argcomplete / numpy / omegaconf) must remain optional and imports should be guarded.
 * Retain `PYTHON_ARGCOMPLETE_OK` marker if modifying entrypoints.
+* Agents should add changelog entries for relevant changes when one is not already present.

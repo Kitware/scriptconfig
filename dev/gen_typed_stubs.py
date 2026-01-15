@@ -204,7 +204,6 @@ def generate_typed_stubs():
             text = text.replace('string_types: Any\n', '')
             text = text.replace('PY2: Any\n', '')
             text = text.replace('__win32_can_symlink__: Any\n', '')
-            # text = text.replace('odict = OrderedDict', '')
             # text = text.replace('ddict = defaultdict', '')
 
             if mod.path.endswith('util_path.py'):

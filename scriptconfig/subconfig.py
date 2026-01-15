@@ -23,10 +23,7 @@ Example:
 from __future__ import annotations
 
 import inspect
-from collections import OrderedDict
 from collections.abc import Mapping
-from typing import Any, Dict, Iterable, Tuple
-
 import ubelt as ub
 
 from scriptconfig.config import Config
@@ -104,7 +101,6 @@ class _ForbiddenSelectorAction(argparse.Action):
     argparse action that errors when subconfig selectors are disallowed.
     """
     def __init__(self, option_strings, dest, **kwargs):
-        import argparse
         self._message = kwargs.pop('_message', None)
         super().__init__(option_strings, dest, **kwargs)
 
@@ -163,8 +159,6 @@ class SubConfig(Value):
         >>> inst = meta.instantiate()
         >>> assert isinstance(inst, Inner)
     """
-
-    __scfg_class__ = 'SubConfig'
 
     def __init__(self, default, *, choices=None, allow_import=None, help=None):
         if inspect.isclass(default):
@@ -230,6 +224,8 @@ def wrap_subconfig_defaults(cfg, _dont_call_post_init=False):
         elif isinstance(v, Value) and not isinstance(v, SubConfig):
             inner = v.value
             if isinstance(inner, SubConfig):
+                if v.help and not inner.help:
+                    inner.parsekw['help'] = v.help
                 meta = inner
             elif isinstance(inner, Config):
                 meta = SubConfig(inner, help=v.help)
@@ -338,7 +334,7 @@ def coerce_data_updates(data, mode=None):
             try:
                 user_config = json.loads(data)
             except Exception:
-                import yaml
+                import yaml  # type: ignore[import-untyped]
                 import io
                 file = io.StringIO(data)
                 user_config = yaml.load(file, Loader=yaml.SafeLoader)
@@ -364,7 +360,7 @@ def coerce_data_updates(data, mode=None):
     else:
         raise TypeError(f'Expected path or dict, but got {type(data)}')
 
-    flat = OrderedDict()
+    flat = {}
     for k, v in _flatten_nested(user_config):
         flat[k] = v
     return flat
@@ -670,7 +666,7 @@ def apply_dot_updates(cfg, updates, *, allow_import=True, localns=None, stacklev
     if stacklevel is not None:
         localns = resolve_localns(localns, stacklevel)
 
-    flat_updates = OrderedDict()
+    flat_updates = {}
     if isinstance(updates, Mapping):
         for k, v in _flatten_nested(updates):
             flat_updates[k] = v
@@ -731,7 +727,7 @@ def has_selector_overrides(cfg, updates):
     """
     if not updates:
         return False
-    flat_updates = OrderedDict()
+    flat_updates = {}
     if isinstance(updates, Mapping):
         for k, v in _flatten_nested(updates):
             flat_updates[k] = v
@@ -761,7 +757,7 @@ def flatten_defaults(cfg, prefix=(), include_class_options=False):
         >>> flat = flatten_defaults(cfg)
         >>> assert 'inner.x' in flat
     """
-    flat = OrderedDict()
+    flat = {}
     for key, value in cfg._data.items():
         if key in getattr(cfg, '_subconfig_meta', {}):
             if include_class_options:
@@ -967,7 +963,7 @@ def config_to_nested_dict(cfg, include_class=True):
             return val.value
         return val
 
-    result = OrderedDict()
+    result = {}
     meta_map = getattr(cfg, '_subconfig_meta', {})
     for key, value in cfg._data.items():
         meta = meta_map.get(key)

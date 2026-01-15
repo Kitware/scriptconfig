@@ -4,15 +4,22 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.8.5 - Unreleased
+## Version 0.9.0 - Unreleased
 
 ### Added
 * SubConfig support for nested Config/DataConfig trees with selector-aware CLI parsing and nested overrides.
-* Documentation for nested configs and SubConfig usage under the manual.
+
+### Changed
+* Replace OrderedDict usage with standard dicts across the codebase.
+* Move type annotations into implementation modules and remove stub files.
+* Remove `scfg_isinstance` autoreload checks and use standard `isinstance`.
+* Normalize Config/DataConfig defaults at class creation to ensure Value/SubConfig metadata is present.
 
 ### Fixed
 * Corner case for BooleanFlagOrKeyValAction, only smartcast if type is not specified
 * BooleanFlagOrKeyValAction will now error if you use it with positional arguments to prevent unintended usage.
+* Resolve mypy typing issues in config, modal, and argparse helpers.
+* Config inheritance now uses python class MRO composition rules (i.e. new defaults do not overwrite previous ones). This change is backwards incompatible, but is likely not externally used.
 
 
 ## Version 0.8.4 - Released 2025-10-10
