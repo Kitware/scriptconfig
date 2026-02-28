@@ -635,26 +635,30 @@ def test_modal_with_positional_arguments_variant2():
 def test_modal_with_config_field_special_options():
     """
     Test that modals work with subcommands that have a literal 'config' field
-    when special_options=False is passed to .cli().
+    when __special_options__ = False is set as a class attribute.
     """
 
     class NestedCommand(scfg.DataConfig):
         """A nested command with a config field"""
+        __special_options__ = False  # Disable special options at class level
+        
         config = scfg.Value('default_config.yaml', help='Config file path')
         opt_arg = scfg.Value('default_opt', help='An optional argument')
 
         @classmethod
         def main(cls, argv=None, **kwargs):
-            cls.cli(argv=argv, data=kwargs, verbose=False, special_options=False)
+            cls.cli(argv=argv, data=kwargs, verbose=False)
 
     class SimpleCommand(scfg.DataConfig):
         """Command with a config field"""
+        __special_options__ = False  # Disable special options at class level
+        
         config = scfg.Value('config.yaml', help='Config file path')
         verbose = scfg.Flag(False, help='Verbose mode')
 
         @classmethod
         def main(cls, argv=None, **kwargs):
-            cls.cli(argv=argv, data=kwargs, verbose=False, special_options=False)
+            cls.cli(argv=argv, data=kwargs, verbose=False)
 
     class NestedModalCLI(scfg.ModalCLI):
         """Nested modal with config command"""
@@ -666,22 +670,22 @@ def test_modal_with_config_field_special_options():
         simple_cmd = scfg.ModalValue(SimpleCommand)
 
     # Test 1: simple command with default config
-    result = SimpleCommand.cli(argv=[], special_options=False)
+    result = SimpleCommand.cli(argv=[])
     assert result.config == 'config.yaml'
     assert result.verbose is False
 
     # Test 2: simple command with config override
-    result = SimpleCommand.cli(argv=['--config', 'custom.yaml', '--verbose'], special_options=False)
+    result = SimpleCommand.cli(argv=['--config', 'custom.yaml', '--verbose'])
     assert result.config == 'custom.yaml'
     assert result.verbose is True
 
     # Test 3: nested command with default config
-    result = NestedCommand.cli(argv=[], special_options=False)
+    result = NestedCommand.cli(argv=[])
     assert result.config == 'default_config.yaml'
     assert result.opt_arg == 'default_opt'
 
     # Test 4: nested with config override
-    result = NestedCommand.cli(argv=['--config', 'nested_custom.yaml', '--opt_arg', 'custom_opt'], special_options=False)
+    result = NestedCommand.cli(argv=['--config', 'nested_custom.yaml', '--opt_arg', 'custom_opt'])
     assert result.config == 'nested_custom.yaml'
     assert result.opt_arg == 'custom_opt'
 

@@ -406,7 +406,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             strict: bool = True,
             cmdline: bool = True,
             autocomplete: Union[bool, str] = 'auto',
-            special_options: bool = True,
+            special_options: Union[bool, None] = None,
             transition_helpers: bool = True,
             verbose: Union[bool, str] = False,
             allow_import: bool = True,
@@ -456,9 +456,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 issues if your config has a key named "cmdline", otherwise it
                 is safe to keep on.
 
-            special_options (bool, default=True):
+            special_options (bool | None, default=None):
                 adds special scriptconfig options, namely: --config, --dumps,
-                and --dump. In the future this default will change to False.
+                and --dump. If None, uses the class attribute __special_options__
+                if present, otherwise defaults to True.
 
             verbose (bool | str):
                 If true, then perform a rich print of the config after it is
@@ -752,7 +753,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
              strict: bool = False,
              autocomplete: Union[bool, str] = False,
              _dont_call_post_init: bool = False,
-             special_options: bool = True,
+             special_options: Union[bool, None] = None,
              allow_import: bool = True,
              allow_subconfig_overrides: bool = True,
              localns: Optional[Dict[str, Any]] = None,
@@ -799,9 +800,10 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                 if True, attempts to use the autocomplete package if it is
                 available if reading from sys.argv. Defaults to False.
 
-            special_options (bool, default=False):
+            special_options (bool | None, default=None):
                 adds special scriptconfig options, namely: --config, --dumps,
-                and --dump. Prefer using this over cmdline.
+                and --dump. If None, uses the class attribute __special_options__
+                if present, otherwise defaults to True.
 
             allow_import (bool):
                 If True, allow module path selectors like
@@ -898,6 +900,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
         if diagnostics.DEBUG_CONFIG:
             print(f'[scriptconfig.config.Config] Call {self.__class__.__name__}.load',
                   f'cmdline={cmdline}, strict={strict}, special_options={special_options}')
+
+        if special_options is None:
+            special_options = getattr(self, '__special_options__', True)
 
         if default:
             self.update_defaults(default)
@@ -1067,7 +1072,7 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
                     _alias_map[a] = k
         return _alias_map
 
-    def _read_argv(self, argv=None, special_options=True, strict=False, autocomplete=False,
+    def _read_argv(self, argv=None, special_options=None, strict=False, autocomplete=False,
                    allow_import=True, allow_subconfig_overrides=True, pending_updates=None,
                    localns=None, stacklevel=0):
         """
@@ -1186,6 +1191,9 @@ class Config(ub.NiceRepr, DictLike, metaclass=MetaConfig):
             >>> print(cfg.dumps())
             >>> assert isinstance(cfg['optim'], Sgd) and cfg['optim']['momentum'] == 0.8
         """
+        if special_options is None:
+            special_options = getattr(self, '__special_options__', True)
+
         if isinstance(argv, str):
             import shlex
             argv = shlex.split(argv)

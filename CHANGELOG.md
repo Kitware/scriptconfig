@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.1 - Unreleased
 
+### Added
+* Support for `__special_options__` class attribute to control special options (--config, --dump, --dumps) at the class level. When set to `False`, users can use field names like `config` without conflict with built-in special options.
+
 ### Changed
 * Clarify `ModalCLI` docs: submodals are registered as classes (or via `register`), and `Value(...)` wrapping applies to `SubConfig` nested configs, not modal command discovery.
 * Add `ModalValue` for declarative `ModalCLI` registration with per-command metadata (e.g. `command` / `alias` / `group`) in `key = value` class syntax.
