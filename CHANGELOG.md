@@ -117,6 +117,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Add a docstring to `DataConfig`
 
 
+## Version 0.7.14 - unreleased
+
+### Fixed
+* Counter flags now correctly support grouped short form (e.g. `-vvv`) and
+  `-vvv=VALUE` syntax. Previously the leftover characters were treated as a
+  string value. Added tests and doctest examples; removed obsolete FIXME.
+
 ## Version 0.7.13 - Released 2024-03-19
 
 ### Fixed

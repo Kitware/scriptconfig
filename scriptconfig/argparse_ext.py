@@ -217,9 +217,6 @@ class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
     Extends :BooleanFlagOrKeyValAction: and will increment the value
     based on the number of times the flag is specified.
 
-    FIXME:
-        Can we get -ffff to work right?
-
     Example:
         >>> from scriptconfig.argparse_ext import *  # NOQA
         >>> import argparse
@@ -247,6 +244,12 @@ class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
         >>>     '--no-flag=False': True,
         >>>     # Multiple flag specification cases
         >>>     '--flag --flag --flag': 3,
+        >>>     # Short names can be combined with = (this is standard argparse behavior)
+        >>>     '-f=5': 5,
+        >>>     # Grouped short options should also count
+        >>>     '-fff': 3,
+        >>>     # Grouping with an explicit value overrides
+        >>>     '-fff=5': 5,
         >>>     # An explicit set overwrites previous increments
         >>>     '--flag --flag --flag --flag=0': 0,
         >>>     # An increments modify previous explicit settings
@@ -268,6 +271,42 @@ class CounterOrKeyValAction(BooleanFlagOrKeyValAction):
         if option_string in action.option_strings:
             # Was the positive or negated key given?
             key_default = not option_string.startswith('--no-')
+
+        # ---------- handling for grouped short options ------------
+        # Argparse allows ``-v=123`` just like ``--verbose=123``; when we
+        # use ``nargs='?'`` this means ``-vvv`` is parsed as option ``-v``
+        # with value ``'vv'``.  The code below detects that situation and
+        # normalizes it into either (a) a pure increment or (b) an explicit
+        # value.  We avoid doing any smartcasting here and instead modify
+        # ``values`` so that the original logic later in the method will
+        # handle casting/boolean inversion as usual.
+        if values is not None and isinstance(values, str) and option_string.startswith('-'):
+            short = option_string.lstrip('-')[0]
+            rep = 0
+            rest = values
+            while rest and rest[0] == short:
+                rep += 1
+                rest = rest[1:]
+            if rep > 0:
+                # Grouping detected: ``-v`` + rep extra occurrences
+                if not rest:
+                    # ``-vvv`` with no explicit value: let the normal
+                    # "no values" branch compute the increment by
+                    # pretending ``values`` was None, but we must apply
+                    # all of the increments at once.
+                    prev_value = getattr(namespace, action.dest)
+                    if prev_value is None:
+                        prev_value = 0
+                    setattr(namespace, action.dest, prev_value + rep + 1)
+                    action._mark_parsed_argument(parser)
+                    return
+                # For explicit value forms we strip leading '=' if present
+                if rest.startswith('='):
+                    values = rest[1:]
+                else:
+                    values = rest
+                # fall through to normal handling below with updated values
+        # ---------------------------------------------------------------
 
         # Was there a value or was the flag specified by itself?
         if values is None:
