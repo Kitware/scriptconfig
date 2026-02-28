@@ -420,6 +420,46 @@ def test_submodal_usage_improvement():
     assert '--version' in text
 
 
+def test_modal_value_declarative_registration():
+    class Command1(scfg.DataConfig):
+        foo = 'spam'
+
+        @classmethod
+        def main(cls, argv=1, **kwargs):
+            cls.cli(argv=argv, data=kwargs)
+
+    class MyModalCLI(scfg.ModalCLI):
+        # command defaults to the attribute name: "my_cmd"
+        my_cmd = scfg.ModalValue(Command1, alias=['alias_cmd'])
+
+    with ub.CaptureStdout(suppress=True) as cap:
+        MyModalCLI.main(argv=['--help'], _noexit=True)
+
+    assert 'my_cmd' in cap.text
+    assert 'alias_cmd' in cap.text
+    assert MyModalCLI.main(argv=['my_cmd']) == 0
+    assert MyModalCLI.main(argv=['alias_cmd']) == 0
+
+
+def test_modal_value_command_override():
+    class Command1(scfg.DataConfig):
+        @classmethod
+        def main(cls, argv=1, **kwargs):
+            cls.cli(argv=argv, data=kwargs)
+
+    class MyModalCLI(scfg.ModalCLI):
+        configured_name = scfg.ModalValue(Command1, command='real_name', alias='rn')
+
+    with ub.CaptureStdout(suppress=True) as cap:
+        MyModalCLI.main(argv=['--help'], _noexit=True)
+
+    assert 'real_name' in cap.text
+    assert 'configured_name' not in cap.text
+    assert 'rn' in cap.text
+    assert MyModalCLI.main(argv=['real_name']) == 0
+    assert MyModalCLI.main(argv=['rn']) == 0
+
+
 def test_arbitrary_opaque_subparser():
     import scriptconfig as scfg
     # import pytest

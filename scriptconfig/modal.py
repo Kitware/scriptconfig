@@ -45,11 +45,27 @@ Example
     >>>     MyModalCLI.main(argv=['--help'])
     >>> except SystemExit:
     >>>     print('prevent system exit due to calling --help')
+
+Note:
+    Submodals in :class:`ModalCLI` must be registered as classes (or via
+    :meth:`register`). For declarative metadata (e.g. aliases) use
+    :class:`scriptconfig.ModalValue`.
+
+    >>> import scriptconfig as scfg
+    >>> class ChildModal(scfg.ModalCLI):
+    >>>     ...
+    >>> class ParentModal(scfg.ModalCLI):
+    >>>     child = ChildModal           # supported
+    >>>     child2 = scfg.ModalValue(ChildModal, alias=['kid'])  # supported
+    >>>     # child3 = scfg.Value(ChildModal)  # Value is for config values
+
+    If you want nested config nodes that are wrapped in ``Value(...)``, see
+    :class:`scriptconfig.SubConfig` in ``docs/source/manual/nested_configs.rst``.
 """
 from __future__ import annotations
 
 import sys
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import ubelt as ub
 
@@ -59,6 +75,35 @@ from scriptconfig import diagnostics
 
 
 DEFAULT_GROUP = 'commands'
+
+
+class ModalValue(ub.NiceRepr):
+    """
+    Declarative wrapper for registering a modal subcommand with extra metadata.
+
+    Example:
+        >>> import scriptconfig as scfg
+        >>> class Child(scfg.DataConfig):
+        ...     @classmethod
+        ...     def main(cls, argv=1, **kwargs):
+        ...         ...
+        >>> class Root(scfg.ModalCLI):
+        ...     child = scfg.ModalValue(Child, alias=['kid'])
+    """
+
+    def __init__(self,
+                 value: type,
+                 command: Optional[str] = None,
+                 alias: Optional[Union[str, List[str]]] = None,
+                 group: Optional[str] = None) -> None:
+        self.value = value
+        self.command = command
+        self.alias = alias
+        self.group = group
+
+    def __nice__(self) -> str:
+        name = getattr(self.value, '__name__', repr(self.value))
+        return f'{name}'
 
 
 class MetaModalCLI(type):
@@ -79,15 +124,27 @@ class MetaModalCLI(type):
         # Iterate over class attributes and register any Config or ModalCLI
         # objects in the __subconfigs__ dictionary the attribute names
         # will be used as the command name.
-        attr_subconfigs = {
-            k: v for k, v in namespace.items()
-            if not k.startswith('_') and isinstance(v, type)
-        }
-
-        final_subconfigs = [
-            {'command': getattr(v, '__command__', None) or k, 'cls': v}
-            for k, v in attr_subconfigs.items()
-        ]
+        final_subconfigs = []
+        for k, v in namespace.items():
+            if k.startswith('_'):
+                continue
+            if isinstance(v, type):
+                final_subconfigs.append({
+                    'command': getattr(v, '__command__', None) or k,
+                    'cls': v,
+                })
+            elif isinstance(v, ModalValue):
+                if not isinstance(v.value, type):
+                    raise TypeError(
+                        f'ModalValue for attribute {k!r} must wrap a class, '
+                        f'got {type(v.value)!r}'
+                    )
+                final_subconfigs.append({
+                    'command': v.command if v.command is not None else (getattr(v.value, '__command__', None) or k),
+                    'cls': v.value,
+                    'alias': v.alias,
+                    'group': v.group,
+                })
         cls_subconfigs = namespace.get('__subconfigs__', [])
         if cls_subconfigs:
             final_subconfigs.extend(cls_subconfigs)
@@ -204,6 +261,32 @@ class ModalCLI(metaclass=MetaModalCLI):
         >>>     def main(cls, cmdline=1, **kwargs):
         >>>         config = cls.cli(cmdline=cmdline, data=kwargs)
         >>>         print('config2 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>> #
+        >>> MyModalCLI.main(argv=['command1'])
+        >>> MyModalCLI.main(argv=['command2', '--baz=buz'])
+
+    Example:
+        >>> # Key/value modal CLI (uses names as commands)
+        >>> import scriptconfig as scfg
+        >>> #
+        >>> class Command1(scfg.DataConfig):
+        >>>     foo = scfg.Value('spam', help='spam spam spam spam')
+        >>>     @classmethod
+        >>>     def main(cls, cmdline=1, **kwargs):
+        >>>         config = cls.cli(cmdline=cmdline, data=kwargs)
+        >>>         print('config1 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>> #
+        >>> class Command2(scfg.DataConfig):
+        >>>     foo = 'eggs'
+        >>>     baz = 'biz'
+        >>>     @classmethod
+        >>>     def main(cls, cmdline=1, **kwargs):
+        >>>         config = cls.cli(cmdline=cmdline, data=kwargs)
+        >>>         print('config2 = {}'.format(ub.urepr(dict(config), nl=1)))
+        >>> #
+        >>> class MyModalCLI(scfg.ModalCLI):
+        >>>     command1 = Command1
+        >>>     command2 = Command2
         >>> #
         >>> MyModalCLI.main(argv=['command1'])
         >>> MyModalCLI.main(argv=['command2', '--baz=buz'])

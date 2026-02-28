@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.9.1 - Unreleased
 
+### Changed
+* Clarify `ModalCLI` docs: submodals are registered as classes (or via `register`), and `Value(...)` wrapping applies to `SubConfig` nested configs, not modal command discovery.
+* Add `ModalValue` for declarative `ModalCLI` registration with per-command metadata (e.g. `command` / `alias` / `group`) in `key = value` class syntax.
 
 ## Version 0.9.0 - Released 2026-01-15
 
