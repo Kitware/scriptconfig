@@ -420,6 +420,46 @@ def test_submodal_usage_improvement():
     assert '--version' in text
 
 
+def test_modal_value_declarative_registration():
+    class Command1(scfg.DataConfig):
+        foo = 'spam'
+
+        @classmethod
+        def main(cls, argv=1, **kwargs):
+            cls.cli(argv=argv, data=kwargs)
+
+    class MyModalCLI(scfg.ModalCLI):
+        # command defaults to the attribute name: "my_cmd"
+        my_cmd = scfg.ModalValue(Command1, alias=['alias_cmd'])
+
+    with ub.CaptureStdout(suppress=True) as cap:
+        MyModalCLI.main(argv=['--help'], _noexit=True)
+
+    assert 'my_cmd' in cap.text
+    assert 'alias_cmd' in cap.text
+    assert MyModalCLI.main(argv=['my_cmd']) == 0
+    assert MyModalCLI.main(argv=['alias_cmd']) == 0
+
+
+def test_modal_value_command_override():
+    class Command1(scfg.DataConfig):
+        @classmethod
+        def main(cls, argv=1, **kwargs):
+            cls.cli(argv=argv, data=kwargs)
+
+    class MyModalCLI(scfg.ModalCLI):
+        configured_name = scfg.ModalValue(Command1, command='real_name', alias='rn')
+
+    with ub.CaptureStdout(suppress=True) as cap:
+        MyModalCLI.main(argv=['--help'], _noexit=True)
+
+    assert 'real_name' in cap.text
+    assert 'configured_name' not in cap.text
+    assert 'rn' in cap.text
+    assert MyModalCLI.main(argv=['real_name']) == 0
+    assert MyModalCLI.main(argv=['rn']) == 0
+
+
 def test_arbitrary_opaque_subparser():
     import scriptconfig as scfg
     # import pytest
@@ -464,6 +504,202 @@ def test_arbitrary_opaque_subparser():
     print('* invoke trigger cli')
     print('--------------')
     modal.main(argv=['extern_cli'], strict=False)
+
+
+def test_modal_with_positional_arguments_variant1():
+    """
+    Test that modals can have subcommands with positional arguments,
+    including nested modals.
+    """
+    class NestedModalCLI(scfg.ModalCLI):
+        """Nested modal with positional command"""
+        __command__ = 'nested'
+
+    class NestedCommand(scfg.DataConfig):
+        """A nested command with positional args"""
+        pos_arg = scfg.Value('default_pos', position=1, help='A positional argument')
+        opt_arg = scfg.Value('default_opt', help='An optional argument')
+
+        @classmethod
+        def main(cls, argv=None, **kwargs):
+            cls.cli(argv=argv, data=kwargs, verbose=False)
+
+    NestedModalCLI.register(NestedCommand, command='nested_cmd')
+
+    class SimpleCommand(scfg.DataConfig):
+        """Command with a positional argument"""
+        filename = scfg.Value('input.txt', position=1, help='Input filename')
+        verbose = scfg.Flag(False, help='Verbose mode')
+
+        @classmethod
+        def main(cls, argv=None, **kwargs):
+            cls.cli(argv=argv, data=kwargs, verbose=False)
+
+    class TopModalCLI(scfg.ModalCLI):
+        """Top-level modal with positional subcommands"""
+
+    TopModalCLI.register(SimpleCommand, command='simple_pos')
+    TopModalCLI.register(NestedModalCLI, command='nested_modal')
+
+    # Test 1: simple positional argument in subcommand
+    result = SimpleCommand.cli(argv=['myfile.txt'])
+    assert result.filename == 'myfile.txt'
+    assert result.verbose is False
+
+    # Test 2: positional argument with optional flag
+    result = SimpleCommand.cli(argv=['myfile.txt', '--verbose'])
+    assert result.filename == 'myfile.txt'
+    assert result.verbose is True
+
+    # Test 3: positional in nested modal subcommand
+    result = NestedCommand.cli(argv=['nested_file.txt'])
+    assert result.pos_arg == 'nested_file.txt'
+    assert result.opt_arg == 'default_opt'
+
+    # Test 4: positional and optional in nested modal subcommand
+    result = NestedCommand.cli(argv=['nested_file.txt', '--opt_arg', 'custom_opt'])
+    assert result.pos_arg == 'nested_file.txt'
+    assert result.opt_arg == 'custom_opt'
+
+    # Test 5: test via modal main with simple_pos command
+    exit_code = TopModalCLI.main(argv=['simple_pos', 'test_modal.txt'])
+    assert exit_code == 0
+
+    # Test 6: test via modal main with nested_modal command
+    exit_code = TopModalCLI.main(argv=['nested_modal', 'nested_cmd', 'test_nested.txt'])
+    assert exit_code == 0
+
+
+def test_modal_with_positional_arguments_variant2():
+    """
+    Test that modals can have subcommands with positional arguments,
+    including nested modals. Second variant using algernative declarations
+    """
+
+    class NestedCommand(scfg.DataConfig):
+        """A nested command with positional args"""
+        pos_arg = scfg.Value('default_pos', position=1, help='A positional argument')
+        opt_arg = scfg.Value('default_opt', help='An optional argument')
+
+        @classmethod
+        def main(cls, argv=None, **kwargs):
+            cls.cli(argv=argv, data=kwargs, verbose=False)
+
+    class SimpleCommand(scfg.DataConfig):
+        """Command with a positional argument"""
+        filename = scfg.Value('input.txt', position=1, help='Input filename')
+        verbose = scfg.Flag(False, help='Verbose mode')
+
+        @classmethod
+        def main(cls, argv=None, **kwargs):
+            cls.cli(argv=argv, data=kwargs, verbose=False)
+
+    class NestedModalCLI(scfg.ModalCLI):
+        """Nested modal with positional command"""
+        nested_cmd = scfg.ModalValue(NestedCommand)
+
+    class TopModalCLI(scfg.ModalCLI):
+        """Top-level modal with positional subcommands"""
+        nested_modal = scfg.ModalValue(NestedModalCLI)
+        simple_pos = scfg.ModalValue(SimpleCommand)
+
+    # Test 1: simple positional argument in subcommand
+    result = SimpleCommand.cli(argv=['myfile.txt'])
+    assert result.filename == 'myfile.txt'
+    assert result.verbose is False
+
+    # Test 2: positional argument with optional flag
+    result = SimpleCommand.cli(argv=['myfile.txt', '--verbose'])
+    assert result.filename == 'myfile.txt'
+    assert result.verbose is True
+
+    # Test 3: positional in nested modal subcommand
+    result = NestedCommand.cli(argv=['nested_file.txt'])
+    assert result.pos_arg == 'nested_file.txt'
+    assert result.opt_arg == 'default_opt'
+
+    # Test 4: positional and optional in nested modal subcommand
+    result = NestedCommand.cli(argv=['nested_file.txt', '--opt_arg', 'custom_opt'])
+    assert result.pos_arg == 'nested_file.txt'
+    assert result.opt_arg == 'custom_opt'
+
+    # Test 5: test via modal main with simple_pos command
+    exit_code = TopModalCLI.main(argv=['simple_pos', 'test_modal.txt'])
+    assert exit_code == 0
+
+    # Test 6: test via modal main with nested_modal command
+    exit_code = TopModalCLI.main(argv=['nested_modal', 'nested_cmd', 'test_nested.txt'])
+    assert exit_code == 0
+
+
+def test_modal_with_config_field_special_options():
+    """
+    Test that modals work with subcommands that have a literal 'config' field
+    when __special_options__ = False is set as a class attribute.
+    """
+
+    class NestedCommand(scfg.DataConfig):
+        """A nested command with a config field"""
+        __special_options__ = False  # Disable special options at class level
+        
+        config = scfg.Value('default_config.yaml', help='Config file path')
+        opt_arg = scfg.Value('default_opt', help='An optional argument')
+
+        @classmethod
+        def main(cls, argv=None, **kwargs):
+            cls.cli(argv=argv, data=kwargs, verbose=False)
+
+    class SimpleCommand(scfg.DataConfig):
+        """Command with a config field"""
+        __special_options__ = False  # Disable special options at class level
+        
+        config = scfg.Value('config.yaml', help='Config file path')
+        verbose = scfg.Flag(False, help='Verbose mode')
+
+        @classmethod
+        def main(cls, argv=None, **kwargs):
+            cls.cli(argv=argv, data=kwargs, verbose=False)
+
+    class NestedModalCLI(scfg.ModalCLI):
+        """Nested modal with config command"""
+        nested_cmd = scfg.ModalValue(NestedCommand)
+
+    class TopModalCLI(scfg.ModalCLI):
+        """Top-level modal with config subcommands"""
+        nested_modal = scfg.ModalValue(NestedModalCLI)
+        simple_cmd = scfg.ModalValue(SimpleCommand)
+
+    # Test 1: simple command with default config
+    result = SimpleCommand.cli(argv=[])
+    assert result.config == 'config.yaml'
+    assert result.verbose is False
+
+    # Test 2: simple command with config override
+    result = SimpleCommand.cli(argv=['--config', 'custom.yaml', '--verbose'])
+    assert result.config == 'custom.yaml'
+    assert result.verbose is True
+
+    # Test 3: nested command with default config
+    result = NestedCommand.cli(argv=[])
+    assert result.config == 'default_config.yaml'
+    assert result.opt_arg == 'default_opt'
+
+    # Test 4: nested with config override
+    result = NestedCommand.cli(argv=['--config', 'nested_custom.yaml', '--opt_arg', 'custom_opt'])
+    assert result.config == 'nested_custom.yaml'
+    assert result.opt_arg == 'custom_opt'
+
+    # Test 5: test via modal main with simple_cmd
+    exit_code = TopModalCLI.main(argv=['simple_cmd'])
+    assert exit_code == 0
+
+    # Test 6: test via modal main with nested_modal command
+    exit_code = TopModalCLI.main(argv=['nested_modal', 'nested_cmd'])
+    assert exit_code == 0
+
+    # Test 7: test via modal main with config override
+    exit_code = TopModalCLI.main(argv=['simple_cmd', '--config', 'alt.yaml'])
+    assert exit_code == 0
 
 
 if __name__ == '__main__':

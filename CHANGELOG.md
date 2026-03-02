@@ -4,7 +4,16 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.9.0 - Unreleased
+## Version 0.9.1 - Unreleased
+
+### Added
+* Support for `__special_options__` class attribute to control special options (--config, --dump, --dumps) at the class level. When set to `False`, users can use field names like `config` without conflict with built-in special options.
+
+### Changed
+* Clarify `ModalCLI` docs: submodals are registered as classes (or via `register`), and `Value(...)` wrapping applies to `SubConfig` nested configs, not modal command discovery.
+* Add `ModalValue` for declarative `ModalCLI` registration with per-command metadata (e.g. `command` / `alias` / `group`) in `key = value` class syntax.
+
+## Version 0.9.0 - Released 2026-01-15
 
 ### Added
 * SubConfig support for nested Config/DataConfig trees with selector-aware CLI parsing and nested overrides.
@@ -110,6 +119,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * Better error messages when parsing argv
 * Add a docstring to `DataConfig`
 
+
+## Version 0.7.14 - unreleased
+
+### Fixed
+* Counter flags now correctly support grouped short form (e.g. `-vvv`) and
+  `-vvv=VALUE` syntax. Previously the leftover characters were treated as a
+  string value. Added tests and doctest examples; removed obsolete FIXME.
 
 ## Version 0.7.13 - Released 2024-03-19
 

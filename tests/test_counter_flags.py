@@ -20,6 +20,10 @@ def test_counter_flags():
     config = MyConfig.cli(argv=['-f'])
     assert config.flag1 == 1
 
+    # key=value notation should work even when isflag='counter'
+    config = MyConfig.cli(argv=['--flag1=5'])
+    assert config.flag1 == 5
+
     # Double specifying normal flags does nothing
     config = MyConfig.cli(argv=['-e', '-e'])
     assert config.flag0 is True
@@ -40,11 +44,17 @@ def test_counter_flags():
     config = MyConfig.cli(argv=['-f', '-f', '--flag1', '--flag1=231', '-f'])
     assert config.flag1 == 232
 
-    if 0:
-        # TODO: Can we fix the implementation to allow for this?
-        # Hard specifications can be incremented after the fact
-        config = MyConfig.cli(argv=['-fff'])
-        assert config.flag1 == 3
+    # Grouped short options should increment correctly (regression reported by user)
+    config = MyConfig.cli(argv=['-fff'])
+    assert config.flag1 == 3
+
+    # Grouped notation with explicit value should set the value
+    config = MyConfig.cli(argv=['-fff=5'])
+    assert config.flag1 == 5
+
+    # Hard specifications overwrite the value
+    config = MyConfig.cli(argv=['-f', '-f', '--flag1', '--flag1=231'])
+    assert config.flag1 == 231
 
 
 def port_argparse_counter_to_scriptconfig():
